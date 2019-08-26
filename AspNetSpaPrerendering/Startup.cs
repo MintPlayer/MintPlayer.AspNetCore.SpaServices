@@ -98,6 +98,11 @@ namespace AspNetSpaPrerendering
                         ? new AngularCliBuilder(npmScript: "build:ssr")
                         : null;
                     options.ExcludeUrls = new[] { "/sockjs-node" };
+
+                    options.SupplyData = (context, data) =>
+                    {
+                        data.Add("message", "Message from server");
+                    };
                 });
 
                 if (env.IsDevelopment())

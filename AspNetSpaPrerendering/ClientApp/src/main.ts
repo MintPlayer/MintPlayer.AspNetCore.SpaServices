@@ -9,7 +9,8 @@ export function getBaseUrl() {
 }
 
 const providers = [
-  { provide: 'BASE_URL', useFactory: getBaseUrl, deps: [] }
+  { provide: 'BASE_URL', useFactory: getBaseUrl, deps: [] },
+  { provide: 'MESSAGE', useValue: 'Message from the client' }
 ];
 
 if (environment.production) {
