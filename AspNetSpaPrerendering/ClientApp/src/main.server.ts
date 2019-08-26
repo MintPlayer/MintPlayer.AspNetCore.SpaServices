@@ -2,7 +2,7 @@ import 'zone.js/dist/zone-node';
 import 'reflect-metadata';
 import { renderModule, renderModuleFactory } from '@angular/platform-server';
 import { APP_BASE_HREF } from '@angular/common';
-import { enableProdMode } from '@angular/core';
+import { enableProdMode, StaticProvider } from '@angular/core';
 import { provideModuleMap } from '@nguniversal/module-map-ngfactory-loader';
 import { createServerRenderer } from 'aspnet-prerendering';
 export { AppServerModule } from './app/app.server.module';
@@ -12,15 +12,24 @@ enableProdMode();
 export default createServerRenderer(params => {
   const { AppServerModule, AppServerModuleNgFactory, LAZY_MODULE_MAP } = (module as any).exports;
 
+  const providers: StaticProvider[] = [
+    provideModuleMap(LAZY_MODULE_MAP),
+    { provide: APP_BASE_HREF, useValue: params.baseUrl },
+    { provide: 'BASE_URL', useValue: params.origin + params.baseUrl },
+    { provide: 'MESSAGE', useValue: params.data.message }
+  ];
+
+  if ('people' in params.data) {
+    providers.push({ provide: 'PEOPLE', useValue: params.data.people })
+  }
+  if ('person' in params.data) {
+    providers.push({ provide: 'PERSON', useValue: params.data.person })
+  }
+
   const options = {
     document: params.data.originalHtml,
     url: params.url,
-    extraProviders: [
-      provideModuleMap(LAZY_MODULE_MAP),
-      { provide: APP_BASE_HREF, useValue: params.baseUrl },
-      { provide: 'BASE_URL', useValue: params.origin + params.baseUrl },
-      { provide: 'MESSAGE', useValue: params.data.message }
-    ]
+    extraProviders: providers
   };
 
   // Bypass ssr api call cert warnings in development

@@ -9,6 +9,8 @@ using AspNetCoreSpaPrerendering.Data.Extensions;
 using Spa.SpaRoutes;
 using Microsoft.AspNetCore.Mvc.Razor;
 using System.Linq;
+using Spa.SpaRoutes.CurrentSpaRoute.Interfaces;
+using AspNetCoreSpaPrerendering.Data.Repositories.Interfaces;
 
 namespace AspNetSpaPrerendering
 {
@@ -60,7 +62,7 @@ namespace AspNetSpaPrerendering
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ICurrentSpaRoute currentSpaRoute)
         {
             if (env.IsDevelopment())
             {
@@ -101,6 +103,28 @@ namespace AspNetSpaPrerendering
 
                     options.SupplyData = (context, data) =>
                     {
+                        var route = currentSpaRoute.GetCurrentRoute(context);
+
+                        var personRepository = context.RequestServices.GetRequiredService<IPersonRepository>();
+
+                        switch (route?.Name)
+                        {
+                            case "person-list":
+                                {
+                                    var people = personRepository.GetPeople();
+                                    data["people"] = people;
+                                }
+                                break;
+                            case "person-show":
+                            case "person-edit":
+                                {
+                                    var id = System.Convert.ToInt32(route.Parameters["id"]);
+                                    var person = personRepository.GetPerson(id);
+                                    data["person"] = person;
+                                }
+                                break;
+                        }
+
                         data.Add("message", "Message from server");
                     };
                 });
