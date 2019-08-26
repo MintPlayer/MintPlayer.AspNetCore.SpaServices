@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpaRoutes", "Lib\SpaRoutes\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpaRoutes.Abstractions", "Lib\SpaRoutes.Abstractions\SpaRoutes.Abstractions.csproj", "{FC2181B3-3BE6-4E27-8BCF-118100114E80}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspNetCoreSpaPrerendering.Data", "AspNetCoreSpaPrerendering.Data\AspNetCoreSpaPrerendering.Data.csproj", "{1238BEE0-7AFC-4A7D-B92E-40CC1974F0C5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,6 +31,10 @@ Global
 		{FC2181B3-3BE6-4E27-8BCF-118100114E80}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FC2181B3-3BE6-4E27-8BCF-118100114E80}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FC2181B3-3BE6-4E27-8BCF-118100114E80}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1238BEE0-7AFC-4A7D-B92E-40CC1974F0C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1238BEE0-7AFC-4A7D-B92E-40CC1974F0C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1238BEE0-7AFC-4A7D-B92E-40CC1974F0C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1238BEE0-7AFC-4A7D-B92E-40CC1974F0C5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
