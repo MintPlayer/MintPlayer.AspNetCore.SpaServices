@@ -27,6 +27,8 @@
 
   <ItemGroup>
     <None Remove=".gitignore" />
+    <None Remove="ClientApp\src\app\entities\person.ts" />
+    <None Remove="ClientApp\src\app\services\person.service.ts" />
     <None Remove="ClientApp\tsconfig.app.json" />
     <None Remove="ClientApp\tsconfig.json" />
     <None Remove="ClientApp\tsconfig.server.json" />
@@ -43,6 +45,11 @@
   <ItemGroup>
     <ProjectReference Include="..\AspNetCoreSpaPrerendering.Data\AspNetCoreSpaPrerendering.Data.csproj" />
     <ProjectReference Include="..\Lib\SpaRoutes\SpaRoutes.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <TypeScriptCompile Include="ClientApp\src\app\entities\person.ts" />
+    <TypeScriptCompile Include="ClientApp\src\app\services\person.service.ts" />
   </ItemGroup>
 
   <Target Name="DebugEnsureNodeEnv" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">
