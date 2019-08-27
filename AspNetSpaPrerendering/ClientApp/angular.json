@@ -22,13 +22,16 @@
             "main": "src/main.ts",
             "polyfills": "src/polyfills.ts",
             "tsConfig": "tsconfig.app.json",
+            "extractCss": true,
             "aot": false,
             "assets": [
               "src/favicon.ico",
               "src/assets"
             ],
             "styles": [
-              "src/styles.scss"
+              "node_modules/bootstrap/scss/bootstrap.scss",
+              "src/styles/bootstrap-extensions.scss",
+              "src/styles/general.scss"
             ],
             "scripts": []
           },
@@ -93,7 +96,9 @@
               "src/assets"
             ],
             "styles": [
-              "src/styles.scss"
+              "node_modules/bootstrap/scss/bootstrap.scss",
+              "src/styles/bootstrap-extensions.scss",
+              "src/styles/general.scss"
             ],
             "scripts": []
           }
