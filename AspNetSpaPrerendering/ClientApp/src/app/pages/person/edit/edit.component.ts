@@ -11,15 +11,15 @@ import { PersonService } from '../../../services/person.service';
 })
 export class PersonEditComponent implements OnInit {
 
-  constructor(private personService: PersonService, /*@Inject('PERSON') private personInj: Person,*/ private router: Router, private route: ActivatedRoute, private titleService: Title) {
-    //if (personInj === null) {
-    var id = parseInt(this.route.snapshot.paramMap.get("id"));
-    this.personService.getPerson(id, true).subscribe(person => {
-      this.setPerson(person);
-    });
-    //} else {
-    //  this.setPerson(personInj);
-    //}
+  constructor(private personService: PersonService, @Inject('PERSON') private personInj: Person, private router: Router, private route: ActivatedRoute, private titleService: Title) {
+    if (personInj === null) {
+      var id = parseInt(this.route.snapshot.paramMap.get("id"));
+      this.personService.getPerson(id, true).subscribe(person => {
+        this.setPerson(person);
+      });
+    } else {
+      this.setPerson(personInj);
+    }
   }
 
   private setPerson(person: Person) {

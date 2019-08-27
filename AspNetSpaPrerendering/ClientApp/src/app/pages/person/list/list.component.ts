@@ -10,13 +10,13 @@ import { Title } from '@angular/platform-browser';
 })
 export class PersonListComponent implements OnInit {
 
-  constructor(private personService: PersonService, /*@Inject('PEOPLE') private peopleInj: Person[],*/ private titleService: Title) {
+  constructor(private personService: PersonService, @Inject('PEOPLE') private peopleInj: Person[], private titleService: Title) {
     this.titleService.setTitle('People');
-    //if (peopleInj === null) {
-    this.loadPeople();
-    //} else {
-    //  this.people = peopleInj;
-    //}
+    if (peopleInj === null) {
+      this.loadPeople();
+    } else {
+      this.people = peopleInj;
+    }
   }
 
   private loadPeople() {
