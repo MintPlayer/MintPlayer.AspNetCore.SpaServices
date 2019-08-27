@@ -1,11 +1,15 @@
-﻿using Microsoft.AspNetCore.Http;
-using Spa.SpaRoutes.CurrentSpaRoute.Interfaces;
+﻿using System.Linq;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Http;
 
 namespace Spa.SpaRoutes.CurrentSpaRoute
 {
+    public interface ICurrentSpaRoute
+    {
+        SpaRoute GetCurrentRoute(HttpContext httpContext);
+    }
+
     internal class CurrentSpaRoute : ICurrentSpaRoute
     {
         public CurrentSpaRoute(SpaRouteBuilder routeBuilder)

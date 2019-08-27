@@ -1,7 +1,6 @@
 ﻿using System;
 using Microsoft.Extensions.DependencyInjection;
-using Spa.SpaRoutes.Abstractions;
-using Spa.SpaRoutes.CurrentSpaRoute.Interfaces;
+using Spa.SpaRoutes.CurrentSpaRoute;
 
 namespace Spa.SpaRoutes
 {

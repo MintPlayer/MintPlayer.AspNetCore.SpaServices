@@ -1,15 +1,14 @@
+using System.Linq;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.AspNetCore.SpaServices.AngularCli;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using AspNetCoreSpaPrerendering.Data.Extensions;
 using Spa.SpaRoutes;
-using Microsoft.AspNetCore.Mvc.Razor;
-using System.Linq;
-using Spa.SpaRoutes.CurrentSpaRoute.Interfaces;
+using Spa.SpaRoutes.CurrentSpaRoute;
 using AspNetCoreSpaPrerendering.Data.Repositories.Interfaces;
 
 namespace AspNetSpaPrerendering

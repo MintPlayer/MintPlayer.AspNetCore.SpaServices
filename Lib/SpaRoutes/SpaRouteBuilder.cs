@@ -2,10 +2,15 @@
 using System.Collections.Generic;
 using Spa.SpaRoutes.Data;
 using Spa.SpaRoutes.Extensions;
-using Spa.SpaRoutes.Abstractions;
 
 namespace Spa.SpaRoutes
 {
+    public interface ISpaRouteBuilder
+    {
+        ISpaRouteBuilder Route(string path, string name);
+        ISpaRouteBuilder Group(string path, string name, Action<ISpaRouteBuilder> builder);
+    }
+
     public class SpaRouteBuilder : ISpaRouteBuilder
     {
         public SpaRouteBuilder()
