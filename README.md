@@ -6,7 +6,7 @@ If you haven't setup SSR yet, please consult <a href="https://medium.com/@pieter
 
 ## Installation
 ### NuGet package manager
-Open the NuGet package manager and install ´MintPlayer.AspNetCore.SpaServices.Routing´ in your project
+Open the NuGet package manager and install `MintPlayer.AspNetCore.SpaServices.Routing` in your project
 ### Package manager console
 Install-Package MintPlayer.AspNetCore.SpaServices.Routing
 
