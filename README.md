@@ -84,10 +84,10 @@ With this package you can easily determine which angular component is to be rend
     });
 
 You can't perform dependecy injection here since the SupplyData is a delegate.
-You can however retrieve an instance from the service-container through ´context.RequestServices´ or ´context.ApplicationServices´.
+You can however retrieve an instance from the service-container through `context.RequestServices` or `context.ApplicationServices`.
 
 ### main.server.ts
-The data you passed in the SupplyData delegate is made available on the params.data object in the ´main.server.ts´.
+The data you passed in the SupplyData delegate is made available on the params.data object in the `main.server.ts`.
 The refactored code can look like this:
 
     const providers: StaticProvider[] = [
