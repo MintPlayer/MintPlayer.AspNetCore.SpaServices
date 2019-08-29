@@ -1,6 +1,9 @@
 # MintPlayer.AspNetCore.SpaServices.Routing
 This project facilitates server-side prerendering in ASP.NET Core.
 
+## NuGet package
+https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing/
+
 ## Server-side rendering
 If you haven't setup SSR yet, please consult <a href="https://medium.com/@pieterjandeclippel/server-side-rendering-in-asp-net-core-angular-6df7adacbdaa" target="_blank">this manual</a>.
 
