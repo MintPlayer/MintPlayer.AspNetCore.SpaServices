@@ -57,34 +57,44 @@ To enable SPA prerendering you'd normally use the following middleware registrat
 You probably want to pass data based on which url the visitor opens the first time.
 With this package you can easily determine which angular component is to be rendered and what data needs to be provided to the angular app.
 
-    spa.UseSpaPrerendering(options =>
+    public void Configure(IApplicationBuilder app, IHostingEnvironment env, ICurrentSpaRoute currentSpaRoute)
     {
         ...
 
-        options.SupplyData = (context, data) =>
+        app.UseSpa(spa =>
         {
-            var route = currentSpaRoute.GetCurrentRoute(context);
-            var personRepository = context.RequestServices.GetRequiredService<IPersonRepository>();
-
-            switch (route?.Name)
+            ...
+            
+            spa.UseSpaPrerendering(options =>
             {
-                case "person-list":
+                ...
+
+                options.SupplyData = (context, data) =>
+                {
+                    var route = currentSpaRoute.GetCurrentRoute(context);
+                    var personRepository = context.RequestServices.GetRequiredService<IPersonRepository>();
+
+                    switch (route?.Name)
                     {
-                        var people = personRepository.GetPeople();
-                        data["people"] = people;
+                        case "person-list":
+                            {
+                                var people = personRepository.GetPeople();
+                                data["people"] = people;
+                            }
+                            break;
+                        case "person-show":
+                        case "person-edit":
+                            {
+                                var id = System.Convert.ToInt32(route.Parameters["id"]);
+                                var person = personRepository.GetPerson(id);
+                                data["person"] = person;
+                            }
+                            break;
                     }
-                    break;
-                case "person-show":
-                case "person-edit":
-                    {
-                        var id = System.Convert.ToInt32(route.Parameters["id"]);
-                        var person = personRepository.GetPerson(id);
-                        data["person"] = person;
-                    }
-                    break;
-            }
-        };
-    });
+                };
+            });
+        }
+    }
 
 You can't perform dependecy injection here since the SupplyData is a delegate.
 You can however retrieve an instance from the service-container through `context.RequestServices` or `context.ApplicationServices`.
