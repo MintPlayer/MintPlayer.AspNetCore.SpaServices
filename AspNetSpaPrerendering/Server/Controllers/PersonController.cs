@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using AspNetCoreSpaPrerendering.Data.Dtos;
 using AspNetCoreSpaPrerendering.Data.Repositories.Interfaces;
 using AspNetSpaPrerendering.Server.ViewModels.Person;
+using Spa.SpaRoutes.CurrentSpaRoute;
 
 namespace AspNetSpaPrerendering.Controllers
 {
@@ -14,9 +15,11 @@ namespace AspNetSpaPrerendering.Controllers
     public class PersonController : Controller
     {
         private IPersonRepository personRepository;
-        public PersonController(IPersonRepository personRepository)
+        private ISpaRouteService spaRouteService;
+        public PersonController(IPersonRepository personRepository, ISpaRouteService spaRouteService)
         {
             this.personRepository = personRepository;
+            this.spaRouteService = spaRouteService;
         }
 
         // GET: api/Person
@@ -32,6 +35,15 @@ namespace AspNetSpaPrerendering.Controllers
         public Person Get(int id)
         {
             var person = personRepository.GetPerson(id);
+
+            //var parms = new Dictionary<string, object>();
+            //parms["id"] = 5;
+            var parms = new
+            {
+                id = 5
+            };
+            var route = spaRouteService.GenerateUrl("person-edit", parms);
+
             return person;
         }
 

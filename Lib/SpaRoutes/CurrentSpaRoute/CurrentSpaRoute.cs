@@ -5,26 +5,81 @@ using Microsoft.AspNetCore.Http;
 
 namespace Spa.SpaRoutes.CurrentSpaRoute
 {
-    public interface ICurrentSpaRoute
+    public interface ISpaRouteService
     {
+        /// <summary>Returns the SPA route (if any) that matches the requested URL.</summary>
+        /// <param name="httpContext">The current HTTP context</param>
         SpaRoute GetCurrentRoute(HttpContext httpContext);
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <param name="routeName">Name of the SPA route</param>
+        /// <param name="parameters">Dictionary containing a key-value mapping for the parameters</param>
+        string GenerateUrl(string routeName, Dictionary<string, object> parameters);
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <typeparam name="T">Some anonymous type.</typeparam>
+        /// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+        /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
+        string GenerateUrl<T>(string routeName, T parameters);
     }
 
-    internal class CurrentSpaRoute : ICurrentSpaRoute
+    internal class SpaRouteService : ISpaRouteService
     {
-        public CurrentSpaRoute(SpaRouteBuilder routeBuilder)
+        public SpaRouteService(SpaRouteBuilder routeBuilder)
         {
             this.routeBuilder = routeBuilder;
         }
 
+        private const string rgx_keys = @"(?<=\{)[a-zA-Z0-9]+(?=\})";
         private SpaRouteBuilder routeBuilder;
 
+        /// <summary>Build result</summary>
+        private IEnumerable<Data.ISpaRouteItem> spaRouteItems;
+
+        /// <summary>Ensures that the routeBuilder delegate has been executed.</summary>
+        private void EnsureSpaRoutesBuilt()
+        {
+            if (spaRouteItems == null)
+                spaRouteItems = routeBuilder.Build();
+        }
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <param name="routeName">Name of the SPA route</param>
+        /// <param name="parameters">Dictionary containing a k
+        public string GenerateUrl(string routeName, Dictionary<string, object> parameters)
+        {
+            EnsureSpaRoutesBuilt();
+
+            var route = spaRouteItems.FirstOrDefault(r => r.FullName == routeName);
+            if (route == null) throw new System.Exception($"Route with name {routeName} not found.");
+
+            const string rgx_keys = @"\{(?<key>[a-zA-Z0-9]+)\}";
+            return Regex.Replace($"/{route.FullPath}", rgx_keys, m => parameters[m.Groups["key"].Value].ToString());
+        }
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <typeparam name="T">Some anonymous type.</typeparam>
+        /// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+        /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
+        public string GenerateUrl<T>(string routeName, T parameters)
+        {
+            EnsureSpaRoutesBuilt();
+
+            var route = spaRouteItems.FirstOrDefault(r => r.FullName == routeName);
+            if (route == null) throw new System.Exception($"Route with name {routeName} not found.");
+
+            const string rgx_keys = @"\{(?<key>[a-zA-Z0-9]+)\}";
+            return Regex.Replace($"/{route.FullPath}", rgx_keys, m => parameters.GetType().GetProperty(m.Groups["key"].Value).GetValue(parameters).ToString());
+        }
+
+        /// <summary>Returns the SPA route (if any) that matches the requested URL.</summary>
+        /// <param name="httpContext">The current HTTP context</param>
         public SpaRoute GetCurrentRoute(HttpContext httpContext)
         {
-            var allRoutes = routeBuilder.Build();
+            EnsureSpaRoutesBuilt();
 
             // Find the SPA route for the current request
-            var match = allRoutes.FirstOrDefault(r => IsMatch(httpContext.Request.Path, r.FullPath));
+            var match = spaRouteItems.FirstOrDefault(r => IsMatch(httpContext.Request.Path, r.FullPath));
 
             if (match == null)
             {
@@ -33,7 +88,7 @@ namespace Spa.SpaRoutes.CurrentSpaRoute
             else if (!string.IsNullOrEmpty(match.FullPath))
             {
                 // Get parameter names
-                var rgx_keys = @"(?<=\{)[a-zA-Z0-9]+(?=\})";
+                
                 var parameter_keys = Regex.Matches(match.FullPath, rgx_keys).Select(m => m.Value).ToList(); // [id, ...]
 
                 var rgx_values = PlaceholderString2WildcardString(match.FullPath);
