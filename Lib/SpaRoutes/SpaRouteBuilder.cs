@@ -11,9 +11,9 @@ namespace Spa.SpaRoutes
         ISpaRouteBuilder Group(string path, string name, Action<ISpaRouteBuilder> builder);
     }
 
-    public class SpaRouteBuilder : ISpaRouteBuilder
+    internal class SpaRouteBuilder : ISpaRouteBuilder
     {
-        public SpaRouteBuilder()
+        internal SpaRouteBuilder()
         {
             Routes = new List<ISpaRouteItem>();
         }
