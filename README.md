@@ -1,11 +1,8 @@
 # MintPlayer.AspNetCore.SpaServices.Routing
 This project facilitates server-side prerendering in ASP.NET Core.
 
-## NuGet package
-https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing/
-
 ## Server-side rendering
-If you haven't setup SSR yet, please consult <a href="https://medium.com/@pieterjandeclippel/server-side-rendering-in-asp-net-core-angular-6df7adacbdaa" target="_blank">this manual</a>.
+If you haven't setup SSR yet, please consult [this manual](https://medium.com/@pieterjandeclippel/server-side-rendering-in-asp-net-core-angular-6df7adacbdaa).
 
 ## Installation
 ### NuGet package manager
@@ -57,7 +54,7 @@ To enable SPA prerendering you'd normally use the following middleware registrat
 You probably want to pass data based on which url the visitor opens the first time.
 With this package you can easily determine which angular component is to be rendered and what data needs to be provided to the angular app.
 
-    public void Configure(IApplicationBuilder app, IHostingEnvironment env, ICurrentSpaRoute currentSpaRoute)
+    public void Configure(IApplicationBuilder app, IHostingEnvironment env, ISpaRouteService spaRouteService)
     {
         ...
 
@@ -71,7 +68,7 @@ With this package you can easily determine which angular component is to be rend
 
                 options.SupplyData = (context, data) =>
                 {
-                    var route = currentSpaRoute.GetCurrentRoute(context);
+                    var route = spaRouteService.GetCurrentRoute(context);
                     var personRepository = context.RequestServices.GetRequiredService<IPersonRepository>();
 
                     switch (route?.Name)
@@ -146,3 +143,20 @@ You can then use this value by using dependency injection in your components:
         this.setPerson(personInj);
       }
     }
+
+### Generate SPA routes
+If necessary, you can generate an application URL on the server-side through c# code. Examples  for this use are when using a redirect from OpenSearch straight to your ShowComponent, or when generating an XML sitemap.
+
+To do so, there are 2 approaches:
+
+#### Using a dictionary:
+
+    var parms = new Dictionary<string, object>();
+    parms["id"] = 5;
+    var route = spaRouteService.GenerateUrl("person-edit", parms);
+
+#### Using an anonymous type:
+
+    var route = spaRouteService.GenerateUrl("person-edit", new {
+        id = 5
+    });
