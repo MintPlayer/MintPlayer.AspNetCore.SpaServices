@@ -79,7 +79,7 @@ namespace Spa.SpaRoutes.CurrentSpaRoute
             EnsureSpaRoutesBuilt();
 
             // Find the SPA route for the current request
-            var match = spaRouteItems.FirstOrDefault(r => IsMatch(httpContext.Request.Path, r.FullPath));
+            var match = spaRouteItems.FirstOrDefault(r => IsMatch(GetCurrentPath(httpContext), r.FullPath));
 
             if (match == null)
             {
@@ -92,10 +92,13 @@ namespace Spa.SpaRoutes.CurrentSpaRoute
                 var parameter_keys = Regex.Matches(match.FullPath, rgx_keys).Select(m => m.Value).ToList(); // [id, ...]
 
                 var rgx_values = PlaceholderString2WildcardString(match.FullPath);
-                var parameter_match = Regex.Match(httpContext.Request.Path, rgx_values);
+                var parameter_match = Regex.Match(GetCurrentPath(httpContext), rgx_values);
                 if (!parameter_match.Success) throw new System.Exception("Unexpected exception: parameter match should be successful");
 
-                var parameter_values = parameter_match.Groups.Where(g => g.GetType() == typeof(Group)).Select(g => g.Value).ToList();
+                var parameter_groups = new Group[parameter_match.Groups.Count];
+                parameter_match.Groups.CopyTo(parameter_groups, 0);
+
+                var parameter_values = parameter_groups.Where(g => g.GetType() == typeof(Group)).Select(g => g.Value).ToList();
                 if (parameter_keys.Count != parameter_values.Count) throw new System.Exception("Unexpected exception: number of keys and values should be equal");
 
                 return new SpaRoute
@@ -131,6 +134,22 @@ namespace Spa.SpaRoutes.CurrentSpaRoute
             var replace = "(.+)";
             var wildcardString = Regex.Replace(input, rgx, replace);
             return wildcardString;
+        }
+
+        /// <summary>Retrieves the url visited by the user.</summary>
+        /// <param name="context">Http Context</param>
+        private string GetCurrentPath(HttpContext context)
+        {
+            // For an angular app this instruction returns
+            // - The correct path in Development mode
+            // - index.html in Production mode
+            //return context.Request.Path;
+
+            // The RawTarget private property contains the real path visited by the user at any time.
+            var fc = context.Features.GetType();
+            var rt = fc.GetProperty("RawTarget");
+            var url = (string)rt.GetValue(context.Features);
+            return url;
         }
     }
 }

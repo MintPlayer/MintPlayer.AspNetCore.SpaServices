@@ -10,6 +10,7 @@ using AspNetCoreSpaPrerendering.Data.Extensions;
 using Spa.SpaRoutes;
 using Spa.SpaRoutes.CurrentSpaRoute;
 using AspNetCoreSpaPrerendering.Data.Repositories.Interfaces;
+using Microsoft.Extensions.Hosting;
 
 namespace AspNetSpaPrerendering
 {
@@ -30,8 +31,10 @@ namespace AspNetSpaPrerendering
             });
 
             services
-                .AddMvc()
-                .SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+                .AddControllersWithViews()
+                .SetCompatibilityVersion(CompatibilityVersion.Latest);
+
+            services.AddRouting();
 
             // In production, the Angular files will be served from this directory
             services.AddSpaStaticFiles(configuration =>
@@ -61,7 +64,7 @@ namespace AspNetSpaPrerendering
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ISpaRouteService currentSpaRoute)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ISpaRouteService currentSpaRoute)
         {
             if (env.IsDevelopment())
             {
@@ -78,11 +81,12 @@ namespace AspNetSpaPrerendering
                 .UseStaticFiles()
                 .UseSpaStaticFiles();
 
-            app.UseMvc(routes =>
+            app.UseRouting();
+            app.UseEndpoints(routes =>
             {
-                routes.MapRoute(
+                routes.MapControllerRoute(
                     name: "default",
-                    template: "{controller}/{action=Index}/{id?}");
+                    pattern: "{controller}/{action=Index}/{id?}");
             });
 
             app.UseSpa(spa =>
@@ -92,6 +96,7 @@ namespace AspNetSpaPrerendering
 
                 spa.Options.SourcePath = "ClientApp";
 
+#pragma warning disable CS0618 // Type or member is obsolete
                 spa.UseSpaPrerendering(options =>
                 {
                     options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.js";
@@ -127,6 +132,7 @@ namespace AspNetSpaPrerendering
                         data.Add("message", "Message from server");
                     };
                 });
+#pragma warning restore CS0618 // Type or member is obsolete
 
                 if (env.IsDevelopment())
                 {
