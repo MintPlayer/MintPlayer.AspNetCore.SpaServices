@@ -131,7 +131,7 @@ namespace Spa.SpaRoutes.CurrentSpaRoute
         private string PlaceholderString2WildcardString(string input)
         {
             var rgx = @"\{[a-zA-Z0-9]+\}";
-            var replace = "(.+)";
+            var replace = @"([^\/]+)";
             var wildcardString = Regex.Replace(input, rgx, replace);
             return wildcardString;
         }
