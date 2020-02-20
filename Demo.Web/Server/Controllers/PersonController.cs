@@ -40,9 +40,10 @@ namespace AspNetSpaPrerendering.Controllers
             //parms["id"] = 5;
             var parms = new
             {
-                id = 5
+                memberid = 2,
+                personid = 5
             };
-            var route = spaRouteService.GenerateUrl("members-person-edit", parms);
+            var route = spaRouteService.GenerateUrl("manage-members-person-edit", parms);
 
             return person;
         }

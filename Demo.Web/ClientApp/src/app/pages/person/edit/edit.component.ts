@@ -13,7 +13,7 @@ export class PersonEditComponent implements OnInit {
 
   constructor(private personService: PersonService, @Inject('PERSON') private personInj: Person, private router: Router, private route: ActivatedRoute, private titleService: Title) {
     if (personInj === null) {
-      var id = parseInt(this.route.snapshot.paramMap.get("id"));
+      var id = parseInt(this.route.snapshot.paramMap.get("personid"));
       this.personService.getPerson(id, true).subscribe(person => {
         this.setPerson(person);
       });
@@ -32,7 +32,7 @@ export class PersonEditComponent implements OnInit {
 
   updatePerson() {
     this.personService.updatePerson(this.person).subscribe(() => {
-      this.router.navigate(["/members", "person", this.person.id]);
+      this.router.navigate(["/manage", "members", 3, "person", this.person.id]);
     });
   }
 

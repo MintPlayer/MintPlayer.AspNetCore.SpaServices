@@ -4,7 +4,7 @@
       <h1 class="d-inline-block">{{ person.firstName }} {{ person.lastName }}</h1>
       <span class="float-none d-block float-sm-right d-sm-inline-block">
         <span class="float-none d-block float-sm-right d-sm-inline-block">
-          <a class="btn btn-primary d-block d-sm-inline-block" [routerLink]='["/members", "person", person.id, "edit"]'>
+          <a class="btn btn-primary d-block d-sm-inline-block" [routerLink]='["/manage", "members", 3, "person", person.id, "edit"]'>
             <i class="fa fa-edit"></i>
             Edit
           </a>

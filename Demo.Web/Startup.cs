@@ -45,12 +45,14 @@ namespace AspNetSpaPrerendering
             // Define the SPA-routes for our helper
             services.AddSpaRoutes(routes => routes
                 .Route("", "home")
-                .Group("members", "members", member_routes => member_routes
-                    .Group("person", "person", person_routes => person_routes
-                        .Route("", "list")
-                        .Route("create", "create")
-                        .Route("{id}", "show")
-                        .Route("{id}/edit", "edit")
+                .Group("manage", "manage", manage_routes => manage_routes
+                    .Group("members", "members", member_routes => member_routes
+                        .Group("{memberid}/person", "person", person_routes => person_routes
+                            .Route("", "list")
+                            .Route("create", "create")
+                            .Route("{personid}", "show")
+                            .Route("{personid}/edit", "edit")
+                        )
                     )
                 )
             );
@@ -115,16 +117,16 @@ namespace AspNetSpaPrerendering
 
                         switch (route?.Name)
                         {
-                            case "members-person-list":
+                            case "manage-members-person-list":
                                 {
                                     var people = personRepository.GetPeople();
                                     data["people"] = people;
                                 }
                                 break;
-                            case "members-person-show":
-                            case "members-person-edit":
+                            case "manage-members-person-show":
+                            case "manage-members-person-edit":
                                 {
-                                    var id = System.Convert.ToInt32(route.Parameters["id"]);
+                                    var id = System.Convert.ToInt32(route.Parameters["personid"]);
                                     var person = personRepository.GetPerson(id);
                                     data["person"] = person;
                                 }

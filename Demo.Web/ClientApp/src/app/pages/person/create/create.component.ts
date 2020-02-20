@@ -17,7 +17,7 @@ export class PersonCreateComponent implements OnInit {
 
   savePerson() {
     this.personService.createPerson(this.person).subscribe((person) => {
-      this.router.navigate(["/members", "person", person.id]);
+      this.router.navigate(["/manage", "members", 3, "person", person.id]);
     });
   }
 

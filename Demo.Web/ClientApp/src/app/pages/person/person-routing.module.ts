@@ -8,8 +8,8 @@ import { PersonShowComponent } from './show/show.component';
 const routes: Routes = [
   { path: '', component: PersonListComponent },
   { path: 'create', component: PersonCreateComponent },
-  { path: ':id/edit', component: PersonEditComponent },
-  { path: ':id', component: PersonShowComponent }
+  { path: ':personid/edit', component: PersonEditComponent },
+  { path: ':personid', component: PersonShowComponent }
 ];
 
 @NgModule({

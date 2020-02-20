@@ -3,7 +3,7 @@
     <div class="col-12">
       <h1 class="d-inline-block">All people</h1>
       <span class="float-right">
-        <a [routerLink]='["/members","person","create"]' class="btn btn-primary">
+        <a [routerLink]='["/manage","members",3,"person","create"]' class="btn btn-primary">
           <i class="fa fa-plus"></i>
           Create person
         </a>
@@ -21,7 +21,7 @@
         </thead>
         <tbody>
           <tr *ngFor="let person of people">
-            <td class="text-nowrap"><a [routerLink]='["/members","person",person.id]' title="Details for {{ person.firstName }} {{ person.lastName }}">{{ person.firstName }}</a></td>
+            <td class="text-nowrap"><a [routerLink]='["/manage","members",3,"person",person.id]' title="Details for {{ person.firstName }} {{ person.lastName }}">{{ person.firstName }}</a></td>
             <td class="text-nowrap">{{ person.lastName }}</td>
           </tr>
         </tbody>
