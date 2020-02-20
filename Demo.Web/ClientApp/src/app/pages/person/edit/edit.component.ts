@@ -32,7 +32,7 @@ export class PersonEditComponent implements OnInit {
 
   updatePerson() {
     this.personService.updatePerson(this.person).subscribe(() => {
-      this.router.navigate(["person", this.person.id]);
+      this.router.navigate(["/members", "person", this.person.id]);
     });
   }
 

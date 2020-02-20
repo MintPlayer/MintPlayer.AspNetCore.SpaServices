@@ -42,7 +42,7 @@ namespace AspNetSpaPrerendering.Controllers
             {
                 id = 5
             };
-            var route = spaRouteService.GenerateUrl("person-edit", parms);
+            var route = spaRouteService.GenerateUrl("members-person-edit", parms);
 
             return person;
         }

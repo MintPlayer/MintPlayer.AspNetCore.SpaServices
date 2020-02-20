@@ -48,6 +48,7 @@ namespace Spa.SpaRoutes.Data
                 FullPath = string.IsNullOrEmpty(path) ? FullPath : $"{FullPath}/{path}"
             };
             builder(group);
+            Routes.Add(group);
             return this;
         }
 

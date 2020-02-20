@@ -31,7 +31,7 @@ export class PersonShowComponent implements OnInit {
 
   public deletePerson() {
     this.personService.deletePerson(this.person).subscribe(() => {
-      this.router.navigate(["person"]);
+      this.router.navigate(["/members", "person"]);
     });
   }
 

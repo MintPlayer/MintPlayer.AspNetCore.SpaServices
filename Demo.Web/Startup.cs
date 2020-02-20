@@ -45,11 +45,13 @@ namespace AspNetSpaPrerendering
             // Define the SPA-routes for our helper
             services.AddSpaRoutes(routes => routes
                 .Route("", "home")
-                .Group("person", "person", person_routes => person_routes
-                    .Route("", "list")
-                    .Route("create", "create")
-                    .Route("{id}", "show")
-                    .Route("{id}/edit", "edit")
+                .Group("members", "members", member_routes => member_routes
+                    .Group("person", "person", person_routes => person_routes
+                        .Route("", "list")
+                        .Route("create", "create")
+                        .Route("{id}", "show")
+                        .Route("{id}/edit", "edit")
+                    )
                 )
             );
 
@@ -113,14 +115,14 @@ namespace AspNetSpaPrerendering
 
                         switch (route?.Name)
                         {
-                            case "person-list":
+                            case "members-person-list":
                                 {
                                     var people = personRepository.GetPeople();
                                     data["people"] = people;
                                 }
                                 break;
-                            case "person-show":
-                            case "person-edit":
+                            case "members-person-show":
+                            case "members-person-edit":
                                 {
                                     var id = System.Convert.ToInt32(route.Parameters["id"]);
                                     var person = personRepository.GetPerson(id);
