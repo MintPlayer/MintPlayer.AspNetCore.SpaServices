@@ -10,7 +10,10 @@ namespace Spa.SpaRoutes
         {
             var routes = new SpaRouteBuilder();
             builder(routes);
-            services.AddSingleton<ISpaRouteService>(provider => new SpaRouteService(routes));
+            //services.AddSingleton<ISpaRouteService>(provider => new SpaRouteService(null));
+
+            services.AddSingleton<ISpaRouteBuilder>(provider => routes);
+            services.AddSingleton<ISpaRouteService, SpaRouteService>();
             return services;
         }
     }

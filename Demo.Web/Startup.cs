@@ -111,8 +111,8 @@ namespace AspNetSpaPrerendering
 
                     options.SupplyData = (context, data) =>
                     {
-                        var route = currentSpaRoute.GetCurrentRoute(context);
-
+                        var route = currentSpaRoute.GetCurrentRoute();
+                        
                         var personRepository = context.RequestServices.GetRequiredService<IPersonRepository>();
 
                         switch (route?.Name)
