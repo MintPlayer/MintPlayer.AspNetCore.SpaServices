@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
+using System;
 
 namespace Spa.SpaRoutes.CurrentSpaRoute
 {
@@ -48,13 +49,7 @@ namespace Spa.SpaRoutes.CurrentSpaRoute
         /// <param name="parameters">Dictionary containing a k
         public string GenerateUrl(string routeName, Dictionary<string, object> parameters)
         {
-            EnsureSpaRoutesBuilt();
-
-            var route = spaRouteItems.FirstOrDefault(r => r.FullName == routeName);
-            if (route == null) throw new System.Exception($"Route with name {routeName} not found.");
-
-            const string rgx_keys = @"\{(?<key>[a-zA-Z0-9]+)\}";
-            return Regex.Replace($"/{route.FullPath}", rgx_keys, m => parameters[m.Groups["key"].Value].ToString());
+            return GenerateUrlBase(routeName, m => parameters[m.Groups["key"].Value].ToString());
         }
 
         /// <summary>Generates an url for a SPA route.</summary>
@@ -63,13 +58,18 @@ namespace Spa.SpaRoutes.CurrentSpaRoute
         /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
         public string GenerateUrl<T>(string routeName, T parameters)
         {
+            return GenerateUrlBase(routeName, m => parameters.GetType().GetProperty(m.Groups["key"].Value).GetValue(parameters).ToString());
+        }
+
+        private string GenerateUrlBase(string routeName, MatchEvaluator selector)
+        {
             EnsureSpaRoutesBuilt();
 
             var route = spaRouteItems.FirstOrDefault(r => r.FullName == routeName);
             if (route == null) throw new System.Exception($"Route with name {routeName} not found.");
 
             const string rgx_keys = @"\{(?<key>[a-zA-Z0-9]+)\}";
-            return Regex.Replace($"/{route.FullPath}", rgx_keys, m => parameters.GetType().GetProperty(m.Groups["key"].Value).GetValue(parameters).ToString());
+            return Regex.Replace($"/{route.FullPath}", rgx_keys, selector);
         }
 
         /// <summary>Returns the SPA route (if any) that matches the requested URL.</summary>
