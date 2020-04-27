@@ -11,6 +11,7 @@
     "IIS Express": {
       "commandName": "IISExpress",
       "launchBrowser": true,
+      "launchUrl": "api/Person/5",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Production"
       }

@@ -37,11 +37,15 @@ namespace AspNetSpaPrerendering.Controllers
             var person = personRepository.GetPerson(id);
 
             //var parms = new Dictionary<string, object>();
-            //parms["id"] = 5;
+            //parms["memberid"] = 2;
+            //parms["personid"] = 5;
+            //parms["action"] = "show";
+
             var parms = new
             {
                 memberid = 2,
-                personid = 5
+                personid = 5,
+                action = "show"
             };
             var route = spaRouteService.GenerateUrl("manage-members-person-edit", parms);
 

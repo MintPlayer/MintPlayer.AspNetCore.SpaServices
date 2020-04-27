@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
-using System;
 
 namespace Spa.SpaRoutes.CurrentSpaRoute
 {
@@ -49,7 +48,7 @@ namespace Spa.SpaRoutes.CurrentSpaRoute
         /// <param name="parameters">Dictionary containing a k
         public string GenerateUrl(string routeName, Dictionary<string, object> parameters)
         {
-            return GenerateUrlBase(routeName, m => parameters[m.Groups["key"].Value].ToString());
+            return GenerateUrlBase(routeName, parameters);
         }
 
         /// <summary>Generates an url for a SPA route.</summary>
@@ -58,18 +57,30 @@ namespace Spa.SpaRoutes.CurrentSpaRoute
         /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
         public string GenerateUrl<T>(string routeName, T parameters)
         {
-            return GenerateUrlBase(routeName, m => parameters.GetType().GetProperty(m.Groups["key"].Value).GetValue(parameters).ToString());
+            var values = typeof(T).GetProperties().ToDictionary(p => p.Name, p => p.GetValue(parameters));
+            return GenerateUrlBase(routeName, values);
         }
 
-        private string GenerateUrlBase(string routeName, MatchEvaluator selector)
+        private string GenerateUrlBase(string routeName, IDictionary<string, object> parameters)
         {
             EnsureSpaRoutesBuilt();
 
             var route = spaRouteItems.FirstOrDefault(r => r.FullName == routeName);
             if (route == null) throw new System.Exception($"Route with name {routeName} not found.");
 
-            const string rgx_keys = @"\{(?<key>[a-zA-Z0-9]+)\}";
-            return Regex.Replace($"/{route.FullPath}", rgx_keys, selector);
+            var rgx_keys = new Regex(@"\{(?<key>[a-zA-Z0-9]+)\}");
+            var urlWithoutQuery = rgx_keys.Replace($"/{route.FullPath}", m => parameters[m.Groups["key"].Value].ToString());
+            var present_param_keys = rgx_keys.Matches(route.FullPath).Select(m => m.Groups["key"].Value);
+            var excessive_param_keys = parameters.Keys.Except(present_param_keys);
+
+            if (excessive_param_keys.Any())
+            {
+                return $"{urlWithoutQuery}?{string.Join('&', excessive_param_keys.Select((key) => $"{key}={parameters[key]}"))}";
+            }
+            else
+            {
+                return urlWithoutQuery;
+            }
         }
 
         /// <summary>Returns the SPA route (if any) that matches the requested URL.</summary>
