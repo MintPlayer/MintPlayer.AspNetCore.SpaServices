@@ -42,7 +42,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Demo.Data\Demo.Data.csproj" />
-    <ProjectReference Include="..\Lib\SpaRoutes\SpaRoutes.csproj" />
+    <ProjectReference Include="..\Lib\SpaRoutes\MintPlayer.AspNetCore.SpaServices.Routing.csproj" />
   </ItemGroup>
 
   <ItemGroup>

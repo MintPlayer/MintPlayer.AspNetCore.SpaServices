@@ -1,6 +1,6 @@
 ﻿using System;
 using Microsoft.Extensions.DependencyInjection;
-using Spa.SpaRoutes.CurrentSpaRoute;
+using MintPlayer.AspNetCore.SpaServices.Routing;
 
 namespace Spa.SpaRoutes
 {
@@ -10,8 +10,9 @@ namespace Spa.SpaRoutes
         {
             var routes = new SpaRouteBuilder();
             builder(routes);
-            services.AddSingleton<ISpaRouteService>(provider => new SpaRouteService(routes));
-            return services;
+
+            return services
+                .AddSingleton<ISpaRouteService>(provider => new SpaRouteService(routes));
         }
     }
 }

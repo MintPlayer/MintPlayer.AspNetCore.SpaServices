@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Spa.SpaRoutes.Data
+namespace MintPlayer.AspNetCore.SpaServices.Routing.Data
 {
     public interface ISpaRouteItem
     {

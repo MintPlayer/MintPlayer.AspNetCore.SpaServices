@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Collections.Generic;
 
-namespace Spa.SpaRoutes.Extensions
+namespace MintPlayer.AspNetCore.SpaServices.Routing.Extensions
 {
     internal static class IEnumerable
     {

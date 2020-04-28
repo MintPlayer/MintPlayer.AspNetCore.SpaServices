@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using AspNetCoreSpaPrerendering.Data.Dtos;
 using AspNetCoreSpaPrerendering.Data.Repositories.Interfaces;
 using AspNetSpaPrerendering.Server.ViewModels.Person;
-using Spa.SpaRoutes.CurrentSpaRoute;
+using MintPlayer.AspNetCore.SpaServices.Routing;
 
 namespace AspNetSpaPrerendering.Controllers
 {

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using AspNetCoreSpaPrerendering.Data.Extensions;
 using Spa.SpaRoutes;
-using Spa.SpaRoutes.CurrentSpaRoute;
+using MintPlayer.AspNetCore.SpaServices.Routing;
 using AspNetCoreSpaPrerendering.Data.Repositories.Interfaces;
 using Microsoft.Extensions.Hosting;
 

@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Demo.Web", "Demo.Web\Demo.W
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Lib", "Lib", "{B54EE0A0-5AFA-459F-B264-BC6D19D6F294}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SpaRoutes", "Lib\SpaRoutes\SpaRoutes.csproj", "{6B97C22A-5348-474D-82FF-7B6AB5F2535F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MintPlayer.AspNetCore.SpaServices.Routing", "Lib\SpaRoutes\MintPlayer.AspNetCore.SpaServices.Routing.csproj", "{6B97C22A-5348-474D-82FF-7B6AB5F2535F}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Demo.Data", "Demo.Data\Demo.Data.csproj", "{1238BEE0-7AFC-4A7D-B92E-40CC1974F0C5}"
 EndProject

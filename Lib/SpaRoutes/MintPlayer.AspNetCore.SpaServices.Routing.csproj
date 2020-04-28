@@ -13,6 +13,8 @@
     <Authors>Pieterjan De Clippel</Authors>
     <Company>MintPlayer</Company>
     <Product>MintPlayer.AspNetCore.SpaServices.Routing</Product>
+    <RootNamespace>MintPlayer.AspNetCore.SpaServices.Routing</RootNamespace>
+    <AssemblyName>MintPlayer.AspNetCore.SpaServices.Routing</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

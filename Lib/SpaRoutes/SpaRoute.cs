@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Spa.SpaRoutes
+namespace MintPlayer.AspNetCore.SpaServices.Routing
 {
     public class SpaRoute
     {

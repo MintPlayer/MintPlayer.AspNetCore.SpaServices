@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using Spa.SpaRoutes.Data;
-using Spa.SpaRoutes.Extensions;
+using MintPlayer.AspNetCore.SpaServices.Routing.Data;
+using MintPlayer.AspNetCore.SpaServices.Routing.Extensions;
 
-namespace Spa.SpaRoutes
+namespace MintPlayer.AspNetCore.SpaServices.Routing
 {
     public interface ISpaRouteBuilder
     {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 
-namespace Spa.SpaRoutes.CurrentSpaRoute
+namespace MintPlayer.AspNetCore.SpaServices.Routing
 {
     public interface ISpaRouteService
     {
