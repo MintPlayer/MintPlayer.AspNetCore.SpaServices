@@ -240,15 +240,17 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
                         (index) => parameter_keys[index],
                         (index) => parameter_values[index]
                     ),
-                    QueryParameters = query.Split('&').Select(t =>
-                    {
-                        var split = t.Split('=', 2);
-                        return new
+                    QueryParameters = query == null
+                        ? new Dictionary<string, string>()
+                        : query.Split('&').Select(t =>
                         {
-                            Key = split[0],
-                            Value = split.Length > 1 ? split[1] : null
-                        };
-                    }).ToDictionary(t => t.Key, t => t.Value)
+                            var split = t.Split('=', 2);
+                            return new
+                            {
+                                Key = split[0],
+                                Value = split.Length > 1 ? split[1] : null
+                            };
+                        }).ToDictionary(t => t.Key, t => t.Value)
                 };
             }
             else
@@ -307,8 +309,16 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
 
             var queryStart = path.LastIndexOf('?');
 
-            url = path.Substring(0, queryStart);
-            query = path.Substring(queryStart + 1);
+            if(queryStart == -1)
+            {
+                url = path;
+                query = null;
+            }
+            else
+            {
+                url = path.Substring(0, queryStart);
+                query = path.Substring(queryStart + 1);
+            }
         }
     }
 }
