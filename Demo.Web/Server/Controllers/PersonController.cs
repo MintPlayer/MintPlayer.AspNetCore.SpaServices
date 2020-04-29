@@ -47,8 +47,9 @@ namespace AspNetSpaPrerendering.Controllers
                 personid = 5,
                 action = "show"
             };
-            var route = spaRouteService.GenerateUrl("manage-members-person-edit", parms);
-
+            var route1 = spaRouteService.GenerateUrl("manage-members-person-edit", parms);
+            var route2 = spaRouteService.GenerateUrl("manage-members-person-edit", parms, HttpContext);
+            var route3 = spaRouteService.GenerateUrl("manage-members-person-edit", parms, Request.Scheme, Request.Host.Value);
             return person;
         }
 

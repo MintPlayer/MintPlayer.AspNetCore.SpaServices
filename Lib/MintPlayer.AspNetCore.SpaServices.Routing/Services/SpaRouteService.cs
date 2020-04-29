@@ -13,7 +13,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
 
         /// <summary>Generates an url for a SPA route.</summary>
         /// <param name="routeName">Name of the SPA route</param>
-        /// <param name="parameters">Dictionary containing a key-value mapping for the parameters</param>
+        /// <param name="parameters">Dictionary containing a k
         string GenerateUrl(string routeName, Dictionary<string, object> parameters);
 
         /// <summary>Generates an url for a SPA route.</summary>
@@ -21,6 +21,51 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         /// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
         /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
         string GenerateUrl<T>(string routeName, T parameters);
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <param name="routeName">Name of the SPA route</param>
+        /// <param name="parameters">Dictionary containing a key-value mapping for the parameters</param>
+        /// <param name="httpContext">Current HTTP context</param>
+        string GenerateUrl(string routeName, Dictionary<string, object> parameters, HttpContext httpContext);
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <typeparam name="T">Some anonymous type.</typeparam>
+        /// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+        /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
+        /// <param name="httpContext">Current HTTP context</param>
+        string GenerateUrl<T>(string routeName, T parameters, HttpContext httpContext);
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <param name="routeName">Name of the SPA route</param>
+        /// <param name="parameters">Dictionary containing a key-value mapping for the parameters</param>
+        /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
+        /// <param name="host">The host name for the URL</param>
+        string GenerateUrl(string routeName, Dictionary<string, object> parameters, string protocol, string host);
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <typeparam name="T">Some anonymous type.</typeparam>
+        /// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+        /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
+        /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
+        /// <param name="host">The host name for the URL</param>
+        string GenerateUrl<T>(string routeName, T parameters, string protocol, string host);
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <param name="routeName">Name of the SPA route</param>
+        /// <param name="parameters">Dictionary containing a key-value mapping for the parameters</param>
+        /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
+        /// <param name="host">The host name for the URL</param>
+        /// <param name="fragment">The hash fragment for the URL</param>
+        string GenerateUrl(string routeName, Dictionary<string, object> parameters, string protocol, string host, string fragment);
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <typeparam name="T">Some anonymous type.</typeparam>
+        /// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+        /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
+        /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
+        /// <param name="host">The host name for the URL</param>
+        /// <param name="fragment">The hash fragment for the URL</param>
+        string GenerateUrl<T>(string routeName, T parameters, string protocol, string host, string fragment);
     }
 
     internal class SpaRouteService : ISpaRouteService
@@ -60,6 +105,77 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
             var values = typeof(T).GetProperties().ToDictionary(p => p.Name, p => p.GetValue(parameters));
             return GenerateUrlBase(routeName, values);
         }
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <param name="routeName">Name of the SPA route</param>
+        /// <param name="parameters">Dictionary containing a key-value mapping for the parameters</param>
+        /// <param name="httpContext">Current HTTP context</param>
+        public string GenerateUrl(string routeName, Dictionary<string, object> parameters, HttpContext httpContext)
+        {
+            var path = GenerateUrl(routeName, parameters);
+            return $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}{path}";
+        }
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <typeparam name="T">Some anonymous type.</typeparam>
+        /// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+        /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
+        /// <param name="httpContext">Current HTTP context</param>
+        public string GenerateUrl<T>(string routeName, T parameters, HttpContext httpContext)
+        {
+            var path = GenerateUrl(routeName, parameters);
+            return $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}{path}";
+        }
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <param name="routeName">Name of the SPA route</param>
+        /// <param name="parameters">Dictionary containing a key-value mapping for the parameters</param>
+        /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
+        /// <param name="host">The host name for the URL</param>
+        public string GenerateUrl(string routeName, Dictionary<string, object> parameters, string protocol, string host)
+        {
+            var path = GenerateUrl(routeName, parameters);
+            return $"{protocol}://{host}{path}";
+        }
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <typeparam name="T">Some anonymous type.</typeparam>
+        /// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+        /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
+        /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
+        /// <param name="host">The host name for the URL</param>
+        public string GenerateUrl<T>(string routeName, T parameters, string protocol, string host)
+        {
+            var path = GenerateUrl(routeName, parameters);
+            return $"{protocol}://{host}{path}";
+        }
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <param name="routeName">Name of the SPA route</param>
+        /// <param name="parameters">Dictionary containing a key-value mapping for the parameters</param>
+        /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
+        /// <param name="host">The host name for the URL</param>
+        /// <param name="fragment">The hash fragment for the URL</param>
+        public string GenerateUrl(string routeName, Dictionary<string, object> parameters, string protocol, string host, string fragment)
+        {
+            var path = GenerateUrl(routeName, parameters);
+            return $"{protocol}://{host}{path}#{fragment}";
+        }
+
+        /// <summary>Generates an url for a SPA route.</summary>
+        /// <typeparam name="T">Some anonymous type.</typeparam>
+        /// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+        /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
+        /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
+        /// <param name="host">The host name for the URL</param>
+        /// <param name="fragment">The hash fragment for the URL</param>
+        public string GenerateUrl<T>(string routeName, T parameters, string protocol, string host, string fragment)
+        {
+            var path = GenerateUrl(routeName, parameters);
+            return $"{protocol}://{host}{path}#{fragment}";
+        }
+
+
 
         private string GenerateUrlBase(string routeName, IDictionary<string, object> parameters)
         {
