@@ -72,10 +72,11 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
             var urlWithoutQuery = rgx_keys.Replace($"/{route.FullPath}", m => parameters[m.Groups["key"].Value].ToString());
             var present_param_keys = rgx_keys.Matches(route.FullPath).Select(m => m.Groups["key"].Value);
             var excessive_param_keys = parameters.Keys.Except(present_param_keys);
+            var query = string.Join('&', excessive_param_keys.Select((key) => $"{key}={parameters[key]}"));
 
             if (excessive_param_keys.Any())
             {
-                return $"{urlWithoutQuery}?{string.Join('&', excessive_param_keys.Select((key) => $"{key}={parameters[key]}"))}";
+                return $"{urlWithoutQuery}?{query}";
             }
             else
             {
@@ -98,12 +99,15 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
             }
             else if (!string.IsNullOrEmpty(match.FullPath))
             {
+                // Get current path
+                string url, query;
+                GetCurrentPath(httpContext, out url, out query);
+
                 // Get parameter names
-                
                 var parameter_keys = Regex.Matches(match.FullPath, rgx_keys).Select(m => m.Value).ToList(); // [id, ...]
 
                 var rgx_values = PlaceholderString2WildcardString(match.FullPath);
-                var parameter_match = Regex.Match(GetCurrentPath(httpContext), rgx_values);
+                var parameter_match = Regex.Match(url, rgx_values);
                 if (!parameter_match.Success) throw new System.Exception("Unexpected exception: parameter match should be successful");
 
                 var parameter_groups = new Group[parameter_match.Groups.Count];
@@ -119,12 +123,27 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
                     Parameters = Enumerable.Range(0, parameter_keys.Count).ToDictionary(
                         (index) => parameter_keys[index],
                         (index) => parameter_values[index]
-                    )
+                    ),
+                    QueryParameters = query.Split('&').Select(t =>
+                    {
+                        var split = t.Split('=', 2);
+                        return new
+                        {
+                            Key = split[0],
+                            Value = split.Length > 1 ? split[1] : null
+                        };
+                    }).ToDictionary(t => t.Key, t => t.Value)
                 };
             }
             else
             {
-                return new SpaRoute { Name = match.FullName, Path = match.FullPath, Parameters = new Dictionary<string, string>() };
+                return new SpaRoute
+                {
+                    Name = match.FullName,
+                    Path = match.FullPath,
+                    Parameters = new Dictionary<string, string>(),
+                    QueryParameters = new Dictionary<string, string>()
+                };
             }
         }
 
@@ -151,6 +170,15 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         /// <param name="context">Http Context</param>
         private string GetCurrentPath(HttpContext context)
         {
+            string url, query;
+            GetCurrentPath(context, out url, out query);
+            return url;
+        }
+
+        /// <summary>Retrieves the url visited by the user.</summary>
+        /// <param name="context">Http Context</param>
+        private void GetCurrentPath(HttpContext context, out string url, out string query)
+        {
             // For an angular app this instruction returns
             // - The correct path in Development mode
             // - index.html in Production mode
@@ -159,8 +187,12 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
             // The RawTarget private property contains the real path visited by the user at any time.
             var fc = context.Features.GetType();
             var rt = fc.GetProperty("RawTarget");
-            var url = (string)rt.GetValue(context.Features);
-            return url;
+            var path = (string)rt.GetValue(context.Features);
+
+            var queryStart = path.LastIndexOf('?');
+
+            url = path.Substring(0, queryStart);
+            query = path.Substring(queryStart + 1);
         }
     }
 }
