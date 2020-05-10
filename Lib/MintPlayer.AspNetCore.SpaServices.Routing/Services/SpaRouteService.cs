@@ -278,7 +278,8 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         /// <param name="input">Placeholder string</param>
         private string PlaceholderString2WildcardString(string input)
         {
-            var rgx = @"\{[a-zA-Z0-9]+\}";
+            //var rgx = @"\{[a-zA-Z0-9]+\}";
+            var rgx = @"\{[^\{]+\}";
             var replace = @"([^\/]+)";
             var wildcardString = Regex.Replace(input, rgx, replace);
             return wildcardString;

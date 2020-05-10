@@ -11,7 +11,7 @@
     <RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
     <PackageTags>ASP.NET Core, SPA prerendering, SupplyData</PackageTags>
-    <Version>1.1.1</Version>
+    <Version>1.1.2</Version>
     <Authors>Pieterjan De Clippel</Authors>
     <Company>MintPlayer</Company>
     <Product>MintPlayer.AspNetCore.SpaServices.Routing</Product>
