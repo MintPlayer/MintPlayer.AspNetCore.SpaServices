@@ -75,7 +75,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
             this.routeBuilder = routeBuilder;
         }
 
-        private const string rgx_keys = @"(?<=\{)[a-zA-Z0-9]+(?=\})";
+        private readonly Regex rgx_keys = new Regex(@"\{(?<key>[^\{]+)\}");
         private SpaRouteBuilder routeBuilder;
 
         /// <summary>Build result</summary>
@@ -184,7 +184,6 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
             var route = spaRouteItems.FirstOrDefault(r => r.FullName == routeName);
             if (route == null) throw new System.Exception($"Route with name {routeName} not found.");
 
-            var rgx_keys = new Regex(@"\{(?<key>[a-zA-Z0-9]+)\}");
             var urlWithoutQuery = rgx_keys.Replace($"/{route.FullPath}", m => parameters[m.Groups["key"].Value].ToString());
             var present_param_keys = rgx_keys.Matches(route.FullPath).Select(m => m.Groups["key"].Value);
             var excessive_param_keys = parameters.Keys.Except(present_param_keys);
@@ -220,7 +219,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
                 GetCurrentPath(httpContext, out url, out query);
 
                 // Get parameter names
-                var parameter_keys = Regex.Matches(match.FullPath, rgx_keys).Select(m => m.Value).ToList(); // [id, ...]
+                var parameter_keys = rgx_keys.Matches(match.FullPath).Select(m => m.Groups["key"].Value).ToList(); // [id, ...]
 
                 var rgx_values = PlaceholderString2WildcardString(match.FullPath);
                 var parameter_match = Regex.Match(url, rgx_values);
@@ -278,10 +277,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         /// <param name="input">Placeholder string</param>
         private string PlaceholderString2WildcardString(string input)
         {
-            //var rgx = @"\{[a-zA-Z0-9]+\}";
-            var rgx = @"\{[^\{]+\}";
-            var replace = @"([^\/]+)";
-            var wildcardString = Regex.Replace(input, rgx, replace);
+            var wildcardString = rgx_keys.Replace(input, @"([^\/]+)");
             return wildcardString;
         }
 
