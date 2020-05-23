@@ -25,6 +25,8 @@
     "@angular/platform-server": "~9.1.9",
     "@angular/router": "~9.1.9",
     "@nguniversal/express-engine": "^9.1.1",
+    "@ngx-translate/core": "^12.1.2",
+    "@ngx-translate/http-loader": "^4.0.0",
     "aspnet-prerendering": "^3.0.1",
     "bootstrap": "^4.5.0",
     "express": "^4.15.2",
