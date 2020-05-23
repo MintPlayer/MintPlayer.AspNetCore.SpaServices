@@ -1,8 +1,7 @@
 ﻿using System;
 using Microsoft.Extensions.DependencyInjection;
-using MintPlayer.AspNetCore.SpaServices.Routing;
 
-namespace Spa.SpaRoutes
+namespace MintPlayer.AspNetCore.SpaServices.Routing
 {
     public static class SpaRouteExtensions
     {

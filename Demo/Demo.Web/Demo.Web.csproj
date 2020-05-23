@@ -28,6 +28,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="ClientApp\src\app\app.browser.module.ts" />
+    <None Remove="ClientApp\src\app\entities\person.ts" />
+    <None Remove="ClientApp\src\app\services\person.service.ts" />
     <None Remove="ClientApp\tsconfig.app.json" />
     <None Remove="ClientApp\tsconfig.json" />
     <None Remove="ClientApp\tsconfig.server.json" />
@@ -42,7 +45,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Lib\MintPlayer.AspNetCore.SpaServices.Routing\MintPlayer.AspNetCore.SpaServices.Routing.csproj" />
     <ProjectReference Include="..\Demo.Data\Demo.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <TypeScriptCompile Include="ClientApp\src\app\app.browser.module.ts" />
+    <TypeScriptCompile Include="ClientApp\src\app\entities\person.ts" />
+    <TypeScriptCompile Include="ClientApp\src\app\services\person.service.ts" />
   </ItemGroup>
 
   <Target Name="DebugEnsureNodeEnv" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">
