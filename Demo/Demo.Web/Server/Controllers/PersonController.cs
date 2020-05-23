@@ -9,7 +9,7 @@ using MintPlayer.Pagination;
 namespace Demo.Web.Controllers
 {
 	[ApiController]
-    [Route("[controller]")]
+    [Route("web/[controller]")]
     public class PersonController : Controller
     {
         private readonly ILogger<PersonController> logger;

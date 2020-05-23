@@ -10,9 +10,9 @@ import { Title } from '@angular/platform-browser';
 })
 export class PersonListComponent implements OnInit {
 
-  constructor(private personService: PersonService, @Inject('PEOPLE') private peopleInj: Person[], private titleService: Title) {
+  constructor(private personService: PersonService, @Inject('SERVERSIDE') private serverSide: boolean, @Inject('PEOPLE') private peopleInj: Person[], private titleService: Title) {
     this.titleService.setTitle('People');
-    if (peopleInj === null) {
+    if (serverSide === false) {
       this.loadPeople();
     } else {
       this.people = peopleInj;

@@ -24,10 +24,14 @@ export default createServerRenderer(params => {
   ];
 
   if ('people' in params.data) {
-    providers.push({ provide: 'PEOPLE', useValue: params.data.people })
+    providers.push({ provide: 'PEOPLE', useValue: params.data.people });
+  } else {
+    providers.push({ provide: 'PEOPLE', useValue: null });
   }
   if ('person' in params.data) {
-    providers.push({ provide: 'PERSON', useValue: params.data.person })
+    providers.push({ provide: 'PERSON', useValue: params.data.person });
+  } else {
+    providers.push({ provide: 'PERSON', useValue: null });
   }
 
 

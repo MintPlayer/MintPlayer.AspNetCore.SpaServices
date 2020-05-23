@@ -106,7 +106,7 @@ namespace Demo.Web
 
                     options.ExcludeUrls = new[] { "/sockjs-node" };
 
-                    options.SupplyData = (context, data) =>
+                    options.SupplyData = async (context, data) =>
                     {
                         var route = currentSpaRoute.GetCurrentRoute(context);
 
@@ -114,17 +114,17 @@ namespace Demo.Web
 
                         switch (route?.Name)
                         {
-                            case "manage-members-person-list":
+                            case "person-list":
                                 {
-                                    var people = personService.GetPeople();
+                                    var people = await personService.GetPeople();
                                     data["people"] = people;
                                 }
                                 break;
-                            case "manage-members-person-show":
-                            case "manage-members-person-edit":
+                            case "person-show":
+                            case "person-edit":
                                 {
                                     var id = System.Convert.ToInt32(route.Parameters["personid"]);
-                                    var person = personService.GetPerson(id);
+                                    var person = await personService.GetPerson(id);
                                     data["person"] = person;
                                 }
                                 break;

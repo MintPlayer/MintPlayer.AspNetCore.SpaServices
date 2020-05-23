@@ -11,9 +11,10 @@ import { Title } from '@angular/platform-browser';
 })
 export class PersonShowComponent implements OnInit {
 
-  constructor(private personService: PersonService, @Inject('PERSON') private personInj: Person, private router: Router, private route: ActivatedRoute, private titleService: Title) {
-    if (personInj === null) {
-      var id = parseInt(this.route.snapshot.paramMap.get("personid"));
+  constructor(private personService: PersonService, @Inject('SERVERSIDE') private serverSide: boolean, @Inject('PERSON') private personInj: Person, private router: Router, private route: ActivatedRoute, private titleService: Title) {
+    if (serverSide === false) {
+      console.log(this.route.paramMap);
+      var id = parseInt(this.route.snapshot.paramMap.get('id'));
       this.personService.getPerson(id, true).subscribe(person => {
         this.setPerson(person);
       });
@@ -31,7 +32,7 @@ export class PersonShowComponent implements OnInit {
 
   public deletePerson() {
     this.personService.deletePerson(this.person).subscribe(() => {
-      this.router.navigate(["/manage", "members", 3, "person"]);
+      this.router.navigate(['/person']);
     });
   }
 
