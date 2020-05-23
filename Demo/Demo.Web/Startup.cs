@@ -85,7 +85,7 @@ namespace Demo.Web
 
                 spa.UseSpaPrerendering(options =>
                 {
-                    options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.js";
+                    options.BootModulePath = $"{spa.Options.SourcePath}/dist/ClientApp/server/main.js";
                     options.BootModuleBuilder = env.IsDevelopment()
                         ? new AngularCliBuilder(npmScript: "build:ssr")
                         : null;
