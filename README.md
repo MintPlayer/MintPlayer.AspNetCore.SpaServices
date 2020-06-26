@@ -1,4 +1,6 @@
 # MintPlayer.AspNetCore.SpaServices.Routing
+[![NuGet Version](https://img.shields.io/nuget/v/MintPlayer.AspNetCore.SpaServices.Routing.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing/)
+
 This project facilitates server-side prerendering in ASP.NET Core.
 
 ## Server-side rendering
