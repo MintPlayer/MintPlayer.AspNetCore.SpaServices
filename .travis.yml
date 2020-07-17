@@ -1,0 +1,1 @@
+language: csharpmono: latestdotnet: 3.1.302before_install: - sudo apt-get updateinstall: - dotnet restorescript: - dotnet build ./MintPlayer.AspNetCore.SpaServices.Routing/MintPlayer.AspNetCore.SpaServices.Routing.csproj --configuration Releasesudo: required
