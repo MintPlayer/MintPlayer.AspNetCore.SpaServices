@@ -4,6 +4,7 @@
 [![Build Status](https://travis-ci.org/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing.svg?branch=master)](https://travis-ci.org/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing)
 ![.NET Core](https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing/workflows/.NET%20Core/badge.svg)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/a1528e2873ac4375881f4ccc00b70a91)](https://www.codacy.com/gh/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing&amp;utm_campaign=Badge_Grade)
 
 This project facilitates server-side prerendering in ASP.NET Core.
 
@@ -155,13 +156,13 @@ If necessary, you can generate an application URL on the server-side through c# 
 
 To do so, there are 2 approaches:
 
-#### Using a dictionary:
+#### Using a dictionary
 
     var parms = new Dictionary<string, object>();
     parms["id"] = 5;
     var route = spaRouteService.GenerateUrl("person-edit", parms);
 
-#### Using an anonymous type:
+#### Using an anonymous type
 
     var route = spaRouteService.GenerateUrl("person-edit", new {
         id = 5
