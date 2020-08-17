@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
+using System.Diagnostics;
 
 namespace MintPlayer.AspNetCore.SpaServices.Routing
 {
@@ -70,13 +71,13 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
 
     internal class SpaRouteService : ISpaRouteService
     {
+        private readonly Regex rgx_keys = new Regex(@"\{(?<key>[^\{]+)\}");
+        private readonly SpaRouteBuilder routeBuilder;
+
         public SpaRouteService(SpaRouteBuilder routeBuilder)
         {
             this.routeBuilder = routeBuilder;
         }
-
-        private readonly Regex rgx_keys = new Regex(@"\{(?<key>[^\{]+)\}");
-        private SpaRouteBuilder routeBuilder;
 
         /// <summary>Build result</summary>
         private IEnumerable<Data.ISpaRouteItem> spaRouteItems;
@@ -85,7 +86,9 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         private void EnsureSpaRoutesBuilt()
         {
             if (spaRouteItems == null)
+            {
                 spaRouteItems = routeBuilder.Build();
+            }
         }
 
         /// <summary>Generates an url for a SPA route.</summary>
@@ -182,7 +185,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
             EnsureSpaRoutesBuilt();
 
             var route = spaRouteItems.FirstOrDefault(r => r.FullName == routeName);
-            if (route == null) throw new System.Exception($"Route with name {routeName} not found.");
+            if (route == null) throw new Exceptions.SpaRouteNotFoundException(routeName);
 
             var urlWithoutQuery = rgx_keys.Replace($"/{route.FullPath}", m => parameters[m.Groups["key"].Value].ToString());
             var present_param_keys = rgx_keys.Matches(route.FullPath).Select(m => m.Groups["key"].Value);
@@ -223,13 +226,13 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
 
                 var rgx_values = PlaceholderString2WildcardString(match.FullPath);
                 var parameter_match = Regex.Match(url, rgx_values);
-                if (!parameter_match.Success) throw new System.Exception("Unexpected exception: parameter match should be successful");
+                Debug.Assert(parameter_match.Success, "Unexpected exception: parameter match should be successful");
 
                 var parameter_groups = new Group[parameter_match.Groups.Count];
                 parameter_match.Groups.CopyTo(parameter_groups, 0);
 
                 var parameter_values = parameter_groups.Where(g => g.GetType() == typeof(Group)).Select(g => g.Value).ToList();
-                if (parameter_keys.Count != parameter_values.Count) throw new System.Exception("Unexpected exception: number of keys and values should be equal");
+                Debug.Assert(parameter_keys.Count == parameter_values.Count, "Unexpected exception: number of keys and values should be equal");
 
                 return new SpaRoute
                 {
@@ -294,18 +297,14 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         /// <param name="context">Http Context</param>
         private void GetCurrentPath(HttpContext context, out string url, out string query)
         {
-            // For an angular app this instruction returns
+            // For an angular app the context.Request.Path instruction returns
             // - The correct path in Development mode
             // - index.html in Production mode
-            //return context.Request.Path;
 
             // The RawTarget private property contains the real path visited by the user at any time.
-            var fc = context.Features.GetType();
-            var rt = fc.GetProperty("RawTarget");
-            var path = (string)rt.GetValue(context.Features);
+            var path = (string)context.Features.GetType().GetProperty("RawTarget").GetValue(context.Features);
 
             var queryStart = path.LastIndexOf('?');
-
             if(queryStart == -1)
             {
                 url = path;
