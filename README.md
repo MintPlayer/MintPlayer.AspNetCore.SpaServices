@@ -1,4 +1,5 @@
 # MintPlayer.AspNetCore.SpaServices.Routing
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/615980295c6045c7889222f7d3fe6745)](https://app.codacy.com/gh/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing?utm_source=github.com&utm_medium=referral&utm_content=MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing&utm_campaign=Badge_Grade_Dashboard)
 [![NuGet Version](https://img.shields.io/nuget/v/MintPlayer.AspNetCore.SpaServices.Routing.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing)
 [![NuGet](https://img.shields.io/nuget/dt/MintPlayer.AspNetCore.SpaServices.Routing.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing)
 [![Build Status](https://travis-ci.org/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing.svg?branch=master)](https://travis-ci.org/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing)
