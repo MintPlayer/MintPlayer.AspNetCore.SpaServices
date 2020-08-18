@@ -185,7 +185,10 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
             EnsureSpaRoutesBuilt();
 
             var route = spaRouteItems.FirstOrDefault(r => r.FullName == routeName);
-            if (route == null) throw new Exceptions.SpaRouteNotFoundException(routeName);
+            if (route == null)
+            {
+                throw new Exceptions.SpaRouteNotFoundException(routeName);
+            }
 
             var urlWithoutQuery = rgx_keys.Replace($"/{route.FullPath}", m => parameters[m.Groups["key"].Value].ToString());
             var present_param_keys = rgx_keys.Matches(route.FullPath).Select(m => m.Groups["key"].Value);
