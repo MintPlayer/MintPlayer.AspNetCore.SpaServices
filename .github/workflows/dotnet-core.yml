@@ -29,7 +29,7 @@ jobs:
     - name: Test
       run: dotnet test --no-restore --verbosity normal
     - name: Pack
-      run: dotnet pack --no-build --configuration Release MintPlayer.SeasonChecker/MintPlayer.SeasonChecker.csproj --output .
+      run: dotnet pack --no-build --configuration Release MintPlayer.AspNetCore.SpaServices.Routing/MintPlayer.AspNetCore.SpaServices.Routing.csproj --output .
     - name: PushNuget
       run: dotnet nuget push *.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.PUBLISH_TO_NUGET_ORG }} --skip-duplicate
     - name: PushGithub
