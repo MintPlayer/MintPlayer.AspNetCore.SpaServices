@@ -39,14 +39,14 @@ namespace Demo.Web
                 });
 
             // Define the SPA-routes for our helper
-            services.AddSpaRoutes(routes => routes
-                .Route("", "home")
-                .Group("person", "person", person_routes => person_routes
-                    .Route("", "list")
-                    .Route("create", "create")
-                    .Route("{personid}", "show")
-                    .Route("{personid}/edit", "edit")
-                )
+            services.AddSpaPrerenderingService<Services.DemoSpaPrerenderingService>(routes => routes
+               .Route("", "home")
+               .Group("person", "person", person_routes => person_routes
+                   .Route("", "list")
+                   .Route("create", "create")
+                   .Route("{personid}", "show")
+                   .Route("{personid}/edit", "edit")
+               )
             );
 
             services
@@ -60,7 +60,7 @@ namespace Demo.Web
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ISpaRouteService currentSpaRoute)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {
@@ -96,44 +96,13 @@ namespace Demo.Web
 
                 spa.Options.SourcePath = "ClientApp";
 
-#pragma warning disable CS0618 // Type or member is obsolete
-                spa.UseSpaPrerendering(options =>
+                spa.UseSpaPrerenderingService(options =>
                 {
                     options.BootModulePath = $"{spa.Options.SourcePath}/dist/ClientApp/server/main.js";
-                    options.BootModuleBuilder = env.IsDevelopment()
-                        ? new AngularCliBuilder(npmScript: "build:ssr")
-                        : null;
+                    options.BootModuleBuilder = env.IsDevelopment() ? new AngularCliBuilder(npmScript: "build:ssr") : null;
 
                     options.ExcludeUrls = new[] { "/sockjs-node" };
-
-                    options.SupplyData = async (context, data) =>
-                    {
-                        var route = currentSpaRoute.GetCurrentRoute(context);
-
-                        var personService = context.RequestServices.GetRequiredService<IPersonService>();
-
-                        switch (route?.Name)
-                        {
-                            case "person-list":
-                                {
-                                    var people = await personService.GetPeople();
-                                    data["people"] = people;
-                                }
-                                break;
-                            case "person-show":
-                            case "person-edit":
-                                {
-                                    var id = System.Convert.ToInt32(route.Parameters["personid"]);
-                                    var person = await personService.GetPerson(id);
-                                    data["person"] = person;
-                                }
-                                break;
-                        }
-
-                        data.Add("message", "Message from server");
-                    };
                 });
-#pragma warning restore CS0618 // Type or member is obsolete
 
                 if (env.IsDevelopment())
                 {

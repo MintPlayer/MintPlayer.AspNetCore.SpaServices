@@ -29,11 +29,11 @@ export class PersonService {
   }
 
   public createPerson(person: Person) {
-    return this.httpClient.post<Person>(`${this.baseUrl}/web/person`, { person });
+    return this.httpClient.post<Person>(`${this.baseUrl}/web/person`, person);
   }
 
   public updatePerson(person: Person) {
-    return this.httpClient.put(`${this.baseUrl}/web/person/${person.id}`, { person });
+    return this.httpClient.put(`${this.baseUrl}/web/person/${person.id}`, person);
   }
 
   public deletePerson(person: Person) {
