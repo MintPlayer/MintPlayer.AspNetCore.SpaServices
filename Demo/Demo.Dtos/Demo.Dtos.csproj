@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net6.0</TargetFramework>
+	</PropertyGroup>
 
+	<PropertyGroup>
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+	</PropertyGroup>
 </Project>

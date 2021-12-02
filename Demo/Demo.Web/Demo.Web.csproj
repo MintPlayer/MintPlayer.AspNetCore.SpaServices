@@ -1,87 +1,91 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
-    <TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
-    <TypeScriptToolsVersion>Latest</TypeScriptToolsVersion>
-    <IsPackable>false</IsPackable>
-    <SpaRoot>ClientApp\</SpaRoot>
-    <DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules\**</DefaultItemExcludes>
+	<PropertyGroup>
+		<TargetFramework>net6.0</TargetFramework>
+		<TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
+		<TypeScriptToolsVersion>Latest</TypeScriptToolsVersion>
+		<IsPackable>false</IsPackable>
+		<SpaRoot>ClientApp\</SpaRoot>
+		<DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules\**</DefaultItemExcludes>
 
-    <!-- Set this to true if you enable server-side prerendering -->
-    <BuildServerSideRenderer>true</BuildServerSideRenderer>
-  </PropertyGroup>
+		<!-- Set this to true if you enable server-side prerendering -->
+		<BuildServerSideRenderer>true</BuildServerSideRenderer>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="6.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
+	<PropertyGroup>
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <!-- Don't publish the SPA source files, but do show them in the project files list -->
-    <Content Remove="$(SpaRoot)**" />
-    <None Remove="$(SpaRoot)**" />
-    <None Include="$(SpaRoot)**" Exclude="$(SpaRoot)node_modules\**" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="6.0.0" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Remove="ClientApp\src\app\app.browser.module.ts" />
-    <None Remove="ClientApp\src\app\entities\person.ts" />
-    <None Remove="ClientApp\src\app\services\person.service.ts" />
-    <None Remove="ClientApp\tsconfig.app.json" />
-    <None Remove="ClientApp\tsconfig.json" />
-    <None Remove="ClientApp\tsconfig.server.json" />
-    <None Remove="ClientApp\tsconfig.spec.json" />
-  </ItemGroup>
+	<ItemGroup>
+		<!-- Don't publish the SPA source files, but do show them in the project files list -->
+		<Content Remove="$(SpaRoot)**" />
+		<None Remove="$(SpaRoot)**" />
+		<None Include="$(SpaRoot)**" Exclude="$(SpaRoot)node_modules\**" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <Content Include="ClientApp\tsconfig.app.json" />
-    <Content Include="ClientApp\tsconfig.json" />
-    <Content Include="ClientApp\tsconfig.server.json" />
-    <Content Include="ClientApp\tsconfig.spec.json" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Remove="ClientApp\src\app\app.browser.module.ts" />
+		<None Remove="ClientApp\src\app\entities\person.ts" />
+		<None Remove="ClientApp\src\app\services\person.service.ts" />
+		<None Remove="ClientApp\tsconfig.app.json" />
+		<None Remove="ClientApp\tsconfig.json" />
+		<None Remove="ClientApp\tsconfig.server.json" />
+		<None Remove="ClientApp\tsconfig.spec.json" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\MintPlayer.AspNetCore.SpaServices.Routing\MintPlayer.AspNetCore.SpaServices.Routing.csproj" />
-    <ProjectReference Include="..\..\MintPlayer.AspNetCore.SpaServices.Routing\MintPlayer.AspNetCore.SpaServices.Routing.csproj" />
-    <ProjectReference Include="..\Demo.Data\Demo.Data.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<Content Include="ClientApp\tsconfig.app.json" />
+		<Content Include="ClientApp\tsconfig.json" />
+		<Content Include="ClientApp\tsconfig.server.json" />
+		<Content Include="ClientApp\tsconfig.spec.json" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <TypeScriptCompile Include="ClientApp\src\app\app.browser.module.ts" />
-    <TypeScriptCompile Include="ClientApp\src\app\entities\person.ts" />
-    <TypeScriptCompile Include="ClientApp\src\app\services\person.service.ts" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\MintPlayer.AspNetCore.SpaServices.Routing\MintPlayer.AspNetCore.SpaServices.Routing.csproj" />
+		<ProjectReference Include="..\..\MintPlayer.AspNetCore.SpaServices.Routing\MintPlayer.AspNetCore.SpaServices.Routing.csproj" />
+		<ProjectReference Include="..\Demo.Data\Demo.Data.csproj" />
+	</ItemGroup>
 
-  <Target Name="DebugEnsureNodeEnv" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">
-    <!-- Ensure Node.js is installed -->
-    <Exec Command="node --version" ContinueOnError="true">
-      <Output TaskParameter="ExitCode" PropertyName="ErrorCode" />
-    </Exec>
-    <Error Condition="'$(ErrorCode)' != '0'" Text="Node.js is required to build and run this project. To continue, please install Node.js from https://nodejs.org/, and then restart your command prompt or IDE." />
-    <Message Importance="high" Text="Restoring dependencies using 'npm'. This may take several minutes..." />
-    <Exec WorkingDirectory="$(SpaRoot)" Command="npm install" />
-  </Target>
+	<ItemGroup>
+		<TypeScriptCompile Include="ClientApp\src\app\app.browser.module.ts" />
+		<TypeScriptCompile Include="ClientApp\src\app\entities\person.ts" />
+		<TypeScriptCompile Include="ClientApp\src\app\services\person.service.ts" />
+	</ItemGroup>
 
-  <Target Name="PublishRunWebpack" AfterTargets="ComputeFilesToPublish">
-    <!-- As part of publishing, ensure the JS resources are freshly built in production mode -->
-    <Exec WorkingDirectory="$(SpaRoot)" Command="npm install" />
-    <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build -- --prod" />
-    <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:ssr -- --prod" Condition=" '$(BuildServerSideRenderer)' == 'true' " />
+	<Target Name="DebugEnsureNodeEnv" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">
+		<!-- Ensure Node.js is installed -->
+		<Exec Command="node --version" ContinueOnError="true">
+			<Output TaskParameter="ExitCode" PropertyName="ErrorCode" />
+		</Exec>
+		<Error Condition="'$(ErrorCode)' != '0'" Text="Node.js is required to build and run this project. To continue, please install Node.js from https://nodejs.org/, and then restart your command prompt or IDE." />
+		<Message Importance="high" Text="Restoring dependencies using 'npm'. This may take several minutes..." />
+		<Exec WorkingDirectory="$(SpaRoot)" Command="npm install" />
+	</Target>
 
-    <!-- Include the newly-built files in the publish output -->
-    <ItemGroup>
-      <DistFiles Include="$(SpaRoot)dist\**; $(SpaRoot)dist-server\**" />
-      <DistFiles Include="$(SpaRoot)node_modules\**" Condition="'$(BuildServerSideRenderer)' == 'true'" />
-      <ResolvedFileToPublish Include="@(DistFiles->'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
-        <RelativePath>%(DistFiles.Identity)</RelativePath>
-        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      </ResolvedFileToPublish>
-    </ItemGroup>
-  </Target>
+	<Target Name="PublishRunWebpack" AfterTargets="ComputeFilesToPublish">
+		<!-- As part of publishing, ensure the JS resources are freshly built in production mode -->
+		<Exec WorkingDirectory="$(SpaRoot)" Command="npm install" />
+		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build -- --prod" />
+		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:ssr -- --prod" Condition=" '$(BuildServerSideRenderer)' == 'true' " />
+
+		<!-- Include the newly-built files in the publish output -->
+		<ItemGroup>
+			<DistFiles Include="$(SpaRoot)dist\**; $(SpaRoot)dist-server\**" />
+			<DistFiles Include="$(SpaRoot)node_modules\**" Condition="'$(BuildServerSideRenderer)' == 'true'" />
+			<ResolvedFileToPublish Include="@(DistFiles->'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
+				<RelativePath>%(DistFiles.Identity)</RelativePath>
+				<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+				<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			</ResolvedFileToPublish>
+		</ItemGroup>
+	</Target>
 
 </Project>
