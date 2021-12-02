@@ -8,7 +8,7 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices</PackageId>
-		<Version>$(RoutingPackageVersion)</Version>
+		<Version>6.0.1</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<Description>This package contains the ASP.NET Core prerenderer.</Description>
