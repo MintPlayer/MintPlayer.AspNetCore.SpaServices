@@ -1,30 +1,39 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
-    <PackageId>MintPlayer.AspNetCore.SpaServices.Routing</PackageId>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <Description>This package simplifies the SPA prerendering. Define your SPA routes in your service registration and check which SPA route is activated in the SupplyData callback.</Description>
-    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</RepositoryUrl>
-    <RepositoryType>Git</RepositoryType>
-    <PackageTags>ASP.NET Core, SPA prerendering, SupplyData</PackageTags>
-    <Version>1.2.0</Version>
-    <Authors>Pieterjan De Clippel</Authors>
-    <Company>MintPlayer</Company>
-    <Product>MintPlayer.AspNetCore.SpaServices.Routing</Product>
-    <RootNamespace>MintPlayer.AspNetCore.SpaServices.Routing</RootNamespace>
-    <AssemblyName>MintPlayer.AspNetCore.SpaServices.Routing</AssemblyName>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>netcoreapp3.1</TargetFramework>
+		<PackageId>MintPlayer.AspNetCore.SpaServices.Routing</PackageId>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<Description>This package simplifies the SPA prerendering. Define your SPA routes in your service registration and check which SPA route is activated in the SupplyData callback.</Description>
+		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</RepositoryUrl>
+		<RepositoryType>Git</RepositoryType>
+		<PackageTags>ASP.NET Core, SPA prerendering, SupplyData</PackageTags>
+		<Version>3.1.0</Version>
+		<Authors>Pieterjan De Clippel</Authors>
+		<Company>MintPlayer</Company>
+		<Product>MintPlayer.AspNetCore.SpaServices.Routing</Product>
+		<RootNamespace>MintPlayer.AspNetCore.SpaServices.Routing</RootNamespace>
+		<AssemblyName>MintPlayer.AspNetCore.SpaServices.Routing</AssemblyName>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <None Remove=".gitignore" />
-  </ItemGroup>
+	<Target Name="PreparePackageReleaseNotesFromFile" BeforeTargets="GenerateNuspec">
+		<ReadLinesFromFile File="./RELEASE-NOTES.txt">
+			<Output TaskParameter="Lines" ItemName="ReleaseNoteLines" />
+		</ReadLinesFromFile>
+		<PropertyGroup>
+			<PackageReleaseNotes>@(ReleaseNoteLines, '%0a')</PackageReleaseNotes>
+		</PropertyGroup>
+	</Target>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="3.1.0" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Remove=".gitignore" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="3.1.0" />
+	</ItemGroup>
 
 </Project>
