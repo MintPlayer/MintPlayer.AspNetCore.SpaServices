@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net6.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<OutputType>Library</OutputType>
+
+		<PackageId>MintPlayer.AspNetCore.SpaServices</PackageId>
+		<Version>6.0.0</Version>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<Description>This package contains the ASP.NET Core prerenderer.</Description>
+		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</PackageProjectUrl>
+		<PackageTags>ASP.NET Core, SPA prerendering</PackageTags>
+		<RepositoryType>Git</RepositoryType>
+		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</RepositoryUrl>
+		<Authors>Pieterjan De Clippel</Authors>
+		<Company>MintPlayer</Company>
+		<Product>MintPlayer.AspNetCore.SpaServices</Product>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Remove="Content\Node\prerenderer.js" />
+		<None Remove="Content\Node\webpack-dev-middleware.js" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="Content\Node\prerenderer.js" />
+		<EmbeddedResource Include="Content\Node\webpack-dev-middleware.js" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\MintPlayer.AspNetCore.NodeServices\MintPlayer.AspNetCore.NodeServices.csproj" />
+	</ItemGroup>
+
+</Project>

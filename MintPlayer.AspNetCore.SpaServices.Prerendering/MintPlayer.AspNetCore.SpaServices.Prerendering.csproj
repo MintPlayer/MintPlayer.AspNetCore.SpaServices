@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<TargetFramework>net6.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<OutputType>Library</OutputType>
+
+		<PackageId>MintPlayer.AspNetCore.SpaServices.Prerendering</PackageId>
+		<Version>6.0.0</Version>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<Description>This package is built as a dependency of MintPlayer.AspNetCore.SpaServices.Routing.</Description>
+		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</PackageProjectUrl>
+		<PackageTags>ASP.NET Core, SPA prerendering</PackageTags>
+		<RepositoryType>Git</RepositoryType>
+		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</RepositoryUrl>
+		<Authors>Pieterjan De Clippel</Authors>
+		<Company>MintPlayer</Company>
+		<Product>MintPlayer.AspNetCore.SpaServices.Prerendering</Product>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="6.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\MintPlayer.AspNetCore.NodeServices\MintPlayer.AspNetCore.NodeServices.csproj" />
+		<ProjectReference Include="..\MintPlayer.AspNetCore.SpaServices\MintPlayer.AspNetCore.SpaServices.csproj" />
+	</ItemGroup>
+
+</Project>

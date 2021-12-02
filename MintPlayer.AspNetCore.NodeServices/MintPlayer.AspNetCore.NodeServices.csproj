@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<TargetFramework>net6.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<OutputType>Library</OutputType>
+
+		<PackageId>MintPlayer.AspNetCore.NodeServices</PackageId>
+		<Version>6.0.0</Version>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<Description>This package contains the abandoned node services.</Description>
+		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</PackageProjectUrl>
+		<PackageTags>ASP.NET Core, Node services</PackageTags>
+		<RepositoryType>Git</RepositoryType>
+		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</RepositoryUrl>
+		<Authors>Pieterjan De Clippel</Authors>
+		<Company>MintPlayer</Company>
+		<Product>MintPlayer.AspNetCore.NodeServices</Product>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Remove="node_modules\**\*" />
+		<EmbeddedResource Include="Content\**\*" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+		<PackageReference Include="Yarn.MSBuild" Version="*" />
+	</ItemGroup>
+	
+	<!-- Version of this SDK is set in global.json -->
+	<Sdk Name="Yarn.MSBuild" />
+
+	<Target Name="YarnInstall">
+		<Message Text="Running yarn install on $(MSBuildProjectFile)" Importance="High" />
+		<Yarn Command="install --mutex network --frozen-lockfile" />
+	</Target>
+
+	<Target Name="PrepublishScript" DependsOnTargets="YarnInstall" BeforeTargets="PrepareForPublish" Condition=" '$(IsCrossTargetingBuild)' != 'true' ">
+		<Exec Command="node node_modules/webpack/bin/webpack.js" />
+	</Target>
+
+</Project>

@@ -1,22 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>netcoreapp3.1</TargetFramework>
+		<TargetFramework>net6.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<OutputType>Library</OutputType>
+		
 		<PackageId>MintPlayer.AspNetCore.SpaServices.Routing</PackageId>
+		<Version>6.0.0</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<Description>This package simplifies the SPA prerendering. Define your SPA routes in your service registration and check which SPA route is activated in the SupplyData callback.</Description>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</RepositoryUrl>
-		<RepositoryType>Git</RepositoryType>
 		<PackageTags>ASP.NET Core, SPA prerendering, SupplyData</PackageTags>
-		<Version>3.1.0</Version>
+		<RepositoryType>Git</RepositoryType>
+		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</RepositoryUrl>
 		<Authors>Pieterjan De Clippel</Authors>
 		<Company>MintPlayer</Company>
 		<Product>MintPlayer.AspNetCore.SpaServices.Routing</Product>
-		<RootNamespace>MintPlayer.AspNetCore.SpaServices.Routing</RootNamespace>
-		<AssemblyName>MintPlayer.AspNetCore.SpaServices.Routing</AssemblyName>
 	</PropertyGroup>
 
 	<Target Name="PreparePackageReleaseNotesFromFile" BeforeTargets="GenerateNuspec">
@@ -33,7 +35,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="3.1.0" />
+		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="6.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\MintPlayer.AspNetCore.SpaServices.Prerendering\MintPlayer.AspNetCore.SpaServices.Prerendering.csproj" />
 	</ItemGroup>
 
 </Project>
