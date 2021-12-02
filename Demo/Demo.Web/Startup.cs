@@ -39,15 +39,7 @@ namespace Demo.Web
                 });
 
             // Define the SPA-routes for our helper
-            services.AddSpaPrerenderingService<Services.DemoSpaPrerenderingService>(routes => routes
-               .Route("", "home")
-               .Group("person", "person", person_routes => person_routes
-                   .Route("", "list")
-                   .Route("create", "create")
-                   .Route("{personid}", "show")
-                   .Route("{personid}/edit", "edit")
-               )
-            );
+            services.AddSpaPrerenderingService<Services.DemoSpaPrerenderingService>();
 
             services
                 .Configure<RazorViewEngineOptions>(options =>

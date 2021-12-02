@@ -15,9 +15,23 @@ namespace Demo.Web.Services
             this.spaRouteService = spaRouteService;
         }
 
+        public Task BuildRoutes(ISpaRouteBuilder routeBuilder)
+        {
+            routeBuilder
+               .Route("", "home")
+               .Group("person", "person", person_routes => person_routes
+                   .Route("", "list")
+                   .Route("create", "create")
+                   .Route("{personid}", "show")
+                   .Route("{personid}/edit", "edit")
+               );
+
+            return Task.CompletedTask;
+        }
+
         public async Task OnSupplyData(HttpContext context, IDictionary<string, object> data)
         {
-            var route = spaRouteService.GetCurrentRoute(context);
+            var route = await spaRouteService.GetCurrentRoute(context);
             var personService = context.RequestServices.GetRequiredService<IPersonService>();
             switch (route?.Name)
             {

@@ -7,13 +7,10 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
 {
     public static class SpaRouteExtensions
     {
-        public static IServiceCollection AddSpaPrerenderingService<TService>(this IServiceCollection services, Action<ISpaRouteBuilder> builder) where TService : class, ISpaPrerenderingService
+        public static IServiceCollection AddSpaPrerenderingService<TService>(this IServiceCollection services) where TService : class, ISpaPrerenderingService
         {
-            var routes = new SpaRouteBuilder();
-            builder(routes);
-
             return services
-                .AddSingleton<ISpaRouteService>(provider => new SpaRouteService(routes))
+                .AddSingleton<ISpaRouteService, SpaRouteService>()
                 .AddSingleton<ISpaPrerenderingService, TService>();
         }
 

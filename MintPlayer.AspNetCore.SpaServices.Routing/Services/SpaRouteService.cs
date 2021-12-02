@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 using System.Diagnostics;
+using System.Threading.Tasks;
+using System;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MintPlayer.AspNetCore.SpaServices.Routing
 {
@@ -10,38 +13,38 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
     {
         /// <summary>Returns the SPA route (if any) that matches the requested URL.</summary>
         /// <param name="httpContext">The current HTTP context</param>
-        SpaRoute GetCurrentRoute(HttpContext httpContext);
+        Task<SpaRoute> GetCurrentRoute(HttpContext httpContext);
 
         /// <summary>Generates an url for a SPA route.</summary>
         /// <param name="routeName">Name of the SPA route</param>
         /// <param name="parameters">Dictionary containing a k
-        string GenerateUrl(string routeName, Dictionary<string, object> parameters);
+        Task<string> GenerateUrl(string routeName, Dictionary<string, object> parameters);
 
         /// <summary>Generates an url for a SPA route.</summary>
         /// <typeparam name="T">Some anonymous type.</typeparam>
         /// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
         /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
-        string GenerateUrl<T>(string routeName, T parameters);
+        Task<string> GenerateUrl<T>(string routeName, T parameters);
 
         /// <summary>Generates an url for a SPA route.</summary>
         /// <param name="routeName">Name of the SPA route</param>
         /// <param name="parameters">Dictionary containing a key-value mapping for the parameters</param>
         /// <param name="httpContext">Current HTTP context</param>
-        string GenerateUrl(string routeName, Dictionary<string, object> parameters, HttpContext httpContext);
+        Task<string> GenerateUrl(string routeName, Dictionary<string, object> parameters, HttpContext httpContext);
 
         /// <summary>Generates an url for a SPA route.</summary>
         /// <typeparam name="T">Some anonymous type.</typeparam>
         /// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
         /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
         /// <param name="httpContext">Current HTTP context</param>
-        string GenerateUrl<T>(string routeName, T parameters, HttpContext httpContext);
+        Task<string> GenerateUrl<T>(string routeName, T parameters, HttpContext httpContext);
 
         /// <summary>Generates an url for a SPA route.</summary>
         /// <param name="routeName">Name of the SPA route</param>
         /// <param name="parameters">Dictionary containing a key-value mapping for the parameters</param>
         /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
         /// <param name="host">The host name for the URL</param>
-        string GenerateUrl(string routeName, Dictionary<string, object> parameters, string protocol, string host);
+        Task<string> GenerateUrl(string routeName, Dictionary<string, object> parameters, string protocol, string host);
 
         /// <summary>Generates an url for a SPA route.</summary>
         /// <typeparam name="T">Some anonymous type.</typeparam>
@@ -49,7 +52,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
         /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
         /// <param name="host">The host name for the URL</param>
-        string GenerateUrl<T>(string routeName, T parameters, string protocol, string host);
+        Task<string> GenerateUrl<T>(string routeName, T parameters, string protocol, string host);
 
         /// <summary>Generates an url for a SPA route.</summary>
         /// <param name="routeName">Name of the SPA route</param>
@@ -57,7 +60,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
         /// <param name="host">The host name for the URL</param>
         /// <param name="fragment">The hash fragment for the URL</param>
-        string GenerateUrl(string routeName, Dictionary<string, object> parameters, string protocol, string host, string fragment);
+        Task<string> GenerateUrl(string routeName, Dictionary<string, object> parameters, string protocol, string host, string fragment);
 
         /// <summary>Generates an url for a SPA route.</summary>
         /// <typeparam name="T">Some anonymous type.</typeparam>
@@ -66,56 +69,60 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
         /// <param name="host">The host name for the URL</param>
         /// <param name="fragment">The hash fragment for the URL</param>
-        string GenerateUrl<T>(string routeName, T parameters, string protocol, string host, string fragment);
+        Task<string> GenerateUrl<T>(string routeName, T parameters, string protocol, string host, string fragment);
     }
 
     internal class SpaRouteService : ISpaRouteService
     {
         private readonly Regex rgx_keys = new Regex(@"\{(?<key>[^\{]+)\}");
-        private readonly SpaRouteBuilder routeBuilder;
-
-        public SpaRouteService(SpaRouteBuilder routeBuilder)
+        private readonly IServiceProvider serviceProvider;
+        public SpaRouteService(IServiceProvider serviceProvider)
         {
-            this.routeBuilder = routeBuilder;
+            this.serviceProvider = serviceProvider;
         }
 
         /// <summary>Build result</summary>
         private IEnumerable<Data.ISpaRouteItem> spaRouteItems;
 
         /// <summary>Ensures that the routeBuilder delegate has been executed.</summary>
-        private void EnsureSpaRoutesBuilt()
+        private async Task EnsureSpaRoutesBuilt()
         {
             if (spaRouteItems == null)
             {
-                spaRouteItems = routeBuilder.Build();
+                var routes = new SpaRouteBuilder();
+                var spaPrerenderingService = serviceProvider.GetRequiredService<ISpaPrerenderingService>();
+                await spaPrerenderingService.BuildRoutes(routes);
+                spaRouteItems = routes.Build();
             }
         }
 
         /// <summary>Generates an url for a SPA route.</summary>
         /// <param name="routeName">Name of the SPA route</param>
         /// <param name="parameters">Dictionary containing a k
-        public string GenerateUrl(string routeName, Dictionary<string, object> parameters)
+        public async Task<string> GenerateUrl(string routeName, Dictionary<string, object> parameters)
         {
-            return GenerateUrlBase(routeName, parameters);
+            var url = await GenerateUrlBase(routeName, parameters);
+            return url;
         }
 
         /// <summary>Generates an url for a SPA route.</summary>
         /// <typeparam name="T">Some anonymous type.</typeparam>
         /// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
         /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
-        public string GenerateUrl<T>(string routeName, T parameters)
+        public async Task<string> GenerateUrl<T>(string routeName, T parameters)
         {
             var values = typeof(T).GetProperties().ToDictionary(p => p.Name, p => p.GetValue(parameters));
-            return GenerateUrlBase(routeName, values);
+            var url = await GenerateUrlBase(routeName, values);
+            return url;
         }
 
         /// <summary>Generates an url for a SPA route.</summary>
         /// <param name="routeName">Name of the SPA route</param>
         /// <param name="parameters">Dictionary containing a key-value mapping for the parameters</param>
         /// <param name="httpContext">Current HTTP context</param>
-        public string GenerateUrl(string routeName, Dictionary<string, object> parameters, HttpContext httpContext)
+        public async Task<string> GenerateUrl(string routeName, Dictionary<string, object> parameters, HttpContext httpContext)
         {
-            var path = GenerateUrl(routeName, parameters);
+            var path = await GenerateUrl(routeName, parameters);
             return $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}{path}";
         }
 
@@ -124,9 +131,9 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         /// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
         /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
         /// <param name="httpContext">Current HTTP context</param>
-        public string GenerateUrl<T>(string routeName, T parameters, HttpContext httpContext)
+        public async Task<string> GenerateUrl<T>(string routeName, T parameters, HttpContext httpContext)
         {
-            var path = GenerateUrl(routeName, parameters);
+            var path = await GenerateUrl(routeName, parameters);
             return $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}{path}";
         }
 
@@ -135,9 +142,9 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         /// <param name="parameters">Dictionary containing a key-value mapping for the parameters</param>
         /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
         /// <param name="host">The host name for the URL</param>
-        public string GenerateUrl(string routeName, Dictionary<string, object> parameters, string protocol, string host)
+        public async Task<string> GenerateUrl(string routeName, Dictionary<string, object> parameters, string protocol, string host)
         {
-            var path = GenerateUrl(routeName, parameters);
+            var path = await GenerateUrl(routeName, parameters);
             return $"{protocol}://{host}{path}";
         }
 
@@ -147,9 +154,9 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         /// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
         /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
         /// <param name="host">The host name for the URL</param>
-        public string GenerateUrl<T>(string routeName, T parameters, string protocol, string host)
+        public async Task<string> GenerateUrl<T>(string routeName, T parameters, string protocol, string host)
         {
-            var path = GenerateUrl(routeName, parameters);
+            var path = await GenerateUrl(routeName, parameters);
             return $"{protocol}://{host}{path}";
         }
 
@@ -159,9 +166,9 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
         /// <param name="host">The host name for the URL</param>
         /// <param name="fragment">The hash fragment for the URL</param>
-        public string GenerateUrl(string routeName, Dictionary<string, object> parameters, string protocol, string host, string fragment)
+        public async Task<string> GenerateUrl(string routeName, Dictionary<string, object> parameters, string protocol, string host, string fragment)
         {
-            var path = GenerateUrl(routeName, parameters);
+            var path = await GenerateUrl(routeName, parameters);
             return $"{protocol}://{host}{path}#{fragment}";
         }
 
@@ -172,17 +179,17 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         /// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
         /// <param name="host">The host name for the URL</param>
         /// <param name="fragment">The hash fragment for the URL</param>
-        public string GenerateUrl<T>(string routeName, T parameters, string protocol, string host, string fragment)
+        public async Task<string> GenerateUrl<T>(string routeName, T parameters, string protocol, string host, string fragment)
         {
-            var path = GenerateUrl(routeName, parameters);
+            var path = await GenerateUrl(routeName, parameters);
             return $"{protocol}://{host}{path}#{fragment}";
         }
 
 
 
-        private string GenerateUrlBase(string routeName, IDictionary<string, object> parameters)
+        private async Task<string> GenerateUrlBase(string routeName, IDictionary<string, object> parameters)
         {
-            EnsureSpaRoutesBuilt();
+            await EnsureSpaRoutesBuilt();
 
             var route = spaRouteItems.FirstOrDefault(r => r.FullName == routeName);
             if (route == null)
@@ -207,9 +214,9 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
 
         /// <summary>Returns the SPA route (if any) that matches the requested URL.</summary>
         /// <param name="httpContext">The current HTTP context</param>
-        public SpaRoute GetCurrentRoute(HttpContext httpContext)
+        public async Task<SpaRoute> GetCurrentRoute(HttpContext httpContext)
         {
-            EnsureSpaRoutesBuilt();
+            await EnsureSpaRoutesBuilt();
 
             // Find the SPA route for the current request
             var match = spaRouteItems.FirstOrDefault(r => IsMatch(GetCurrentPath(httpContext), r.FullPath));
@@ -308,7 +315,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
             var path = (string)context.Features.GetType().GetProperty("RawTarget").GetValue(context.Features);
 
             var queryStart = path.LastIndexOf('?');
-            if(queryStart == -1)
+            if (queryStart == -1)
             {
                 url = path;
                 query = null;
