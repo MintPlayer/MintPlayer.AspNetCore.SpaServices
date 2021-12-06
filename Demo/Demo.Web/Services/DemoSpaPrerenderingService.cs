@@ -10,9 +10,11 @@ namespace Demo.Web.Services
     public class DemoSpaPrerenderingService : ISpaPrerenderingService
     {
         private readonly ISpaRouteService spaRouteService;
-        public DemoSpaPrerenderingService(ISpaRouteService spaRouteService)
+        private readonly IPersonService personService;
+        public DemoSpaPrerenderingService(ISpaRouteService spaRouteService, IPersonService personService)
         {
             this.spaRouteService = spaRouteService;
+            this.personService = personService;
         }
 
         public Task BuildRoutes(ISpaRouteBuilder routeBuilder)
@@ -32,7 +34,6 @@ namespace Demo.Web.Services
         public async Task OnSupplyData(HttpContext context, IDictionary<string, object> data)
         {
             var route = await spaRouteService.GetCurrentRoute(context);
-            var personService = context.RequestServices.GetRequiredService<IPersonService>();
             switch (route?.Name)
             {
                 case "person-list":

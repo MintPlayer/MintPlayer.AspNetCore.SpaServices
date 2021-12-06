@@ -12,7 +12,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
         {
             return services
                 .AddSingleton<ISpaRouteService, SpaRouteService>()
-                .AddSingleton<ISpaPrerenderingService, TService>();
+                .AddScoped<ISpaPrerenderingService, TService>();
         }
 
         public static void UseSpaPrerenderingService(this ISpaBuilder spaBuilder, Action<SpaPrerenderingOptions> options)
@@ -20,9 +20,9 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
 #pragma warning disable CS0618 // Type or member is obsolete
             spaBuilder.UseSpaPrerendering(op =>
             {
-                var spaPrerenderingService = spaBuilder.ApplicationBuilder.ApplicationServices.GetService<ISpaPrerenderingService>();
                 op.SupplyData = async (context, data) =>
                 {
+                    var spaPrerenderingService = context.RequestServices.GetRequiredService<ISpaPrerenderingService>();
                     await spaPrerenderingService.OnSupplyData(context, data);
                 };
                 options(op);
