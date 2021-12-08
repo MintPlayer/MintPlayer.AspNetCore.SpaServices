@@ -92,7 +92,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing
                 using (var scope = serviceProvider.CreateScope())
                 {
                     var routes = new SpaRouteBuilder();
-                    var spaPrerenderingService = scope.ServiceProvider.GetRequiredService<ISpaPrerenderingService>();
+                    var spaPrerenderingService = scope.ServiceProvider.GetRequiredService<Prerendering.Services.ISpaPrerenderingService>();
                     await spaPrerenderingService.BuildRoutes(routes);
                     spaRouteItems = routes.Build();
                 }

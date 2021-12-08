@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Demo.Web.Services
 {
-    public class DemoSpaPrerenderingService : ISpaPrerenderingService
+    public class DemoSpaPrerenderingService : MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService
     {
         private readonly ISpaRouteService spaRouteService;
         private readonly IPersonService personService;
@@ -17,7 +17,7 @@ namespace Demo.Web.Services
             this.personService = personService;
         }
 
-        public Task BuildRoutes(ISpaRouteBuilder routeBuilder)
+        public Task BuildRoutes(MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaRouteBuilder routeBuilder)
         {
             routeBuilder
                .Route("", "home")

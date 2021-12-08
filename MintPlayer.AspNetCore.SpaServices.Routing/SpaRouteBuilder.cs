@@ -1,16 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using MintPlayer.AspNetCore.SpaServices.Prerendering.Services;
 using MintPlayer.AspNetCore.SpaServices.Routing.Data;
 using MintPlayer.AspNetCore.SpaServices.Routing.Extensions;
 
 namespace MintPlayer.AspNetCore.SpaServices.Routing
 {
-    public interface ISpaRouteBuilder
-    {
-        ISpaRouteBuilder Route(string path, string name);
-        ISpaRouteBuilder Group(string path, string name, Action<ISpaRouteBuilder> builder);
-    }
-
     internal class SpaRouteBuilder : ISpaRouteBuilder
     {
         internal SpaRouteBuilder()

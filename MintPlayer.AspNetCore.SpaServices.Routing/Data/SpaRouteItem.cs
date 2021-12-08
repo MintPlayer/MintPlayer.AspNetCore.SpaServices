@@ -12,7 +12,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing.Data
         List<ISpaRouteItem> Routes { get; set; }
     }
 
-    internal class SpaRouteItem : ISpaRouteItem, ISpaRouteBuilder
+    internal class SpaRouteItem : ISpaRouteItem, Prerendering.Services.ISpaRouteBuilder
     {
         public SpaRouteItem()
         {
@@ -25,7 +25,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing.Data
         public string FullPath { get; set; }
         public List<ISpaRouteItem> Routes { get; set; }
 
-        public ISpaRouteBuilder Route(string path, string name)
+        public Prerendering.Services.ISpaRouteBuilder Route(string path, string name)
         {
             var route = new SpaRouteItem
             {
@@ -38,7 +38,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Routing.Data
             return this;
         }
 
-        public ISpaRouteBuilder Group(string path, string name, Action<ISpaRouteBuilder> builder)
+        public Prerendering.Services.ISpaRouteBuilder Group(string path, string name, Action<Prerendering.Services.ISpaRouteBuilder> builder)
         {
             var group = new SpaRouteItem
             {

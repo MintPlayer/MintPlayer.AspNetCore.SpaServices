@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.SpaServices.AngularCli;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using MintPlayer.AspNetCore.SpaServices.Prerendering;
 using MintPlayer.AspNetCore.SpaServices.Routing;
 using System.Linq;
 
@@ -88,10 +89,10 @@ namespace Demo.Web
 
                 spa.Options.SourcePath = "ClientApp";
 
-                spa.UseSpaPrerenderingService(options =>
+                spa.UseSpaPrerendering(options =>
                 {
                     options.BootModulePath = $"{spa.Options.SourcePath}/dist/ClientApp/server/main.js";
-                    options.BootModuleBuilder = env.IsDevelopment() ? new AngularCliBuilder(npmScript: "build:ssr") : null;
+                    //options.BootModuleBuilder = env.IsDevelopment() ? new AngularCliBuilder(npmScript: "build:ssr") : null;
 
                     options.ExcludeUrls = new[] { "/sockjs-node" };
                 });

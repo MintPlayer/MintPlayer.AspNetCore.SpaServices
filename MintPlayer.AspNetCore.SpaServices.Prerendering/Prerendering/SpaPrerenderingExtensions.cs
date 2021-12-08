@@ -34,10 +34,9 @@ namespace MintPlayer.AspNetCore.SpaServices.Prerendering
         /// </summary>
         /// <param name="spaBuilder">The <see cref="ISpaBuilder"/>.</param>
         /// <param name="configuration">Supplies configuration for the prerendering middleware.</param>
-        [Obsolete("Prerendering is no longer supported out of box")]
         public static void UseSpaPrerendering(
             this ISpaBuilder spaBuilder,
-            Action<SpaPrerenderingOptions> configuration)
+            Action<MintPlayer.AspNetCore.Builder.SpaPrerenderingOptions> configuration)
         {
             if (spaBuilder == null)
             {
@@ -49,7 +48,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Prerendering
                 throw new ArgumentNullException(nameof(configuration));
             }
 
-            var options = new SpaPrerenderingOptions();
+            var options = new Builder.SpaPrerenderingOptions();
             configuration.Invoke(options);
 
             var capturedBootModulePath = options.BootModulePath;
@@ -162,7 +161,11 @@ namespace MintPlayer.AspNetCore.SpaServices.Prerendering
 
                     // If the developer wants to use custom logic to pass arbitrary data to the
                     // prerendering JS code (e.g., to pass through cookie data), now's their chance
-                    options.SupplyData?.Invoke(context, customData);
+                    var spaPrerenderingService = context.RequestServices.GetService<Services.ISpaPrerenderingService>();
+                    if (spaPrerenderingService != null)
+                    {
+                        await spaPrerenderingService.OnSupplyData(context, customData);
+                    }
 
                     var (unencodedAbsoluteUrl, unencodedPathAndQuery)
                         = GetUnencodedUrlAndPathQuery(context);
