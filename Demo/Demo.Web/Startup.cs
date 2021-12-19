@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using MintPlayer.AspNetCore.SpaServices.Prerendering;
 using MintPlayer.AspNetCore.SpaServices.Routing;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Demo.Web
 {
@@ -89,12 +90,18 @@ namespace Demo.Web
 
                 spa.Options.SourcePath = "ClientApp";
 
+                //spa.ApplicationBuilder.UseResponseCaching().UseHsts();
                 spa.UseSpaPrerendering(options =>
                 {
                     options.BootModulePath = $"{spa.Options.SourcePath}/dist/ClientApp/server/main.js";
-                    //options.BootModuleBuilder = env.IsDevelopment() ? new AngularCliBuilder(npmScript: "build:ssr") : null;
-
+                    options.BootModuleBuilder = env.IsDevelopment() ? new AngularCliBuilder(npmScript: "build:ssr") : null;
                     options.ExcludeUrls = new[] { "/sockjs-node" };
+
+                    options.OnPrepareResponse = (context) =>
+                    {
+                        context.Response.Headers.Add("Whatever", "Oasis");
+                        return System.Threading.Tasks.Task.CompletedTask;
+                    };
                 });
 
                 if (env.IsDevelopment())

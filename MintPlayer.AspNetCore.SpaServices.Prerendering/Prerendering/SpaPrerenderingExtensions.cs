@@ -34,7 +34,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Prerendering
         /// </summary>
         /// <param name="spaBuilder">The <see cref="ISpaBuilder"/>.</param>
         /// <param name="configuration">Supplies configuration for the prerendering middleware.</param>
-        public static void UseSpaPrerendering(
+        public static IApplicationBuilder UseSpaPrerendering(
             this ISpaBuilder spaBuilder,
             Action<MintPlayer.AspNetCore.Builder.SpaPrerenderingOptions> configuration)
         {
@@ -78,6 +78,14 @@ namespace MintPlayer.AspNetCore.SpaServices.Prerendering
 
             applicationBuilder.Use(async (context, next) =>
             {
+                context.Response.OnStarting(async () =>
+                {
+                    if (options.OnPrepareResponse != null)
+                    {
+                        await options.OnPrepareResponse(context);
+                    }
+                });
+
                 // If this URL is excluded, skip prerendering.
                 // This is typically used to ensure that static client-side resources
                 // (e.g., /dist/*.css) are served normally or through SPA development
@@ -183,6 +191,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Prerendering
                     await ServePrerenderResult(context, renderResult);
                 }
             });
+            return applicationBuilder;
         }
 
         private static bool IsHtmlContentType(string contentType)

@@ -1,7 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using MintPlayer.AspNetCore.SpaServices.Prerendering;
+using Microsoft.AspNetCore.SpaServices.Prerendering;
 
 namespace MintPlayer.AspNetCore.Builder
 {
@@ -30,5 +30,10 @@ namespace MintPlayer.AspNetCore.Builder
         /// Gets or sets an array of URL prefixes for which prerendering should not run.
         /// </summary>
         public string[] ExcludeUrls { get; set; }
+
+        /// <summary>
+        /// This method is called after the prerendering logic completes, and before the next middleware is called.
+        /// </summary>
+        public Func<HttpContext, Task> OnPrepareResponse { get; set; }
     }
 }
