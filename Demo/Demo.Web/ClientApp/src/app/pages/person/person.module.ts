@@ -8,6 +8,7 @@ import { PersonCreateComponent } from './create/create.component';
 import { PersonEditComponent } from './edit/edit.component';
 import { PersonShowComponent } from './show/show.component';
 import { PersonListComponent } from './list/list.component';
+import { PipesModule } from '../../pipes/pipes.module';
 
 
 @NgModule({
@@ -21,6 +22,7 @@ import { PersonListComponent } from './list/list.component';
     CommonModule,
     FormsModule,
     TranslateModule,
+    PipesModule,
     PersonRoutingModule
   ]
 })

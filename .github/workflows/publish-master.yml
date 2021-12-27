@@ -1,19 +1,19 @@
-name: .NET Core
+name: publish-master
 
 on:
   push:
-    branches: [ master ]
-  pull_request:
     branches: [ master ]
 
 jobs:
   build:
 
+    name: publish-master
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+      
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1.9.0
       with:
@@ -22,19 +22,28 @@ jobs:
         source-url: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
       env:
         NUGET_AUTH_TOKEN: '%NUGET_AUTH_TOKEN%'
+    
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1.1
+    
     - name: Install dependencies
       run: dotnet restore
       env:
         NUGET_AUTH_TOKEN: ${{ github.token }}
+        
     - name: Build
       run: dotnet build --configuration Release --no-restore
+      
     - name: Test
       run: dotnet test --no-restore --verbosity normal
+      
     - name: Pack
       run: dotnet pack --no-build --configuration Release
+      
     - name: PushNuget
       run: dotnet nuget push **/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.PUBLISH_TO_NUGET_ORG }} --skip-duplicate
+      
     - name: PushGithub
-      run: dotnet nuget push **/*.nupkg --no-symbols --skip-duplicate
+      run: nuget.exe push "**/*.nupkg" -NoSymbols -SkipDuplicate
       env:
         NUGET_AUTH_TOKEN: ${{ github.token }}

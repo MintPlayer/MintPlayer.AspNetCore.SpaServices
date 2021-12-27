@@ -2,11 +2,13 @@ import { Component, OnInit, Inject } from '@angular/core';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
 import { Title } from '@angular/platform-browser';
+import { SlugifyPipe } from '../../../pipes/slugify.pipe';
 
 @Component({
   selector: 'app-person-list',
   templateUrl: './list.component.html',
-  styleUrls: ['./list.component.scss']
+  styleUrls: ['./list.component.scss'],
+  providers: [SlugifyPipe]
 })
 export class PersonListComponent implements OnInit {
 

@@ -1,7 +1,9 @@
 ﻿using Demo.Data.Dal.Services;
+using Demo.Web.Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using MintPlayer.AspNetCore.SpaServices.Routing;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -26,6 +28,8 @@ namespace Demo.Web.Services
                    .Route("create", "create")
                    .Route("{personid}", "show")
                    .Route("{personid}/edit", "edit")
+                   .Route("{personid}/{name}", "show-name")
+                   .Route("{personid}/{name}/edit", "edit-name")
                );
 
             return Task.CompletedTask;
@@ -45,9 +49,48 @@ namespace Demo.Web.Services
                 case "person-show":
                 case "person-edit":
                     {
-                        var id = System.Convert.ToInt32(route.Parameters["personid"]);
-                        var person = await personService.GetPerson(id);
-                        data["person"] = person;
+                        var personid = Convert.ToInt32(route.Parameters["personid"]);
+                        var person = await personService.GetPerson(personid, false);
+                        if (person == null)
+                        {
+                            context.Response.OnStarting(() =>
+                            {
+                                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                                return Task.CompletedTask;
+                            });
+                        }
+                        else
+                        {
+                            context.Response.OnStarting(async () =>
+                            {
+                                var url = await spaRouteService.GenerateUrl($"{route.Name}-name", new { personid = personid, name = (person.FirstName + " " + person.LastName).Slugify() });
+                                context.Response.Redirect(url);
+                            });
+                        }
+                    }
+                    break;
+                case "person-show-name":
+                case "person-edit-name":
+                    {
+                        var personid = Convert.ToInt32(route.Parameters["personid"]);
+                        var person = await personService.GetPerson(personid);
+                        if (person == null)
+                        {
+                            context.Response.OnStarting(() =>
+                            {
+                                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                                return Task.CompletedTask;
+                            });
+                        }
+                        else if (route.Parameters["name"] == (person.FirstName + " " + person.LastName).Slugify())
+                        {
+                            data["person"] = person;
+                        }
+                        else
+                        {
+                            var url = await spaRouteService.GenerateUrl(route.Name, new { personid = personid, name = (person.FirstName + " " + person.LastName).Slugify() });
+                            context.Response.Redirect(url);
+                        }
                     }
                     break;
             }

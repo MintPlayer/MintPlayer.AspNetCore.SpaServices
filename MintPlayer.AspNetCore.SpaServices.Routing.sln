@@ -13,11 +13,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Demo.Data", "Demo\Demo.Data
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Demo.Dtos", "Demo\Demo.Dtos\Demo.Dtos.csproj", "{6ADDD076-B94D-4402-AE34-98939CA4F103}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MintPlayer.AspNetCore.SpaServices.Prerendering", "MintPlayer.AspNetCore.SpaServices.Prerendering\MintPlayer.AspNetCore.SpaServices.Prerendering.csproj", "{1ED79552-3793-49A1-A2FA-D04314C1B350}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MintPlayer.AspNetCore.SpaServices.Prerendering", "MintPlayer.AspNetCore.SpaServices.Prerendering\MintPlayer.AspNetCore.SpaServices.Prerendering.csproj", "{1ED79552-3793-49A1-A2FA-D04314C1B350}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MintPlayer.AspNetCore.SpaServices", "MintPlayer.AspNetCore.SpaServices\MintPlayer.AspNetCore.SpaServices.csproj", "{2334612D-54B9-4F82-9512-03339948D242}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MintPlayer.AspNetCore.SpaServices", "MintPlayer.AspNetCore.SpaServices\MintPlayer.AspNetCore.SpaServices.csproj", "{2334612D-54B9-4F82-9512-03339948D242}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MintPlayer.AspNetCore.NodeServices", "MintPlayer.AspNetCore.NodeServices\MintPlayer.AspNetCore.NodeServices.csproj", "{3567BE26-D0AE-4783-A0EA-4D2650F9A51B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MintPlayer.AspNetCore.NodeServices", "MintPlayer.AspNetCore.NodeServices\MintPlayer.AspNetCore.NodeServices.csproj", "{3567BE26-D0AE-4783-A0EA-4D2650F9A51B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
