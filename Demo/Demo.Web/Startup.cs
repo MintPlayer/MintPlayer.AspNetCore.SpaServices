@@ -94,7 +94,7 @@ namespace Demo.Web
                 spa.UseSpaPrerendering(options =>
                 {
                     options.BootModulePath = $"{spa.Options.SourcePath}/dist/ClientApp/server/main.js";
-                    options.BootModuleBuilder = env.IsDevelopment() ? new AngularCliBuilder(npmScript: "build:ssr") : null;
+                    options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder(npmScript: "build:ssr") : null;
                     options.ExcludeUrls = new[] { "/sockjs-node" };
 
                     options.OnPrepareResponse = (context) =>
