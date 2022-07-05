@@ -1,9 +1,9 @@
 {
   "sdk": {
-    "version": "6.0.100"
+    "version": "6.0.301"
   },
   "tools": {
-    "dotnet": "6.0.100",
+    "dotnet": "6.0.301",
     "runtimes": {
       "dotnet/x64": [
         "$(MicrosoftNETCoreAppInternalPackageVersion)"

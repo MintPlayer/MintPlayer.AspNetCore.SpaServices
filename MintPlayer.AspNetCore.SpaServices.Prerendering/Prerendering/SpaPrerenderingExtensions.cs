@@ -59,8 +59,9 @@ namespace MintPlayer.AspNetCore.SpaServices.Prerendering
                     $"property on the ${nameof(SpaPrerenderingOptions)}.");
             }
 
-            // If we're building on demand, start that process in the background now
-            var buildOnDemandTask = options.BootModuleBuilder?.Build(spaBuilder);
+            //// If we're building on demand, start that process in the background now
+            //var buildOnDemandTask = options.BootModuleBuilder?.Build(spaBuilder);
+            var isBuildStarted = false;
 
             // Get all the necessary context info that will be used for each prerendering call
             var applicationBuilder = spaBuilder.ApplicationBuilder;
@@ -99,16 +100,12 @@ namespace MintPlayer.AspNetCore.SpaServices.Prerendering
                     }
                 }
 
-                // If we're building on demand, wait for that to finish, or raise any build errors
-                if (buildOnDemandTask != null && !buildOnDemandTask.IsCompleted)
+                if ((options.BootModuleBuilder != null) && !isBuildStarted)
                 {
-                    // For better debuggability, create a per-request timeout that makes it clear if the
-                    // prerendering builder took too long for this request, but without aborting the
-                    // underlying build task so that subsequent requests could still work.
-                    await buildOnDemandTask.WithTimeout(buildTimeout,
-                        $"The prerendering build process did not complete within the " +
-                        $"timeout period of {buildTimeout.Seconds} seconds. " +
-                        $"Check the log output for error information.");
+                    isBuildStarted = true;
+                    Console.WriteLine("Building server BootModule");
+                    await options.BootModuleBuilder.Build(spaBuilder);
+                    Console.WriteLine("Finished building server BootModule");
                 }
 
                 // It's no good if we try to return a 304. We need to capture the actual
