@@ -8,7 +8,7 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices.Routing</PackageId>
-		<Version>6.1.0</Version>
+		<Version>6.1.1</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<Description>This package simplifies the SPA prerendering. Define your SPA routes in your service registration and check which SPA route is activated in the SupplyData callback.</Description>
@@ -17,6 +17,7 @@
 		<PackageTags>ASP.NET Core, SPA prerendering, SupplyData</PackageTags>
 		<RepositoryType>Git</RepositoryType>
 		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</RepositoryUrl>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<Authors>Pieterjan De Clippel</Authors>
 		<Company>MintPlayer</Company>
 		<Product>MintPlayer.AspNetCore.SpaServices.Routing</Product>
@@ -38,13 +39,13 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="6.0.0" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
-		  <PrivateAssets>all</PrivateAssets>
-		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\MintPlayer.AspNetCore.SpaServices.Prerendering\MintPlayer.AspNetCore.SpaServices.Prerendering.csproj" />
+		<ProjectReference Include="..\MintPlayer.AspNetCore.SpaServices.Prerendering\MintPlayer.AspNetCore.SpaServices.Prerendering.csproj" />
 	</ItemGroup>
 
 </Project>

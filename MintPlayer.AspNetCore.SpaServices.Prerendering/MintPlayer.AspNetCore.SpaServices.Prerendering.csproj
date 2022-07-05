@@ -8,7 +8,7 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices.Prerendering</PackageId>
-		<Version>6.1.0</Version>
+		<Version>6.1.1</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<Description>This package is built as a dependency of MintPlayer.AspNetCore.SpaServices.Routing.</Description>
@@ -17,6 +17,7 @@
 		<PackageTags>ASP.NET Core, SPA prerendering</PackageTags>
 		<RepositoryType>Git</RepositoryType>
 		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</RepositoryUrl>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<Authors>Pieterjan De Clippel</Authors>
 		<Company>MintPlayer</Company>
 		<Product>MintPlayer.AspNetCore.SpaServices.Prerendering</Product>
@@ -25,8 +26,8 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="6.0.0" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
-		  <PrivateAssets>all</PrivateAssets>
-		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 	</ItemGroup>
 

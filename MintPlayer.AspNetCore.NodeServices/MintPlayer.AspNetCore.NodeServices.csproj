@@ -8,7 +8,7 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.NodeServices</PackageId>
-		<Version>6.1.0</Version>
+		<Version>6.1.1</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<Description>This package contains the abandoned node services.</Description>
@@ -17,6 +17,7 @@
 		<PackageTags>ASP.NET Core, Node services</PackageTags>
 		<RepositoryType>Git</RepositoryType>
 		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</RepositoryUrl>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<Authors>Pieterjan De Clippel</Authors>
 		<Company>MintPlayer</Company>
 		<Product>MintPlayer.AspNetCore.NodeServices</Product>
@@ -29,13 +30,13 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
-		  <PrivateAssets>all</PrivateAssets>
-		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
 		<PackageReference Include="Yarn.MSBuild" Version="*" />
 	</ItemGroup>
-	
+
 	<!-- Version of this SDK is set in global.json -->
 	<Sdk Name="Yarn.MSBuild" />
 
