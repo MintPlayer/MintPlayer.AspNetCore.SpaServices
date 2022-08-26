@@ -1,5 +1,5 @@
-export class Person {
-  id: number;
-  firstName: string;
-  lastName: string;
+export interface Person {
+	id: number;
+	firstName: string;
+	lastName: string;
 }

@@ -1,13 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace MintPlayer.AspNetCore.SpaServices.Routing.Exceptions
+namespace MintPlayer.AspNetCore.SpaServices.Routing.Exceptions;
+
+public class SpaRouteNotFoundException : Exception
 {
-    public class SpaRouteNotFoundException : Exception
-    {
-        public SpaRouteNotFoundException(string routeName) : base($"Route with name {routeName} not found.")
-        {
-        }
-    }
+	public SpaRouteNotFoundException(string routeName) : base($"Route with name {routeName} not found.")
+	{
+	}
 }

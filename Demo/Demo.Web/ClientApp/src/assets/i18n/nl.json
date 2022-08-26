@@ -1,6 +1,6 @@
 {
-  "person": {
-    "firstName": "Voornaam",
-    "lastName": "Achternaam"
-  }
+	"person": {
+		"firstName": "Voornaam",
+		"lastName": "Achternaam"
+	}
 }

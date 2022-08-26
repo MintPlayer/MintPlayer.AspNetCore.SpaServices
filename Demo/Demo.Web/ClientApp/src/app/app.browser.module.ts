@@ -7,22 +7,22 @@ import { AppComponent } from './app.component';
 import { AppModule } from './app.module';
 
 @NgModule({
-  imports: [
-    AppModule,
-    HttpClientModule,
-    TranslateModule.forRoot({
-      loader: {
-        provide: TranslateLoader,
-        useFactory: (http: HttpClient) => {
-          return new TranslateHttpLoader(http);
-        },
-        deps: [
-          HttpClient
-        ]
-      }
-    })
-  ],
-  bootstrap: [AppComponent]
+	imports: [
+		AppModule,
+		HttpClientModule,
+		TranslateModule.forRoot({
+			loader: {
+				provide: TranslateLoader,
+				useFactory: (http: HttpClient) => {
+					return new TranslateHttpLoader(http);
+				},
+				deps: [
+					HttpClient
+				]
+			}
+		})
+	],
+	bootstrap: [AppComponent]
 })
 export class AppBrowserModule {
 }

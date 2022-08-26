@@ -1,7 +1,6 @@
-﻿namespace Demo.Data.Options
+namespace Demo.Data.Options;
+
+public class DemoOptions
 {
-    public class DemoOptions
-    {
-        public string ConnectionString { get; set; }
-    }
+	public string ConnectionString { get; set; }
 }

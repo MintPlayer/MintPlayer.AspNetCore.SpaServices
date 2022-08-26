@@ -1,8 +1,7 @@
-﻿namespace MintPlayer.AspNetCore.SpaServices.Prerendering.Services
+namespace MintPlayer.AspNetCore.SpaServices.Prerendering.Services;
+
+public interface ISpaPrerenderingService
 {
-    public interface ISpaPrerenderingService
-    {
-        Task BuildRoutes(ISpaRouteBuilder routeBuilder);
-        Task OnSupplyData(HttpContext httpContext, IDictionary<string, object> data);
-    }
+	Task BuildRoutes(ISpaRouteBuilder routeBuilder);
+	Task OnSupplyData(HttpContext httpContext, IDictionary<string, object> data);
 }

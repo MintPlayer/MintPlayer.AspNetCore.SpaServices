@@ -3,37 +3,36 @@
 
 using Microsoft.AspNetCore.SpaServices.Prerendering;
 
-namespace MintPlayer.AspNetCore.Builder
+namespace MintPlayer.AspNetCore.Builder;
+
+/// <summary>
+/// Represents options for the SPA prerendering middleware.
+/// </summary>
+public class SpaPrerenderingOptions
 {
-    /// <summary>
-    /// Represents options for the SPA prerendering middleware.
-    /// </summary>
-    public class SpaPrerenderingOptions
-    {
-        /// <summary>
-        /// Gets or sets an <see cref="ISpaPrerendererBuilder"/> that the prerenderer will invoke before
-        /// looking for the boot module file.
-        /// 
-        /// This is only intended to be used during development as a way of generating the JavaScript boot
-        /// file automatically when the application runs. This property should be left as <c>null</c> in
-        /// production applications.
-        /// </summary>
-        public ISpaPrerendererBuilder BootModuleBuilder { get; set; }
+	/// <summary>
+	/// Gets or sets an <see cref="ISpaPrerendererBuilder"/> that the prerenderer will invoke before
+	/// looking for the boot module file.
+	/// 
+	/// This is only intended to be used during development as a way of generating the JavaScript boot
+	/// file automatically when the application runs. This property should be left as <c>null</c> in
+	/// production applications.
+	/// </summary>
+	public ISpaPrerendererBuilder BootModuleBuilder { get; set; }
 
-        /// <summary>
-        /// Gets or sets the path, relative to your application root, of the JavaScript file
-        /// containing prerendering logic.
-        /// </summary>
-        public string BootModulePath { get; set; }
+	/// <summary>
+	/// Gets or sets the path, relative to your application root, of the JavaScript file
+	/// containing prerendering logic.
+	/// </summary>
+	public string BootModulePath { get; set; }
 
-        /// <summary>
-        /// Gets or sets an array of URL prefixes for which prerendering should not run.
-        /// </summary>
-        public string[] ExcludeUrls { get; set; }
+	/// <summary>
+	/// Gets or sets an array of URL prefixes for which prerendering should not run.
+	/// </summary>
+	public string[] ExcludeUrls { get; set; }
 
-        /// <summary>
-        /// This method is called after the prerendering logic completes, and before the next middleware is called.
-        /// </summary>
-        public Func<HttpContext, Task> OnPrepareResponse { get; set; }
-    }
+	/// <summary>
+	/// This method is called after the prerendering logic completes, and before the next middleware is called.
+	/// </summary>
+	public Func<HttpContext, Task> OnPrepareResponse { get; set; }
 }

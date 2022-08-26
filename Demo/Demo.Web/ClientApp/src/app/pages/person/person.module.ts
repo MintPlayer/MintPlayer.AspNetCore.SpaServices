@@ -12,18 +12,18 @@ import { PipesModule } from '../../pipes/pipes.module';
 
 
 @NgModule({
-  declarations: [
-    PersonCreateComponent,
-    PersonEditComponent,
-    PersonShowComponent,
-    PersonListComponent
-  ],
-  imports: [
-    CommonModule,
-    FormsModule,
-    TranslateModule,
-    PipesModule,
-    PersonRoutingModule
-  ]
+	declarations: [
+		PersonCreateComponent,
+		PersonEditComponent,
+		PersonShowComponent,
+		PersonListComponent
+	],
+	imports: [
+		CommonModule,
+		FormsModule,
+		TranslateModule,
+		PipesModule,
+		PersonRoutingModule
+	]
 })
 export class PersonModule { }

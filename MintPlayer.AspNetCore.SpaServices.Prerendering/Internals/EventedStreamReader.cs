@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace MintPlayer.AspNetCore.SpaServices.Prerendering.Internals;
@@ -9,121 +9,121 @@ namespace MintPlayer.AspNetCore.SpaServices.Prerendering.Internals;
 /// </summary>
 internal sealed class EventedStreamReader
 {
-    public delegate void OnReceivedChunkHandler(ArraySegment<char> chunk);
-    public delegate void OnReceivedLineHandler(string line);
-    public delegate void OnStreamClosedHandler();
+	public delegate void OnReceivedChunkHandler(ArraySegment<char> chunk);
+	public delegate void OnReceivedLineHandler(string line);
+	public delegate void OnStreamClosedHandler();
 
-    public event OnReceivedChunkHandler? OnReceivedChunk;
-    public event OnReceivedLineHandler? OnReceivedLine;
-    public event OnStreamClosedHandler? OnStreamClosed;
+	public event OnReceivedChunkHandler? OnReceivedChunk;
+	public event OnReceivedLineHandler? OnReceivedLine;
+	public event OnStreamClosedHandler? OnStreamClosed;
 
-    private readonly StreamReader _streamReader;
-    private readonly StringBuilder _linesBuffer;
+	private readonly StreamReader _streamReader;
+	private readonly StringBuilder _linesBuffer;
 
-    public EventedStreamReader(StreamReader streamReader)
-    {
-        _streamReader = streamReader ?? throw new ArgumentNullException(nameof(streamReader));
-        _linesBuffer = new StringBuilder();
-        Task.Factory.StartNew(Run, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
-    }
+	public EventedStreamReader(StreamReader streamReader)
+	{
+		_streamReader = streamReader ?? throw new ArgumentNullException(nameof(streamReader));
+		_linesBuffer = new StringBuilder();
+		Task.Factory.StartNew(Run, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
+	}
 
-    public Task<Match> WaitForMatch(Regex regex)
-    {
-        var tcs = new TaskCompletionSource<Match>();
-        var completionLock = new object();
+	public Task<Match> WaitForMatch(Regex regex)
+	{
+		var tcs = new TaskCompletionSource<Match>();
+		var completionLock = new object();
 
-        OnReceivedLineHandler? onReceivedLineHandler = null;
-        OnStreamClosedHandler? onStreamClosedHandler = null;
+		OnReceivedLineHandler? onReceivedLineHandler = null;
+		OnStreamClosedHandler? onStreamClosedHandler = null;
 
-        void ResolveIfStillPending(Action applyResolution)
-        {
-            lock (completionLock)
-            {
-                if (!tcs.Task.IsCompleted)
-                {
-                    OnReceivedLine -= onReceivedLineHandler;
-                    OnStreamClosed -= onStreamClosedHandler;
-                    applyResolution();
-                }
-            }
-        }
+		void ResolveIfStillPending(Action applyResolution)
+		{
+			lock (completionLock)
+			{
+				if (!tcs.Task.IsCompleted)
+				{
+					OnReceivedLine -= onReceivedLineHandler;
+					OnStreamClosed -= onStreamClosedHandler;
+					applyResolution();
+				}
+			}
+		}
 
-        onReceivedLineHandler = line =>
-        {
-            var match = regex.Match(line);
-            if (match.Success)
-            {
-                ResolveIfStillPending(() => tcs.SetResult(match));
-            }
-        };
+		onReceivedLineHandler = line =>
+		{
+			var match = regex.Match(line);
+			if (match.Success)
+			{
+				ResolveIfStillPending(() => tcs.SetResult(match));
+			}
+		};
 
-        onStreamClosedHandler = () =>
-        {
-            ResolveIfStillPending(() => tcs.SetException(new EndOfStreamException()));
-        };
+		onStreamClosedHandler = () =>
+		{
+			ResolveIfStillPending(() => tcs.SetException(new EndOfStreamException()));
+		};
 
-        OnReceivedLine += onReceivedLineHandler;
-        OnStreamClosed += onStreamClosedHandler;
+		OnReceivedLine += onReceivedLineHandler;
+		OnStreamClosed += onStreamClosedHandler;
 
-        return tcs.Task;
-    }
+		return tcs.Task;
+	}
 
-    private async Task Run()
-    {
-        var buf = new char[8 * 1024];
-        while (true)
-        {
-            var chunkLength = await _streamReader.ReadAsync(buf, 0, buf.Length);
-            if (chunkLength == 0)
-            {
-                if (_linesBuffer.Length > 0)
-                {
-                    OnCompleteLine(_linesBuffer.ToString());
-                    _linesBuffer.Clear();
-                }
+	private async Task Run()
+	{
+		var buf = new char[8 * 1024];
+		while (true)
+		{
+			var chunkLength = await _streamReader.ReadAsync(buf, 0, buf.Length);
+			if (chunkLength == 0)
+			{
+				if (_linesBuffer.Length > 0)
+				{
+					OnCompleteLine(_linesBuffer.ToString());
+					_linesBuffer.Clear();
+				}
 
-                OnClosed();
-                break;
-            }
+				OnClosed();
+				break;
+			}
 
-            OnChunk(new ArraySegment<char>(buf, 0, chunkLength));
+			OnChunk(new ArraySegment<char>(buf, 0, chunkLength));
 
-            int lineBreakPos;
-            var startPos = 0;
+			int lineBreakPos;
+			var startPos = 0;
 
-            // get all the newlines
-            while ((lineBreakPos = Array.IndexOf(buf, '\n', startPos, chunkLength - startPos)) >= 0 && startPos < chunkLength)
-            {
-                var length = (lineBreakPos + 1) - startPos;
-                _linesBuffer.Append(buf, startPos, length);
-                OnCompleteLine(_linesBuffer.ToString());
-                _linesBuffer.Clear();
-                startPos = lineBreakPos + 1;
-            }
+			// get all the newlines
+			while ((lineBreakPos = Array.IndexOf(buf, '\n', startPos, chunkLength - startPos)) >= 0 && startPos < chunkLength)
+			{
+				var length = (lineBreakPos + 1) - startPos;
+				_linesBuffer.Append(buf, startPos, length);
+				OnCompleteLine(_linesBuffer.ToString());
+				_linesBuffer.Clear();
+				startPos = lineBreakPos + 1;
+			}
 
-            // get the rest
-            if (lineBreakPos < 0 && startPos < chunkLength)
-            {
-                _linesBuffer.Append(buf, startPos, chunkLength - startPos);
-            }
-        }
-    }
+			// get the rest
+			if (lineBreakPos < 0 && startPos < chunkLength)
+			{
+				_linesBuffer.Append(buf, startPos, chunkLength - startPos);
+			}
+		}
+	}
 
-    private void OnChunk(ArraySegment<char> chunk)
-    {
-        var dlg = OnReceivedChunk;
-        dlg?.Invoke(chunk);
-    }
+	private void OnChunk(ArraySegment<char> chunk)
+	{
+		var dlg = OnReceivedChunk;
+		dlg?.Invoke(chunk);
+	}
 
-    private void OnCompleteLine(string line)
-    {
-        var dlg = OnReceivedLine;
-        dlg?.Invoke(line);
-    }
+	private void OnCompleteLine(string line)
+	{
+		var dlg = OnReceivedLine;
+		dlg?.Invoke(line);
+	}
 
-    private void OnClosed()
-    {
-        var dlg = OnStreamClosed;
-        dlg?.Invoke();
-    }
+	private void OnClosed()
+	{
+		var dlg = OnStreamClosed;
+		dlg?.Invoke();
+	}
 }

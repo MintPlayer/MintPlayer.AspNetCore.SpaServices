@@ -6,11 +6,11 @@ import { PersonModule } from './person/person.module';
 
 
 @NgModule({
-  declarations: [],
-  imports: [
-    CommonModule,
-    PagesRoutingModule,
-    PersonModule
-  ]
+	declarations: [],
+	imports: [
+		CommonModule,
+		PagesRoutingModule,
+		PersonModule
+	]
 })
 export class PagesModule { }

@@ -5,22 +5,30 @@ import { environment } from './environments/environment';
 import { AppBrowserModule } from './app/app.browser.module';
 
 const getBaseUrl = () => {
-  return document.getElementsByTagName('base')[0].href.slice(0, -1);
+	return document.getElementsByTagName('base')[0].href.slice(0, -1);
 }
 
 const providers = [
-  { provide: 'BASE_URL', useFactory: getBaseUrl, deps: [] },
-  { provide: 'SERVERSIDE', useValue: false },
-  { provide: 'MESSAGE', useValue: 'Message from the client' },
-  { provide: 'PEOPLE', useValue: null },
-  { provide: 'PERSON', useValue: null },
+	{ provide: 'BASE_URL', useFactory: getBaseUrl, deps: [] },
+	{ provide: 'SERVERSIDE', useValue: false },
+	{ provide: 'MESSAGE', useValue: 'Message from the client' },
+	{ provide: 'PEOPLE', useValue: null },
+	{ provide: 'PERSON', useValue: null },
 ];
 
 if (environment.production) {
-  enableProdMode();
+	enableProdMode();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  platformBrowserDynamic(providers).bootstrapModule(AppBrowserModule)
-  .catch(err => console.error(err));
-});
+function bootstrap() {
+	platformBrowserDynamic(providers).bootstrapModule(AppBrowserModule)
+		.catch(err => console.error(err));
+};
+
+
+if (document.readyState === 'complete') {
+	bootstrap();
+} else {
+	document.addEventListener('DOMContentLoaded', bootstrap);
+}
+

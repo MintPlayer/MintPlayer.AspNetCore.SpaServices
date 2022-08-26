@@ -19,19 +19,19 @@ encodeNewlinesWrittenToStream(process.stdout);
 encodeNewlinesWrittenToStream(process.stderr);
 
 function encodeNewlinesWrittenToStream(outputStream: NodeJS.WritableStream) {
-    const origWriteFunction = outputStream.write;
-    outputStream.write = <any>function (value: any) {
-        // Only interfere with the write if it's definitely a string
-        if (typeof value === 'string') {
-            const argsClone = Array.prototype.slice.call(arguments, 0);
-            argsClone[0] = encodeNewlinesInString(value);
-            origWriteFunction.apply(this, argsClone);
-        } else {
-            origWriteFunction.apply(this, arguments);
-        }
-    };
+	const origWriteFunction = outputStream.write;
+	outputStream.write = <any>function (value: any) {
+		// Only interfere with the write if it's definitely a string
+		if (typeof value === 'string') {
+			const argsClone = Array.prototype.slice.call(arguments, 0);
+			argsClone[0] = encodeNewlinesInString(value);
+			origWriteFunction.apply(this, argsClone);
+		} else {
+			origWriteFunction.apply(this, arguments);
+		}
+	};
 }
 
 function encodeNewlinesInString(str: string): string {
-    return str.replace(findInternalNewlinesRegex, encodedNewline);
+	return str.replace(findInternalNewlinesRegex, encodedNewline);
 }

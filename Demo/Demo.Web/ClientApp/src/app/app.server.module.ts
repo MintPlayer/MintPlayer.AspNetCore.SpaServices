@@ -10,35 +10,35 @@ import * as translationEn from '../assets/i18n/en.json';
 import * as translationNl from '../assets/i18n/nl.json';
 
 @NgModule({
-  imports: [
-    AppModule,
-    ServerModule,
-    TranslateModule.forRoot({
-      loader: {
-        provide: TranslateLoader,
-        useFactory: () => {
-          return new TranslateJsonLoader();
-        }
-      }
-    })
-  ],
-  bootstrap: [AppComponent],
+	imports: [
+		AppModule,
+		ServerModule,
+		TranslateModule.forRoot({
+			loader: {
+				provide: TranslateLoader,
+				useFactory: () => {
+					return new TranslateJsonLoader();
+				}
+			}
+		})
+	],
+	bootstrap: [AppComponent],
 })
-export class AppServerModule {}
+export class AppServerModule { }
 
 
 export class TranslateJsonLoader implements TranslateLoader {
-  constructor() {
-  }
+	constructor() {
+	}
 
-  public getTranslation(lang: string) {
-    switch (lang) {
-      case 'nl': {
-        return of(translationNl);
-      } break;
-      default: {
-        return of(translationEn);
-      } break;
-    }
-  }
+	public getTranslation(lang: string) {
+		switch (lang) {
+			case 'nl': {
+				return of(translationNl);
+			} break;
+			default: {
+				return of(translationEn);
+			} break;
+		}
+	}
 }

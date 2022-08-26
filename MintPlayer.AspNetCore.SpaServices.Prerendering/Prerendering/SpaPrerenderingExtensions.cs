@@ -21,264 +21,263 @@ using System.Text;
 using System.Threading.Tasks;
 using MintPlayer.AspNetCore.SpaServices.Prerendering.Extensions;
 
-namespace MintPlayer.AspNetCore.SpaServices.Prerendering
+namespace MintPlayer.AspNetCore.SpaServices.Prerendering;
+
+/// <summary>
+/// Extension methods for configuring prerendering of a Single Page Application.
+/// </summary>
+[Obsolete("Prerendering is no longer supported out of box")]
+public static class SpaPrerenderingExtensions
 {
-    /// <summary>
-    /// Extension methods for configuring prerendering of a Single Page Application.
-    /// </summary>
-    [Obsolete("Prerendering is no longer supported out of box")]
-    public static class SpaPrerenderingExtensions
-    {
-        /// <summary>
-        /// Enables server-side prerendering middleware for a Single Page Application.
-        /// </summary>
-        /// <param name="spaBuilder">The <see cref="ISpaBuilder"/>.</param>
-        /// <param name="configuration">Supplies configuration for the prerendering middleware.</param>
-        public static IApplicationBuilder UseSpaPrerendering(
-            this ISpaBuilder spaBuilder,
-            Action<MintPlayer.AspNetCore.Builder.SpaPrerenderingOptions> configuration)
-        {
-            if (spaBuilder == null)
-            {
-                throw new ArgumentNullException(nameof(spaBuilder));
-            }
+	/// <summary>
+	/// Enables server-side prerendering middleware for a Single Page Application.
+	/// </summary>
+	/// <param name="spaBuilder">The <see cref="ISpaBuilder"/>.</param>
+	/// <param name="configuration">Supplies configuration for the prerendering middleware.</param>
+	public static IApplicationBuilder UseSpaPrerendering(
+		this ISpaBuilder spaBuilder,
+		Action<MintPlayer.AspNetCore.Builder.SpaPrerenderingOptions> configuration)
+	{
+		if (spaBuilder == null)
+		{
+			throw new ArgumentNullException(nameof(spaBuilder));
+		}
 
-            if (configuration == null)
-            {
-                throw new ArgumentNullException(nameof(configuration));
-            }
+		if (configuration == null)
+		{
+			throw new ArgumentNullException(nameof(configuration));
+		}
 
-            var options = new Builder.SpaPrerenderingOptions();
-            configuration.Invoke(options);
+		var options = new Builder.SpaPrerenderingOptions();
+		configuration.Invoke(options);
 
-            var capturedBootModulePath = options.BootModulePath;
-            if (string.IsNullOrEmpty(capturedBootModulePath))
-            {
-                throw new InvalidOperationException($"To use {nameof(UseSpaPrerendering)}, you " +
-                    $"must set a nonempty value on the ${nameof(SpaPrerenderingOptions.BootModulePath)} " +
-                    $"property on the ${nameof(SpaPrerenderingOptions)}.");
-            }
+		var capturedBootModulePath = options.BootModulePath;
+		if (string.IsNullOrEmpty(capturedBootModulePath))
+		{
+			throw new InvalidOperationException($"To use {nameof(UseSpaPrerendering)}, you " +
+				$"must set a nonempty value on the ${nameof(SpaPrerenderingOptions.BootModulePath)} " +
+				$"property on the ${nameof(SpaPrerenderingOptions)}.");
+		}
 
-            //// If we're building on demand, start that process in the background now
-            //var buildOnDemandTask = options.BootModuleBuilder?.Build(spaBuilder);
-            var isBuildStarted = false;
+		//// If we're building on demand, start that process in the background now
+		//var buildOnDemandTask = options.BootModuleBuilder?.Build(spaBuilder);
+		var isBuildStarted = false;
 
-            // Get all the necessary context info that will be used for each prerendering call
-            var applicationBuilder = spaBuilder.ApplicationBuilder;
-            var serviceProvider = applicationBuilder.ApplicationServices;
-            var nodeServices = GetNodeServices(serviceProvider);
-            var applicationStoppingToken = serviceProvider.GetRequiredService<IHostApplicationLifetime>()
-                .ApplicationStopping;
-            var applicationBasePath = serviceProvider.GetRequiredService<IWebHostEnvironment>()
-                .ContentRootPath;
-            var moduleExport = new JavaScriptModuleExport(capturedBootModulePath);
-            var excludePathStrings = (options.ExcludeUrls ?? Array.Empty<string>())
-                .Select(url => new PathString(url))
-                .ToArray();
-            var buildTimeout = spaBuilder.Options.StartupTimeout;
+		// Get all the necessary context info that will be used for each prerendering call
+		var applicationBuilder = spaBuilder.ApplicationBuilder;
+		var serviceProvider = applicationBuilder.ApplicationServices;
+		var nodeServices = GetNodeServices(serviceProvider);
+		var applicationStoppingToken = serviceProvider.GetRequiredService<IHostApplicationLifetime>()
+			.ApplicationStopping;
+		var applicationBasePath = serviceProvider.GetRequiredService<IWebHostEnvironment>()
+			.ContentRootPath;
+		var moduleExport = new JavaScriptModuleExport(capturedBootModulePath);
+		var excludePathStrings = (options.ExcludeUrls ?? Array.Empty<string>())
+			.Select(url => new PathString(url))
+			.ToArray();
+		var buildTimeout = spaBuilder.Options.StartupTimeout;
 
-            applicationBuilder.Use(async (context, next) =>
-            {
-                context.Response.OnStarting(async () =>
-                {
-                    if (options.OnPrepareResponse != null)
-                    {
-                        await options.OnPrepareResponse(context);
-                    }
-                });
+		applicationBuilder.Use(async (context, next) =>
+		{
+			context.Response.OnStarting(async () =>
+			{
+				if (options.OnPrepareResponse != null)
+				{
+					await options.OnPrepareResponse(context);
+				}
+			});
 
-                // If this URL is excluded, skip prerendering.
-                // This is typically used to ensure that static client-side resources
-                // (e.g., /dist/*.css) are served normally or through SPA development
-                // middleware, and don't return the prerendered index.html page.
-                foreach (var excludePathString in excludePathStrings)
-                {
-                    if (context.Request.Path.StartsWithSegments(excludePathString))
-                    {
-                        await next();
-                        return;
-                    }
-                }
+			// If this URL is excluded, skip prerendering.
+			// This is typically used to ensure that static client-side resources
+			// (e.g., /dist/*.css) are served normally or through SPA development
+			// middleware, and don't return the prerendered index.html page.
+			foreach (var excludePathString in excludePathStrings)
+			{
+				if (context.Request.Path.StartsWithSegments(excludePathString))
+				{
+					await next();
+					return;
+				}
+			}
 
-                if ((options.BootModuleBuilder != null) && !isBuildStarted)
-                {
-                    isBuildStarted = true;
-                    Console.WriteLine("Building server BootModule");
-                    await options.BootModuleBuilder.Build(spaBuilder);
-                    Console.WriteLine("Finished building server BootModule");
-                }
+			if ((options.BootModuleBuilder != null) && !isBuildStarted)
+			{
+				isBuildStarted = true;
+				Console.WriteLine("Building server BootModule");
+				await options.BootModuleBuilder.Build(spaBuilder);
+				Console.WriteLine("Finished building server BootModule");
+			}
 
-                // It's no good if we try to return a 304. We need to capture the actual
-                // HTML content so it can be passed as a template to the prerenderer.
-                RemoveConditionalRequestHeaders(context.Request);
+			// It's no good if we try to return a 304. We need to capture the actual
+			// HTML content so it can be passed as a template to the prerenderer.
+			RemoveConditionalRequestHeaders(context.Request);
 
-                // Make sure we're not capturing compressed content, because then we'd have
-                // to decompress it. Since this sub-request isn't leaving the machine, there's
-                // little to no benefit in having compression on it.
-                var originalAcceptEncodingValue = GetAndRemoveAcceptEncodingHeader(context.Request);
+			// Make sure we're not capturing compressed content, because then we'd have
+			// to decompress it. Since this sub-request isn't leaving the machine, there's
+			// little to no benefit in having compression on it.
+			var originalAcceptEncodingValue = GetAndRemoveAcceptEncodingHeader(context.Request);
 
-                // Capture the non-prerendered responses, which in production will typically only
-                // be returning the default SPA index.html page (because other resources will be
-                // served statically from disk). We will use this as a template in which to inject
-                // the prerendered output.
-                using (var outputBuffer = new MemoryStream())
-                {
-                    var originalResponseStream = context.Response.Body;
-                    context.Response.Body = outputBuffer;
+			// Capture the non-prerendered responses, which in production will typically only
+			// be returning the default SPA index.html page (because other resources will be
+			// served statically from disk). We will use this as a template in which to inject
+			// the prerendered output.
+			using (var outputBuffer = new MemoryStream())
+			{
+				var originalResponseStream = context.Response.Body;
+				context.Response.Body = outputBuffer;
 
-                    try
-                    {
-                        await next();
-                        outputBuffer.Seek(0, SeekOrigin.Begin);
-                    }
-                    finally
-                    {
-                        context.Response.Body = originalResponseStream;
+				try
+				{
+					await next();
+					outputBuffer.Seek(0, SeekOrigin.Begin);
+				}
+				finally
+				{
+					context.Response.Body = originalResponseStream;
 
-                        if (!string.IsNullOrEmpty(originalAcceptEncodingValue))
-                        {
-                            context.Request.Headers[HeaderNames.AcceptEncoding] = originalAcceptEncodingValue;
-                        }
-                    }
+					if (!string.IsNullOrEmpty(originalAcceptEncodingValue))
+					{
+						context.Request.Headers[HeaderNames.AcceptEncoding] = originalAcceptEncodingValue;
+					}
+				}
 
-                    // If it isn't an HTML page that we can use as the template for prerendering,
-                    //  - ... because it's not text/html
-                    //  - ... or because it's an error
-                    // then prerendering doesn't apply to this request, so just pass through the
-                    // response as-is. Note that the non-text/html case is not an error: this is
-                    // typically how the SPA dev server responses for static content are returned
-                    // in development mode.
-                    var canPrerender = IsSuccessStatusCode(context.Response.StatusCode)
-                        && IsHtmlContentType(context.Response.ContentType);
-                    if (!canPrerender)
-                    {
-                        await outputBuffer.CopyToAsync(context.Response.Body);
-                        return;
-                    }
+				// If it isn't an HTML page that we can use as the template for prerendering,
+				//  - ... because it's not text/html
+				//  - ... or because it's an error
+				// then prerendering doesn't apply to this request, so just pass through the
+				// response as-is. Note that the non-text/html case is not an error: this is
+				// typically how the SPA dev server responses for static content are returned
+				// in development mode.
+				var canPrerender = IsSuccessStatusCode(context.Response.StatusCode)
+					&& IsHtmlContentType(context.Response.ContentType);
+				if (!canPrerender)
+				{
+					await outputBuffer.CopyToAsync(context.Response.Body);
+					return;
+				}
 
-                    // Most prerendering logic will want to know about the original, unprerendered
-                    // HTML that the client would be getting otherwise. Typically this is used as
-                    // a template from which the fully prerendered page can be generated.
-                    var customData = new Dictionary<string, object>
-                    {
-                        { "originalHtml", Encoding.UTF8.GetString(outputBuffer.GetBuffer()) }
-                    };
+				// Most prerendering logic will want to know about the original, unprerendered
+				// HTML that the client would be getting otherwise. Typically this is used as
+				// a template from which the fully prerendered page can be generated.
+				var customData = new Dictionary<string, object>
+				{
+					{ "originalHtml", Encoding.UTF8.GetString(outputBuffer.GetBuffer()) }
+				};
 
-                    // If the developer wants to use custom logic to pass arbitrary data to the
-                    // prerendering JS code (e.g., to pass through cookie data), now's their chance
-                    var spaPrerenderingService = context.RequestServices.GetService<Services.ISpaPrerenderingService>();
-                    if (spaPrerenderingService != null)
-                    {
-                        await spaPrerenderingService.OnSupplyData(context, customData);
-                    }
+				// If the developer wants to use custom logic to pass arbitrary data to the
+				// prerendering JS code (e.g., to pass through cookie data), now's their chance
+				var spaPrerenderingService = context.RequestServices.GetService<Services.ISpaPrerenderingService>();
+				if (spaPrerenderingService != null)
+				{
+					await spaPrerenderingService.OnSupplyData(context, customData);
+				}
 
-                    var (unencodedAbsoluteUrl, unencodedPathAndQuery)
-                        = GetUnencodedUrlAndPathQuery(context);
-                    var renderResult = await Prerenderer.RenderToString(
-                        applicationBasePath,
-                        nodeServices,
-                        applicationStoppingToken,
-                        moduleExport,
-                        unencodedAbsoluteUrl,
-                        unencodedPathAndQuery,
-                        customDataParameter: customData,
-                        timeoutMilliseconds: 0,
-                        requestPathBase: context.Request.PathBase.ToString());
+				var (unencodedAbsoluteUrl, unencodedPathAndQuery)
+					= GetUnencodedUrlAndPathQuery(context);
+				var renderResult = await Prerenderer.RenderToString(
+					applicationBasePath,
+					nodeServices,
+					applicationStoppingToken,
+					moduleExport,
+					unencodedAbsoluteUrl,
+					unencodedPathAndQuery,
+					customDataParameter: customData,
+					timeoutMilliseconds: 0,
+					requestPathBase: context.Request.PathBase.ToString());
 
-                    await ServePrerenderResult(context, renderResult);
-                }
-            });
-            return applicationBuilder;
-        }
+				await ServePrerenderResult(context, renderResult);
+			}
+		});
+		return applicationBuilder;
+	}
 
-        private static bool IsHtmlContentType(string contentType)
-        {
-            if (string.Equals(contentType, "text/html", StringComparison.Ordinal))
-            {
-                return true;
-            }
+	private static bool IsHtmlContentType(string contentType)
+	{
+		if (string.Equals(contentType, "text/html", StringComparison.Ordinal))
+		{
+			return true;
+		}
 
-            return contentType != null
-                && contentType.StartsWith("text/html;", StringComparison.Ordinal);
-        }
+		return contentType != null
+			&& contentType.StartsWith("text/html;", StringComparison.Ordinal);
+	}
 
-        private static bool IsSuccessStatusCode(int statusCode)
-            => statusCode >= 200 && statusCode < 300;
+	private static bool IsSuccessStatusCode(int statusCode)
+		=> statusCode >= 200 && statusCode < 300;
 
-        private static void RemoveConditionalRequestHeaders(HttpRequest request)
-        {
-            request.Headers.Remove(HeaderNames.IfMatch);
-            request.Headers.Remove(HeaderNames.IfModifiedSince);
-            request.Headers.Remove(HeaderNames.IfNoneMatch);
-            request.Headers.Remove(HeaderNames.IfUnmodifiedSince);
-            request.Headers.Remove(HeaderNames.IfRange);
-        }
+	private static void RemoveConditionalRequestHeaders(HttpRequest request)
+	{
+		request.Headers.Remove(HeaderNames.IfMatch);
+		request.Headers.Remove(HeaderNames.IfModifiedSince);
+		request.Headers.Remove(HeaderNames.IfNoneMatch);
+		request.Headers.Remove(HeaderNames.IfUnmodifiedSince);
+		request.Headers.Remove(HeaderNames.IfRange);
+	}
 
-        private static string GetAndRemoveAcceptEncodingHeader(HttpRequest request)
-        {
-            var headers = request.Headers;
-            var value = (string)null;
+	private static string GetAndRemoveAcceptEncodingHeader(HttpRequest request)
+	{
+		var headers = request.Headers;
+		var value = (string)null;
 
-            if (headers.ContainsKey(HeaderNames.AcceptEncoding))
-            {
-                value = headers[HeaderNames.AcceptEncoding];
-                headers.Remove(HeaderNames.AcceptEncoding);
-            }
+		if (headers.ContainsKey(HeaderNames.AcceptEncoding))
+		{
+			value = headers[HeaderNames.AcceptEncoding];
+			headers.Remove(HeaderNames.AcceptEncoding);
+		}
 
-            return value;
-        }
+		return value;
+	}
 
-        private static (string, string) GetUnencodedUrlAndPathQuery(HttpContext httpContext)
-        {
-            // This is a duplicate of code from Prerenderer.cs in the SpaServices package.
-            // Once the SpaServices.Extension package implementation gets merged back into
-            // SpaServices, this duplicate can be removed. To remove this, change the code
-            // above that calls Prerenderer.RenderToString to use the internal overload
-            // that takes an HttpContext instead of a url/path+query pair.
-            var requestFeature = httpContext.Features.Get<IHttpRequestFeature>();
-            var unencodedPathAndQuery = requestFeature.RawTarget;
-            var request = httpContext.Request;
-            var unencodedAbsoluteUrl = $"{request.Scheme}://{request.Host}{unencodedPathAndQuery}";
-            return (unencodedAbsoluteUrl, unencodedPathAndQuery);
-        }
+	private static (string, string) GetUnencodedUrlAndPathQuery(HttpContext httpContext)
+	{
+		// This is a duplicate of code from Prerenderer.cs in the SpaServices package.
+		// Once the SpaServices.Extension package implementation gets merged back into
+		// SpaServices, this duplicate can be removed. To remove this, change the code
+		// above that calls Prerenderer.RenderToString to use the internal overload
+		// that takes an HttpContext instead of a url/path+query pair.
+		var requestFeature = httpContext.Features.Get<IHttpRequestFeature>();
+		var unencodedPathAndQuery = requestFeature.RawTarget;
+		var request = httpContext.Request;
+		var unencodedAbsoluteUrl = $"{request.Scheme}://{request.Host}{unencodedPathAndQuery}";
+		return (unencodedAbsoluteUrl, unencodedPathAndQuery);
+	}
 
-        private static async Task ServePrerenderResult(HttpContext context, RenderToStringResult renderResult)
-        {
-            context.Response.Clear();
+	private static async Task ServePrerenderResult(HttpContext context, RenderToStringResult renderResult)
+	{
+		context.Response.Clear();
 
-            if (!string.IsNullOrEmpty(renderResult.RedirectUrl))
-            {
-                var permanentRedirect = renderResult.StatusCode.GetValueOrDefault() == 301;
-                context.Response.Redirect(renderResult.RedirectUrl, permanentRedirect);
-            }
-            else
-            {
-                // The Globals property exists for back-compatibility but is meaningless
-                // for prerendering that returns complete HTML pages
-                if (renderResult.Globals != null)
-                {
-                    throw new InvalidOperationException($"{nameof(renderResult.Globals)} is not " +
-                        $"supported when prerendering via {nameof(UseSpaPrerendering)}(). Instead, " +
-                        $"your prerendering logic should return a complete HTML page, in which you " +
-                        $"embed any information you wish to return to the client.");
-                }
+		if (!string.IsNullOrEmpty(renderResult.RedirectUrl))
+		{
+			var permanentRedirect = renderResult.StatusCode.GetValueOrDefault() == 301;
+			context.Response.Redirect(renderResult.RedirectUrl, permanentRedirect);
+		}
+		else
+		{
+			// The Globals property exists for back-compatibility but is meaningless
+			// for prerendering that returns complete HTML pages
+			if (renderResult.Globals != null)
+			{
+				throw new InvalidOperationException($"{nameof(renderResult.Globals)} is not " +
+					$"supported when prerendering via {nameof(UseSpaPrerendering)}(). Instead, " +
+					$"your prerendering logic should return a complete HTML page, in which you " +
+					$"embed any information you wish to return to the client.");
+			}
 
-                if (renderResult.StatusCode.HasValue)
-                {
-                    context.Response.StatusCode = renderResult.StatusCode.Value;
-                }
+			if (renderResult.StatusCode.HasValue)
+			{
+				context.Response.StatusCode = renderResult.StatusCode.Value;
+			}
 
-                context.Response.ContentType = "text/html";
-                await context.Response.WriteAsync(renderResult.Html);
-            }
-        }
+			context.Response.ContentType = "text/html";
+			await context.Response.WriteAsync(renderResult.Html);
+		}
+	}
 
-        private static INodeServices GetNodeServices(IServiceProvider serviceProvider)
-        {
-            // Use the registered instance, or create a new private instance if none is registered
-            var instance = (INodeServices)serviceProvider.GetService(typeof(INodeServices));
-            return instance ?? NodeServicesFactory.CreateNodeServices(
-                new NodeServicesOptions(serviceProvider));
-        }
-    }
+	private static INodeServices GetNodeServices(IServiceProvider serviceProvider)
+	{
+		// Use the registered instance, or create a new private instance if none is registered
+		var instance = (INodeServices)serviceProvider.GetService(typeof(INodeServices));
+		return instance ?? NodeServicesFactory.CreateNodeServices(
+			new NodeServicesOptions(serviceProvider));
+	}
 }

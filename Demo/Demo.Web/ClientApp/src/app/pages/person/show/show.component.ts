@@ -1,44 +1,52 @@
-import { Component, OnInit, Inject } from '@angular/core';
+import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Title } from '@angular/platform-browser';
+import { isPlatformServer } from '@angular/common';
 
 @Component({
-  selector: 'app-person-show',
-  templateUrl: './show.component.html',
-  styleUrls: ['./show.component.scss']
+	selector: 'app-person-show',
+	templateUrl: './show.component.html',
+	styleUrls: ['./show.component.scss']
 })
 export class PersonShowComponent implements OnInit {
 
-  constructor(private personService: PersonService, @Inject('SERVERSIDE') private serverSide: boolean, @Inject('PERSON') private personInj: Person, private router: Router, private route: ActivatedRoute, private titleService: Title) {
-    if (serverSide === false) {
-      console.log(this.route.paramMap);
-      var id = parseInt(this.route.snapshot.paramMap.get('id'));
-      this.personService.getPerson(id, true).subscribe(person => {
-        this.setPerson(person);
-      });
-    } else {
-      this.setPerson(personInj);
-    }
-  }
+	constructor(private personService: PersonService, @Inject(PLATFORM_ID) private platformId: Object, @Inject('PERSON') private personInj: Person, private router: Router, private route: ActivatedRoute, private titleService: Title) {
+		if (isPlatformServer(platformId)) {
+			this.setPerson(personInj);
+		} else {
+			console.log(this.route.paramMap);
+			const strId = this.route.snapshot.paramMap.get('id');
+			if (strId) {
+				const id = parseInt(strId);
+				this.personService.getPerson(id, true).subscribe(person => {
+					this.setPerson(person);
+				});
+			}
+		}
+	}
 
-  private setPerson(person: Person) {
-    this.person = person;
-    if (person !== null) {
-      this.titleService.setTitle(`${person.firstName} ${person.lastName}`);
-    }
-  }
+	private setPerson(person: Person) {
+		this.person = person;
+		if (person !== null) {
+			this.titleService.setTitle(`${person.firstName} ${person.lastName}`);
+		}
+	}
 
-  public deletePerson() {
-    this.personService.deletePerson(this.person).subscribe(() => {
-      this.router.navigate(['/person']);
-    });
-  }
+	public deletePerson() {
+		this.personService.deletePerson(this.person).subscribe(() => {
+			this.router.navigate(['/person']);
+		});
+	}
 
-  person: Person = new Person();
+	person: Person = {
+		id: 0,
+		firstName: '',
+		lastName: '',
+	};
 
-  ngOnInit() {
-  }
+	ngOnInit() {
+	}
 
 }
