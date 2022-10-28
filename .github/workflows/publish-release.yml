@@ -1,13 +1,14 @@
-name: publish-master
+name: publish-release
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - 'release/**'
 
 jobs:
   build:
 
-    name: publish-master
+    name: publish-release
     runs-on: windows-latest
 
     steps:

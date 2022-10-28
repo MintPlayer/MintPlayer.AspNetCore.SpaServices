@@ -1,21 +1,15 @@
-name: build-any
+name: build-master
 
 on:
   push:
-    branches:
-      - '**'
-      - '!master'
-      - '!release/**'
+    branches: [ master ]
 
 jobs:
   build:
 
-    name: build-any
-    runs-on: ubuntu-latest
+    name: build-master
+    runs-on: windows-latest
 
-    permissions: 
-      contents: read
-    
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -29,6 +23,9 @@ jobs:
       env:
         NUGET_AUTH_TOKEN: '%NUGET_AUTH_TOKEN%'
     
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1.1
+    
     - name: Install dependencies
       run: dotnet restore
       env:
@@ -40,3 +37,13 @@ jobs:
     - name: Test
       run: dotnet test --no-restore --verbosity normal
       
+    #- name: Pack
+    #  run: dotnet pack --no-build --configuration Release
+    #  
+    #- name: PushNuget
+    #  run: dotnet nuget push **/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.PUBLISH_TO_NUGET_ORG }} --skip-duplicate
+    #  
+    #- name: PushGithub
+    #  run: nuget.exe push "**/*.nupkg" -NoSymbols -SkipDuplicate
+    #  env:
+    #    NUGET_AUTH_TOKEN: ${{ github.token }}
