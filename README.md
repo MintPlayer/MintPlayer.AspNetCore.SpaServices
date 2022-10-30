@@ -1,5 +1,6 @@
 # MintPlayer.AspNetCore.SpaServices.Routing
 [![NuGet Version](https://img.shields.io/nuget/v/MintPlayer.AspNetCore.SpaServices.Routing.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing)
+[![NuGet Version](https://img.shields.io/nuget/vpre/MintPlayer.AspNetCore.SpaServices.Routing.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing)
 [![NuGet](https://img.shields.io/nuget/dt/MintPlayer.AspNetCore.SpaServices.Routing.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing)
 [![Build Status](https://travis-ci.org/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing.svg?branch=master)](https://travis-ci.org/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing)
 ![.NET Core](https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing/workflows/.NET%20Core/badge.svg)
