@@ -1,9 +1,9 @@
 {
   "sdk": {
-    "version": "6.0.301"
+    "version": "7.0.100-rc.2.22477.23"
   },
   "tools": {
-    "dotnet": "6.0.301",
+    "dotnet": "7.0.100-rc.2.22472.11",
     "runtimes": {
       "dotnet/x64": [
         "$(MicrosoftNETCoreAppInternalPackageVersion)"
@@ -14,6 +14,6 @@
     }
   },
   "msbuild-sdks": {
-    "Yarn.MSBuild": "1.15.2"
+    "Yarn.MSBuild": "1.22.19"
   }
 }
