@@ -13,6 +13,7 @@ import { isPlatformServer } from '@angular/common';
 export class PersonShowComponent implements OnInit {
 
 	constructor(private personService: PersonService, @Inject(PLATFORM_ID) private platformId: Object, @Inject('PERSON') private personInj: Person, private router: Router, private route: ActivatedRoute, private titleService: Title) {
+		debugger;
 		if (isPlatformServer(platformId)) {
 			this.setPerson(personInj);
 		} else {
