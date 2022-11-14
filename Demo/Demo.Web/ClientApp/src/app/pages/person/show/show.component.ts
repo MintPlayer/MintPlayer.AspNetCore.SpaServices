@@ -1,4 +1,4 @@
-import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, Inject, PLATFORM_ID } from '@angular/core';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -10,10 +10,9 @@ import { isPlatformServer } from '@angular/common';
 	templateUrl: './show.component.html',
 	styleUrls: ['./show.component.scss']
 })
-export class PersonShowComponent implements OnInit {
+export class PersonShowComponent {
 
 	constructor(private personService: PersonService, @Inject(PLATFORM_ID) private platformId: Object, @Inject('PERSON') private personInj: Person, private router: Router, private route: ActivatedRoute, private titleService: Title) {
-		debugger;
 		if (isPlatformServer(platformId)) {
 			this.setPerson(personInj);
 		} else {
@@ -46,8 +45,5 @@ export class PersonShowComponent implements OnInit {
 		firstName: '',
 		lastName: '',
 	};
-
-	ngOnInit() {
-	}
 
 }

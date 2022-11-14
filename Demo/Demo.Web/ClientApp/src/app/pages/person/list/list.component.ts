@@ -1,17 +1,15 @@
-import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, Inject, PLATFORM_ID } from '@angular/core';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
 import { Title } from '@angular/platform-browser';
-import { SlugifyPipe } from '../../../pipes/slugify.pipe';
 import { isPlatformServer } from '@angular/common';
 
 @Component({
 	selector: 'app-person-list',
 	templateUrl: './list.component.html',
-	styleUrls: ['./list.component.scss'],
-	providers: [SlugifyPipe]
+	styleUrls: ['./list.component.scss']
 })
-export class PersonListComponent implements OnInit {
+export class PersonListComponent {
 
 	constructor(private personService: PersonService, @Inject(PLATFORM_ID) private platformId: Object, @Inject('PEOPLE') private peopleInj: Person[], private titleService: Title) {
 		this.titleService.setTitle('People');
@@ -29,8 +27,5 @@ export class PersonListComponent implements OnInit {
 	}
 
 	people: Person[] = [];
-
-	ngOnInit() {
-	}
 
 }
