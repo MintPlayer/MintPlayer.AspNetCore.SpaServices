@@ -4,7 +4,6 @@ import { TranslateModule } from '@ngx-translate/core';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
-import { PagesModule } from './pages/pages.module';
 
 @NgModule({
 	declarations: [
@@ -13,7 +12,6 @@ import { PagesModule } from './pages/pages.module';
 	imports: [
 		BrowserModule.withServerTransition({ appId: 'serverApp' }),
 		AppRoutingModule,
-		PagesModule,
 		TranslateModule.forChild()
 	],
 	providers: [],
