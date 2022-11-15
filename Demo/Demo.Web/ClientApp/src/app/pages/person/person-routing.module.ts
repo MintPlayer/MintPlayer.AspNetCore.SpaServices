@@ -1,15 +1,11 @@
 import { NgModule } from '@angular/core';
 import { Routes, RouterModule } from '@angular/router';
-import { PersonListComponent } from './list/list.component';
-import { PersonCreateComponent } from './create/create.component';
-import { PersonEditComponent } from './edit/edit.component';
-import { PersonShowComponent } from './show/show.component';
 
 const routes: Routes = [
-	{ path: '', component: PersonListComponent },
-	{ path: 'create', component: PersonCreateComponent },
-	{ path: ':id/:name', component: PersonShowComponent },
-	{ path: ':id/:name/edit', component: PersonEditComponent },
+	{ path: '', loadChildren: () => import('./list/list.module').then(m => m.PersonListModule) },
+	{ path: 'create', loadChildren: () => import('./create/create.module').then(m => m.PersonCreateModule) },
+	{ path: ':id/:name', loadChildren: () => import('./show/show.module').then(m => m.PersonShowModule) },
+	{ path: ':id/:name/edit', loadChildren: () => import('./edit/edit.module').then(m => m.PersonEditModule) },
 ];
 
 @NgModule({

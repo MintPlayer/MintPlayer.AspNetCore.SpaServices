@@ -1,18 +1,19 @@
-import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformServer } from '@angular/common';
+import { Component, Inject, PLATFORM_ID } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
-import { isPlatformServer } from '@angular/common';
+import { SlugifyPipe } from '../../../pipes/slugify.pipe';
 
 @Component({
 	selector: 'app-person-edit',
 	templateUrl: './edit.component.html',
 	styleUrls: ['./edit.component.scss']
 })
-export class PersonEditComponent implements OnInit {
+export class PersonEditComponent {
 
-	constructor(private personService: PersonService, @Inject(PLATFORM_ID) private platformId: Object, @Inject('PERSON') private personInj: Person, private router: Router, private route: ActivatedRoute, private titleService: Title) {
+	constructor(private personService: PersonService, @Inject(PLATFORM_ID) private platformId: Object, @Inject('PERSON') private personInj: Person, private router: Router, private route: ActivatedRoute, private titleService: Title, private slugifyPipe: SlugifyPipe) {
 		if (isPlatformServer(platformId)) {
 			this.setPerson(personInj);
 		} else {
@@ -36,7 +37,7 @@ export class PersonEditComponent implements OnInit {
 
 	updatePerson() {
 		this.personService.updatePerson(this.person).subscribe(() => {
-			this.router.navigate(["/person", this.person.id]);
+			this.router.navigate(["/person", this.person.id, this.slugifyPipe.transform(`${this.person.firstName} ${this.person.lastName}`)]);
 		});
 	}
 
@@ -45,9 +46,6 @@ export class PersonEditComponent implements OnInit {
 		firstName: '',
 		lastName: '',
 	};
-	oldPersonName: string = "";
-
-	ngOnInit() {
-	}
+	oldPersonName: string = '';
 
 }
