@@ -8,7 +8,7 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices.Prerendering</PackageId>
-		<Version>6.1.4</Version>
+		<Version></Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<Description>This package is built as a dependency of MintPlayer.AspNetCore.SpaServices.Routing.</Description>
