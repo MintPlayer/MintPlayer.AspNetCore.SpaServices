@@ -6,17 +6,16 @@ namespace Demo.Data;
 
 internal class DemoContext : DbContext
 {
+	// From Data project:
 	// dotnet ef migrations add AddPeople
 	// dotnet ef database update
+	// From Web project:
+	// dotnet ef migrations script --output "MigrationScripts\AddPeople.sql" --context DemoContext
 
-	private readonly IConfiguration configuration;
-	public DemoContext(IConfiguration configuration) : base()
+	private readonly IConfiguration? configuration;
+	public DemoContext(IConfiguration? configuration) : base()
 	{
 		this.configuration = configuration;
-	}
-	public DemoContext()
-	{
-		configuration = null;
 	}
 
 	internal DbSet<Person> People { get; set; }

@@ -112,7 +112,7 @@ public class Startup
 			spa.UseSpaPrerendering(options =>
 			{
 				options.BootModulePath = $"{spa.Options.SourcePath}/dist/ClientApp/server/main.js";
-				options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder(npmScript: "build:ssr") : null;
+				options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder(npmScript: "build:ssr:development") : null;
 				options.ExcludeUrls = new[] { "/sockjs-node" };
 
 				options.OnPrepareResponse = (context) =>
