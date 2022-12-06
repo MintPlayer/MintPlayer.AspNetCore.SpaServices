@@ -9,7 +9,8 @@
 		"test": "ng test",
 		"dev:ssr": "ng run ClientApp:serve-ssr",
 		"serve:ssr": "node dist/ClientApp/server/main.js",
-		"build:ssr": "ng build && ng run ClientApp:server",
+		"build:ssr:development": "ng build && ng run ClientApp:server:development",
+		"build:ssr:production": "ng build --configuration production && ng run ClientApp:server:production",
 		"prerender": "ng run ClientApp:prerender"
 	},
 	"private": true,
