@@ -38,7 +38,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\MintPlayer.AspNetCore.SpaServices.Generators\MintPlayer.AspNetCore.SpaServices.Generators.csproj" />
 		<ProjectReference Include="..\..\MintPlayer.AspNetCore.SpaServices.Routing\MintPlayer.AspNetCore.SpaServices.Routing.csproj" />
 		<ProjectReference Include="..\..\MintPlayer.AspNetCore.SpaServices.Routing\MintPlayer.AspNetCore.SpaServices.Routing.csproj" />
 		<ProjectReference Include="..\Demo.Data\Demo.Data.csproj" />

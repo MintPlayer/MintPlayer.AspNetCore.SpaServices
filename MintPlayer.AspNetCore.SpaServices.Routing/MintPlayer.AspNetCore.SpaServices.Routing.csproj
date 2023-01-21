@@ -45,6 +45,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\MintPlayer.AspNetCore.SpaServices.Generators\MintPlayer.AspNetCore.SpaServices.Generators.csproj" />
 		<ProjectReference Include="..\MintPlayer.AspNetCore.SpaServices.Prerendering\MintPlayer.AspNetCore.SpaServices.Prerendering.csproj" />
 	</ItemGroup>
 

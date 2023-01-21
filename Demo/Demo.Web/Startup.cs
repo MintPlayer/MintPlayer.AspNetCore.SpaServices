@@ -20,6 +20,7 @@ public class Startup
 	public Startup(IConfiguration configuration)
 	{
 		Configuration = configuration;
+		Demo.Web.Test.HelloFrom("World");
 	}
 
 	public IConfiguration Configuration { get; }

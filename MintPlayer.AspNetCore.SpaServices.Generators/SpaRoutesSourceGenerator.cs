@@ -23,9 +23,9 @@ using System;
 
 namespace {mainMethod.ContainingNamespace.ToDisplayString()}
 {{
-    public static partial class {mainMethod.ContainingType.Name}
+    public static class Test
     {{
-        static partial void HelloFrom(string name) =>
+        public static void HelloFrom(string name) =>
             Console.WriteLine($""Generator says: Hi from '{{name}}'"");
     }}
 }}
