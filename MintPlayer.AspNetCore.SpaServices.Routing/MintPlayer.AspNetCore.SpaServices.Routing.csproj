@@ -48,4 +48,8 @@
 		<ProjectReference Include="..\MintPlayer.AspNetCore.SpaServices.Prerendering\MintPlayer.AspNetCore.SpaServices.Prerendering.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="Generators\" />
+	</ItemGroup>
+
 </Project>

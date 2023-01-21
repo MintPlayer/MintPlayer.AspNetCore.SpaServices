@@ -21,6 +21,7 @@ public class DemoSpaPrerenderingService : MintPlayer.AspNetCore.SpaServices.Prer
 
 	public Task BuildRoutes(MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaRouteBuilder routeBuilder)
 	{
+		//Demo.Web.Startup.HelloFrom();
 		routeBuilder
 		   .Route("", "home")
 		   .Group("person", "person", person_routes => person_routes
