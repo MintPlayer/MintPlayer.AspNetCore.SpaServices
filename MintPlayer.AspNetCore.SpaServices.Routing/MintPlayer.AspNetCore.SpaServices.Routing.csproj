@@ -13,10 +13,10 @@
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<Description>This package simplifies the SPA prerendering. Define your SPA routes in your service registration and check which SPA route is activated in the SupplyData callback.</Description>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-		<PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</PackageProjectUrl>
+		<PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices</PackageProjectUrl>
 		<PackageTags>ASP.NET Core, SPA prerendering, SupplyData</PackageTags>
 		<RepositoryType>Git</RepositoryType>
-		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</RepositoryUrl>
+		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices</RepositoryUrl>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<Authors>Pieterjan De Clippel</Authors>
 		<Company>MintPlayer</Company>

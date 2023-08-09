@@ -13,10 +13,10 @@
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<Description>This package contains the ASP.NET Core prerenderer.</Description>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-		<PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</PackageProjectUrl>
+		<PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices</PackageProjectUrl>
 		<PackageTags>ASP.NET Core, SPA prerendering</PackageTags>
 		<RepositoryType>Git</RepositoryType>
-		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices.Routing</RepositoryUrl>
+		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices</RepositoryUrl>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<Authors>Pieterjan De Clippel</Authors>
 		<Company>MintPlayer</Company>
