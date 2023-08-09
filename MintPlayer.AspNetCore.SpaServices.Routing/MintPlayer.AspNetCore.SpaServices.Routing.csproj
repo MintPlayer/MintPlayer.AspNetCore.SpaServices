@@ -8,7 +8,7 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices.Routing</PackageId>
-		<Version>7.0.2</Version>
+		<Version>7.0.3</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<Description>This package simplifies the SPA prerendering. Define your SPA routes in your service registration and check which SPA route is activated in the SupplyData callback.</Description>
