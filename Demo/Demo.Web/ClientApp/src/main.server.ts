@@ -62,5 +62,5 @@ export default createServerRenderer(params => {
 	return renderPromise.then(html => ({ html }));
 });
 
-export { renderModule } from '@angular/platform-server';
+
 export { AppServerModule } from './app/app.server.module';
