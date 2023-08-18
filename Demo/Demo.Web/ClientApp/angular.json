@@ -124,7 +124,9 @@
 						"development": {
 							"optimization": false,
 							"sourceMap": true,
-							"extractLicenses": false
+              "extractLicenses": false,
+              "vendorChunk": true,
+              "buildOptimizer": false
 						}
 					},
 					"defaultConfiguration": "production"
