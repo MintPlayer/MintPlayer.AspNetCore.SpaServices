@@ -11,7 +11,7 @@ using MintPlayer.AspNetCore.SpaServices.Prerendering;
 using MintPlayer.AspNetCore.SpaServices.Routing;
 using System.Linq;
 using System.Threading.Tasks;
-using WebMarkupMin.AspNetCore6;
+using WebMarkupMin.AspNetCore8;
 
 namespace Demo.Web;
 

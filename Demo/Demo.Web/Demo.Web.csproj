@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
-		<TargetFramework>net6.0</TargetFramework>
+		<TargetFramework>net8.0</TargetFramework>
 		<TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
 		<TypeScriptToolsVersion>Latest</TypeScriptToolsVersion>
 		<IsPackable>false</IsPackable>
@@ -18,12 +18,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="6.0.11" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.11">
+		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="8.0.0-rc.2.23480.2" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0-rc.2.23480.1">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="WebMarkupMin.AspNetCore6" Version="2.12.0" />
+		<PackageReference Include="WebMarkupMin.AspNetCore8" Version="2.15.1-rc2" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -38,7 +38,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\MintPlayer.AspNetCore.SpaServices.Routing\MintPlayer.AspNetCore.SpaServices.Routing.csproj" />
 		<ProjectReference Include="..\..\MintPlayer.AspNetCore.SpaServices.Routing\MintPlayer.AspNetCore.SpaServices.Routing.csproj" />
 		<ProjectReference Include="..\Demo.Data\Demo.Data.csproj" />
 	</ItemGroup>
