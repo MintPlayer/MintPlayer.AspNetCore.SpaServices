@@ -7,11 +7,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MintPlayer.AspNetCore.SpaSe
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Demo", "Demo", "{D7858C2C-8A8E-4D30-A0A5-4BE23EE3C4FB}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Demo.Web", "Demo\Demo.Web\Demo.Web.csproj", "{8934F9B7-AF05-46FF-B332-BA3DFEC5EFCF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Demo.Web", "Demo\Prerendering\Demo.Web\Demo.Web.csproj", "{8934F9B7-AF05-46FF-B332-BA3DFEC5EFCF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Demo.Data", "Demo\Demo.Data\Demo.Data.csproj", "{626AA6A7-6917-40F8-B340-FFD7E7EF56D5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Demo.Data", "Demo\Prerendering\Demo.Data\Demo.Data.csproj", "{626AA6A7-6917-40F8-B340-FFD7E7EF56D5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Demo.Dtos", "Demo\Demo.Dtos\Demo.Dtos.csproj", "{6ADDD076-B94D-4402-AE34-98939CA4F103}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Demo.Dtos", "Demo\Prerendering\Demo.Dtos\Demo.Dtos.csproj", "{6ADDD076-B94D-4402-AE34-98939CA4F103}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MintPlayer.AspNetCore.SpaServices.Prerendering", "MintPlayer.AspNetCore.SpaServices.Prerendering\MintPlayer.AspNetCore.SpaServices.Prerendering.csproj", "{1ED79552-3793-49A1-A2FA-D04314C1B350}"
 EndProject
