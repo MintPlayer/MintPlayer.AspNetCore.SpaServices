@@ -1,0 +1,21 @@
+<bs-navbar [color]="colors.dark" [breakpoint]="'lg'" #nav>
+  <bs-navbar-toggler *bsExpandButton="let state" [state]="state" [toggleOnClick]="false"></bs-navbar-toggler>
+  <bs-navbar-brand>
+    <a [routerLink]='["/"]'>
+      <span class="brand d-block px-3 pb-3 pt-3">
+        XSRF Demo
+      </span>
+    </a>
+  </bs-navbar-brand>
+  <bs-navbar-nav [collapse]="true">
+    <bs-navbar-item [routerLinkActive]="['link-active']" [routerLinkActiveOptions]="{exact: true}">
+      <a [routerLink]='["/"]'>Home</a>
+    </bs-navbar-item>
+    <bs-navbar-item [routerLinkActive]="['link-active']" [routerLinkActiveOptions]="{exact: true}">
+      <a [routerLink]='["/counter"]'>Counter</a>
+    </bs-navbar-item>
+    <bs-navbar-item [routerLinkActive]="['link-active']" [routerLinkActiveOptions]="{exact: true}">
+      <a [routerLink]='["/fetch-data"]'>Fetch data</a>
+    </bs-navbar-item>
+  </bs-navbar-nav>
+</bs-navbar>

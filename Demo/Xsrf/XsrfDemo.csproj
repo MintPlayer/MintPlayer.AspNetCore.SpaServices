@@ -9,37 +9,26 @@
 		<DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules\**</DefaultItemExcludes>
 
 		<!-- Set this to true if you enable server-side prerendering -->
-		<BuildServerSideRenderer>true</BuildServerSideRenderer>
-	</PropertyGroup>
-
-	<PropertyGroup>
-		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-		<IsPackable>false</IsPackable>
+		<BuildServerSideRenderer>false</BuildServerSideRenderer>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="8.0.0" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-		<PackageReference Include="WebMarkupMin.AspNetCore8" Version="2.15.1-rc2" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<!-- Don't publish the SPA source files, but do show them in the project files list -->
-		<Compile Remove="ClientApp\**" />
 		<Content Remove="$(SpaRoot)**" />
-		<Content Remove="ClientApp\**" />
-		<EmbeddedResource Remove="ClientApp\**" />
 		<None Remove="$(SpaRoot)**" />
-		<None Remove="ClientApp\**" />
 		<None Include="$(SpaRoot)**" Exclude="$(SpaRoot)node_modules\**" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\MintPlayer.AspNetCore.SpaServices.Routing\MintPlayer.AspNetCore.SpaServices.Routing.csproj" />
-		<ProjectReference Include="..\Demo.Data\Demo.Data.csproj" />
+	  <ProjectReference Include="..\..\MintPlayer.AspNetCore.SpaServices.Xsrf\MintPlayer.AspNetCore.SpaServices.Xsrf.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="ClientApp\src\app\components\" />
 	</ItemGroup>
 
 	<Target Name="DebugEnsureNodeEnv" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">
@@ -55,8 +44,8 @@
 	<Target Name="PublishRunWebpack" AfterTargets="ComputeFilesToPublish">
 		<!-- As part of publishing, ensure the JS resources are freshly built in production mode -->
 		<Exec WorkingDirectory="$(SpaRoot)" Command="npm install" />
-		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build -- --configuration production" Condition=" '$(BuildServerSideRenderer)' != 'true' " />
-		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:ssr:production" Condition=" '$(BuildServerSideRenderer)' == 'true' " />
+		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build -- --prod" />
+		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:ssr -- --prod" Condition=" '$(BuildServerSideRenderer)' == 'true' " />
 
 		<!-- Include the newly-built files in the publish output -->
 		<ItemGroup>
