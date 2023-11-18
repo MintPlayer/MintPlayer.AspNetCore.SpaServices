@@ -24,7 +24,7 @@ namespace MintPlayer.AspNetCore.XsrfForSpas.Demo
             // In production, the Angular files will be served from this directory
             services.AddSpaStaticFiles(configuration =>
             {
-                configuration.RootPath = "ClientApp/dist";
+                configuration.RootPath = "ClientApp/dist/client-app/browser";
             });
         }
 
@@ -67,11 +67,12 @@ namespace MintPlayer.AspNetCore.XsrfForSpas.Demo
 
                 spa.Options.SourcePath = "ClientApp";
 
-                if (env.IsDevelopment())
-                {
-                    spa.UseAngularCliServer(npmScript: "start");
-                }
-            });
+				if (env.IsDevelopment())
+				{
+					spa.UseProxyToSpaDevelopmentServer("http://localhost:4200");
+					//spa.UseAngularCliServer(npmScript: "start");
+				}
+			});
         }
     }
 }
