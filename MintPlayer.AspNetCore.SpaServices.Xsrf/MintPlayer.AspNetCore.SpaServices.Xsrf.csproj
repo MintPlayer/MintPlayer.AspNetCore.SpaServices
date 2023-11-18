@@ -7,21 +7,27 @@
 		<OutputType>Library</OutputType>
 
 		<IsPackable>true</IsPackable>
+		<PackageId>MintPlayer.AspNetCore.SpaServices.Xsrf</PackageId>
 		<Version>8.0.0</Version>
-		<PackageId>MintPlayer.AspNetCore.XsrfForSpas</PackageId>
-		<PackageTags>XSRF, Single-page application</PackageTags>
-		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-		<PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.XsrfForSpas/tree/master/MintPlayer.AspNetCore.XsrfForSpas</PackageProjectUrl>
-
-		<Authors>Pieterjan De Clippel</Authors>
-		<Company>MintPlayer</Company>
-		<Product>MintPlayer.AspNetCore.XsrfForSpas</Product>
-		<Description>This package contains an ASP.NET Core middleware that manages CSRF for single-page applications.</Description>
-		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.XsrfForSpas</RepositoryUrl>
-		<RepositoryType>Git</RepositoryType>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+
+		<Description>This package contains an ASP.NET Core middleware that manages CSRF for single-page applications.</Description>
+		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices/MintPlayer.AspNetCore.SpaServices.Xsrf</PackageProjectUrl>
+		<PackageTags>XSRF, Single-page application</PackageTags>
+		<RepositoryType>Git</RepositoryType>
+		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices</RepositoryUrl>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<Authors>Pieterjan De Clippel</Authors>
+		<Company>MintPlayer</Company>
+		<Product>MintPlayer.AspNetCore.SpaServices.Xsrf</Product>
+	</PropertyGroup>
+
+	<!-- Include XML markups in the nupkg -->
+	<PropertyGroup Condition="'$(Configuration)'=='Release'">
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>
 
 	<ItemGroup>
