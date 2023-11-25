@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
@@ -29,16 +29,6 @@
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<None Remove="Content\Node\prerenderer.js" />
-		<None Remove="Content\Node\webpack-dev-middleware.js" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<EmbeddedResource Include="Content\Node\prerenderer.js" />
-		<EmbeddedResource Include="Content\Node\webpack-dev-middleware.js" />
-	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">

@@ -1,26 +1,20 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MintPlayer.AspNetCore.NodeServices;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using MintPlayer.AspNetCore.NodeServices;
 
-namespace MintPlayer.AspNetCore.SpaServices.Prerendering;
+namespace MintPlayer.AspNetCore.SpaServices.Prerendering.Internals.Prerenderer;
 
 /// <summary>
 /// Performs server-side prerendering by invoking code in Node.js.
 /// </summary>
-[Obsolete("Use Microsoft.AspNetCore.SpaServices.Extensions")]
-public static class Prerenderer
+internal static class Prerenderer
 {
 	private static readonly object CreateNodeScriptLock = new object();
 
 	private static StringAsTempFile NodeScript;
 
-	[Obsolete("Use Microsoft.AspNetCore.SpaServices.Extensions")]
 	internal static Task<RenderToStringResult> RenderToString(
 		string applicationBasePath,
 		INodeServices nodeServices,
@@ -68,7 +62,6 @@ public static class Prerenderer
 	/// <param name="timeoutMilliseconds">The maximum duration to wait for prerendering to complete.</param>
 	/// <param name="requestPathBase">The PathBase for the currently-executing HTTP request.</param>
 	/// <returns></returns>
-	[Obsolete("Use Microsoft.AspNetCore.SpaServices.Extensions")]
 	public static Task<RenderToStringResult> RenderToString(
 		string applicationBasePath,
 		INodeServices nodeServices,

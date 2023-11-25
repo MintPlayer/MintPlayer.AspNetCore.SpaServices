@@ -29,6 +29,12 @@
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>
+	<ItemGroup>
+	  <None Remove="Content\Node\prerenderer.js" />
+	</ItemGroup>
+	<ItemGroup>
+	  <EmbeddedResource Include="Content\Node\prerenderer.js" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="8.0.0" />

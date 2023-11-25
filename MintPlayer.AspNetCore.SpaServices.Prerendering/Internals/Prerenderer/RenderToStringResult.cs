@@ -7,13 +7,12 @@ using Newtonsoft.Json.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
 
-namespace MintPlayer.AspNetCore.SpaServices.Prerendering;
+namespace MintPlayer.AspNetCore.SpaServices.Prerendering.Internals.Prerenderer;
 
 /// <summary>
 /// Describes the prerendering result returned by JavaScript code.
 /// </summary>
-[Obsolete("Use Microsoft.AspNetCore.SpaServices.Extensions")]
-public class RenderToStringResult
+internal class RenderToStringResult
 {
 	/// <summary>
 	/// If set, specifies JSON-serializable data that should be added as a set of global JavaScript variables in the document.
