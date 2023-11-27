@@ -26,7 +26,6 @@ namespace MintPlayer.AspNetCore.SpaServices.Prerendering;
 /// <summary>
 /// Extension methods for configuring prerendering of a Single Page Application.
 /// </summary>
-[Obsolete("Prerendering is no longer supported out of box")]
 public static class SpaPrerenderingExtensions
 {
 	/// <summary>

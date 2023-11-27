@@ -1,8 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -12,8 +10,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Prerendering;
 /// <summary>
 /// Describes the prerendering result returned by JavaScript code.
 /// </summary>
-[Obsolete("Use Microsoft.AspNetCore.SpaServices.Extensions")]
-public class RenderToStringResult
+internal class RenderToStringResult
 {
 	/// <summary>
 	/// If set, specifies JSON-serializable data that should be added as a set of global JavaScript variables in the document.
@@ -56,7 +53,7 @@ public class RenderToStringResult
 		foreach (var property in Globals.Properties())
 		{
 			var propertyNameJavaScriptString = JavaScriptEncoder.Default.Encode(property.Name);
-			var valueJson = property.Value.ToString(Formatting.None);
+			var valueJson = property.Value.ToString(Newtonsoft.Json.Formatting.None);
 			var valueJsonJavaScriptString = JavaScriptEncoder.Default.Encode(valueJson);
 
 			stringBuilder.AppendFormat("window[\"{0}\"] = JSON.parse(\"{1}\");",
