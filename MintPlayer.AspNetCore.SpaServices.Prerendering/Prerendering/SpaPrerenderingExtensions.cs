@@ -175,6 +175,7 @@ public static class SpaPrerenderingExtensions
 					await spaPrerenderingService.OnSupplyData(context, customData);
 				}
 
+				// Don't do SSR when we have a redirect
 				if (!IsSuccessStatusCode(context.Response.StatusCode))
 				{
 					await outputBuffer.CopyToAsync(context.Response.Body);

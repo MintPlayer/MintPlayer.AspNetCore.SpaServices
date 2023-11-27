@@ -17,9 +17,7 @@ internal static class AngularCliMiddleware
 	private const string LogCategoryName = "Microsoft.AspNetCore.SpaServices";
 	private static readonly TimeSpan RegexMatchTimeout = TimeSpan.FromSeconds(5); // This is a development-time only feature, so a very long timeout is fine
 
-	public static void Attach(
-		Abstractions.ISpaBuilder spaBuilder,
-		string scriptName)
+	public static void Attach(Abstractions.ISpaBuilder spaBuilder, string scriptName)
 	{
 		var pkgManagerCommand = spaBuilder.Options.PackageManagerCommand;
 		var sourcePath = spaBuilder.Options.SourcePath;
@@ -39,7 +37,7 @@ internal static class AngularCliMiddleware
 		var applicationStoppingToken = appBuilder.ApplicationServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
 		var logger = LoggerFinder.GetOrCreateLogger(appBuilder, LogCategoryName);
 		var diagnosticSource = appBuilder.ApplicationServices.GetRequiredService<DiagnosticSource>();
-		var angularCliServerInfoTask = StartAngularCliServerAsync(sourcePath, scriptName, pkgManagerCommand, devServerPort, logger, diagnosticSource, applicationStoppingToken);
+		var angularCliServerInfoTask = StartAngularCliServerAsync(sourcePath, scriptName, pkgManagerCommand, devServerPort, spaBuilder.Options.CliRegexes, logger, diagnosticSource, applicationStoppingToken);
 
 		SpaProxyingExtensions.UseProxyToSpaDevelopmentServer(spaBuilder, () =>
 		{
@@ -54,7 +52,14 @@ internal static class AngularCliMiddleware
 	}
 
 	private static async Task<Uri> StartAngularCliServerAsync(
-		string sourcePath, string scriptName, string pkgManagerCommand, int portNumber, ILogger logger, DiagnosticSource diagnosticSource, CancellationToken applicationStoppingToken)
+		string sourcePath,
+		string scriptName,
+		string pkgManagerCommand,
+		int portNumber,
+		Regex[]? finishedRegexes,
+		ILogger logger,
+		DiagnosticSource diagnosticSource,
+		CancellationToken applicationStoppingToken)
 	{
 		if (portNumber == default)
 		{
@@ -68,13 +73,29 @@ internal static class AngularCliMiddleware
 		var scriptRunner = new Npm.NodeScriptRunner(sourcePath, scriptName, $"--port {portNumber}", null, pkgManagerCommand, diagnosticSource, applicationStoppingToken);
 		scriptRunner.AttachToLogger(logger);
 
-		Match openBrowserLine;
+		string? openBrowserUrl = null;
 		using (var stdErrReader = new EventedStreamStringReader(scriptRunner.StdErr))
 		{
 			try
 			{
-				openBrowserLine = await scriptRunner.StdOut.WaitForMatch(
-					new Regex("open your browser on (http\\S+)", RegexOptions.None, RegexMatchTimeout));
+				if ((finishedRegexes == null) || (finishedRegexes.Length == 0))
+				{
+					finishedRegexes = [new Regex("open your browser on (?<openbrowser>http\\S+)", RegexOptions.None, RegexMatchTimeout)];
+				}
+
+				foreach (var finishedRegex in finishedRegexes)
+				{
+					var m = await scriptRunner.StdOut.WaitForMatch(new Regex(finishedRegex.ToString(), finishedRegex.Options, RegexMatchTimeout));
+					if (m.Groups.ContainsKey("openbrowser"))
+					{
+						openBrowserUrl = m.Groups["openbrowser"].Value;
+					}
+				}
+
+				if (openBrowserUrl == null)
+				{
+					throw new Exception("You assigned a custom value to SpaOptions.CliRegexes, but none of the regexes contains an \"openbrowser\" group.");
+				}
 			}
 			catch (EndOfStreamException ex)
 			{
@@ -85,7 +106,7 @@ internal static class AngularCliMiddleware
 			}
 		}
 
-		var uri = new Uri(openBrowserLine.Groups[1].Value);
+		var uri = new Uri(openBrowserUrl);
 
 		// Even after the Angular CLI claims to be listening for requests, there's a short
 		// period where it will give an error if you make a request too quickly

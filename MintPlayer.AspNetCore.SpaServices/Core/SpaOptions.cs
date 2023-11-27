@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Text.RegularExpressions;
+
 namespace MintPlayer.AspNetCore.SpaServices.Core;
 
 /// <summary>
@@ -96,4 +98,10 @@ public class SpaOptions : Abstractions.ISpaOptions
 	/// to become ready to serve to the client.
 	/// </summary>
 	public TimeSpan StartupTimeout { get; set; } = TimeSpan.FromSeconds(120);
+
+	/// <summary>
+	/// Gets or sets the regexes the middleware waits for while booting the dev server.
+	/// Extracts the <code>openbrowser</code> group from the match.
+	/// </summary>
+	public Regex[]? CliRegexes { get; set; }
 }
