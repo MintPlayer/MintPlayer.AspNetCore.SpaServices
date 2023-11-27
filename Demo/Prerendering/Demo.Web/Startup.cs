@@ -1,16 +1,8 @@
-using Demo.Data.Dal.Services;
 using Demo.Data.Extensions;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Razor;
-using Microsoft.AspNetCore.SpaServices.AngularCli;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using MintPlayer.AspNetCore.SpaServices.Prerendering;
 using MintPlayer.AspNetCore.SpaServices.Routing;
-using System.Linq;
-using System.Threading.Tasks;
+using MintPlayer.AspNetCore.SpaServices.Extensions;
 using WebMarkupMin.AspNetCore8;
 
 namespace Demo.Web;
@@ -34,7 +26,7 @@ public class Startup
 			{
 				options.ConnectionString = Configuration.GetConnectionString("Demo");
 			})
-			.AddSpaStaticFiles(configuration =>
+			.AddSpaStaticFilesImproved(configuration =>
 			{
 				configuration.RootPath = "ClientApp/dist";
 			});
@@ -89,7 +81,7 @@ public class Startup
 		app.UseStaticFiles();
 		if (!env.IsDevelopment())
 		{
-			app.UseSpaStaticFiles();
+			app.UseSpaStaticFilesImproved();
 		}
 
 		app.UseRouting();
@@ -101,7 +93,7 @@ public class Startup
 				pattern: "{controller}/{action=Index}/{id?}");
 		});
 
-		app.UseSpa(spa =>
+		app.UseSpaImproved(spa =>
 		{
 			// To learn more about options for serving an Angular SPA from ASP.NET Core,
 			// see https://go.microsoft.com/fwlink/?linkid=864501
@@ -126,7 +118,7 @@ public class Startup
 
 			if (env.IsDevelopment())
 			{
-				spa.UseAngularCliServer(npmScript: "start");
+				spa.UseAngularCliServerImproved(npmScript: "start");
 			}
 		});
 	}

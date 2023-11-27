@@ -1,12 +1,9 @@
-using Microsoft.AspNetCore.SpaServices;
-using Microsoft.AspNetCore.SpaServices.Prerendering;
-using MintPlayer.AspNetCore.SpaServices.Prerendering.Internals;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace MintPlayer.AspNetCore.SpaServices.Prerendering;
 
-public class AngularPrerendererBuilder : ISpaPrerendererBuilder
+public class AngularPrerendererBuilder : Prerendering.ISpaPrerendererBuilder
 {
 	private static readonly TimeSpan RegexMatchTimeout = TimeSpan.FromSeconds(5); // This is a development-time only feature, so a very long timeout is fine
 
@@ -41,20 +38,20 @@ public class AngularPrerendererBuilder : ISpaPrerendererBuilder
 	}
 
 	/// <inheritdoc />
-	public async Task Build(ISpaBuilder spaBuilder)
+	public async Task Build(Core.ISpaBuilder spaBuilder)
 	{
 		var pkgManagerCommand = spaBuilder.Options.PackageManagerCommand;
 		var sourcePath = spaBuilder.Options.SourcePath;
 		if (string.IsNullOrEmpty(sourcePath))
 		{
-			throw new InvalidOperationException($"To use {nameof(AngularPrerendererBuilder)}, you must supply a non-empty value for the {nameof(SpaOptions.SourcePath)} property of {nameof(SpaOptions)} when calling {nameof(SpaApplicationBuilderExtensions.UseSpa)}.");
+			throw new InvalidOperationException($"To use {nameof(AngularPrerendererBuilder)}, you must supply a non-empty value for the {nameof(Core.SpaOptions.SourcePath)} property of {nameof(Core.SpaOptions)} when calling {nameof(MintPlayer.AspNetCore.SpaServices.Extensions.SpaApplicationBuilderExtensions.UseSpaImproved)}.");
 		}
 
 		var appBuilder = spaBuilder.ApplicationBuilder;
 		var applicationStoppingToken = appBuilder.ApplicationServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
-		var logger = LoggerFinder.GetOrCreateLogger(appBuilder, nameof(AngularPrerendererBuilder));
+		var logger = Internals.LoggerFinder.GetOrCreateLogger(appBuilder, nameof(AngularPrerendererBuilder));
 		var diagnosticSource = appBuilder.ApplicationServices.GetRequiredService<DiagnosticSource>();
-		var scriptRunner = new NodeScriptRunner(
+		var scriptRunner = new Internals.NodeScriptRunner(
 			sourcePath,
 			npmScript,
 			"--watch",
@@ -64,8 +61,8 @@ public class AngularPrerendererBuilder : ISpaPrerendererBuilder
 			applicationStoppingToken);
 		scriptRunner.AttachToLogger(logger);
 
-		using (var stdOutReader = new EventedStreamStringReader(scriptRunner.StdOut))
-		using (var stdErrReader = new EventedStreamStringReader(scriptRunner.StdErr))
+		using (var stdOutReader = new Internals.EventedStreamStringReader(scriptRunner.StdOut))
+		using (var stdErrReader = new Internals.EventedStreamStringReader(scriptRunner.StdErr))
 		{
 			try
 			{

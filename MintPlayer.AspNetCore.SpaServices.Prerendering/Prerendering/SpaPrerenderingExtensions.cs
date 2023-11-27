@@ -20,6 +20,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using MintPlayer.AspNetCore.SpaServices.Prerendering.Extensions;
+using MintPlayer.AspNetCore.SpaServices.Core;
 
 namespace MintPlayer.AspNetCore.SpaServices.Prerendering;
 
@@ -31,12 +32,14 @@ public static class SpaPrerenderingExtensions
 	/// <summary>
 	/// Enables server-side prerendering middleware for a Single Page Application.
 	/// </summary>
-	/// <param name="spaBuilder">The <see cref="ISpaBuilder"/>.</param>
+	/// <param name="spaBuilder">The <see cref="Core.ISpaBuilder"/>.</param>
 	/// <param name="configuration">Supplies configuration for the prerendering middleware.</param>
 	public static IApplicationBuilder UseSpaPrerendering(
-		this ISpaBuilder spaBuilder,
+		this Core.ISpaBuilder spaBuilder,
 		Action<MintPlayer.AspNetCore.Builder.SpaPrerenderingOptions> configuration)
 	{
+		// This is not an extension method on ISpaBuilder, but our own ISpaBuilder
+		// This way applications won't take the wrong extension method, but always use this one instead
 		if (spaBuilder == null)
 		{
 			throw new ArgumentNullException(nameof(spaBuilder));
@@ -149,6 +152,7 @@ public static class SpaPrerenderingExtensions
 				// in development mode.
 				var canPrerender = IsSuccessStatusCode(context.Response.StatusCode)
 					&& IsHtmlContentType(context.Response.ContentType);
+					//&& IsNotRedirect(context.Response.StatusCode);
 				if (!canPrerender)
 				{
 					await outputBuffer.CopyToAsync(context.Response.Body);
@@ -171,8 +175,13 @@ public static class SpaPrerenderingExtensions
 					await spaPrerenderingService.OnSupplyData(context, customData);
 				}
 
-				var (unencodedAbsoluteUrl, unencodedPathAndQuery)
-					= GetUnencodedUrlAndPathQuery(context);
+				if (!IsSuccessStatusCode(context.Response.StatusCode))
+				{
+					await outputBuffer.CopyToAsync(context.Response.Body);
+					return;
+				}
+
+				var (unencodedAbsoluteUrl, unencodedPathAndQuery) = GetUnencodedUrlAndPathQuery(context);
 				var renderResult = await Prerenderer.RenderToString(
 					applicationBasePath,
 					nodeServices,
