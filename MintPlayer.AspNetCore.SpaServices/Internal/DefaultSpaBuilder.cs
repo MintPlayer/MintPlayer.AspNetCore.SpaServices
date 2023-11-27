@@ -4,11 +4,11 @@ using MintPlayer.AspNetCore.SpaServices.Core;
 
 namespace MintPlayer.AspNetCore.SpaServices.Internal;
 
-internal sealed class DefaultSpaBuilder : ISpaBuilder
+internal sealed class DefaultSpaBuilder : Abstractions.ISpaBuilder
 {
 	public IApplicationBuilder ApplicationBuilder { get; }
 
-	public SpaOptions Options { get; }
+	public Abstractions.ISpaOptions Options { get; }
 
 	public DefaultSpaBuilder(IApplicationBuilder applicationBuilder, SpaOptions options)
 	{

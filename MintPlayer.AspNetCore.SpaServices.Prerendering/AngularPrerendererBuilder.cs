@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace MintPlayer.AspNetCore.SpaServices.Prerendering;
 
-public class AngularPrerendererBuilder : Prerendering.ISpaPrerendererBuilder
+public class AngularPrerendererBuilder : Abstractions.ISpaPrerendererBuilder
 {
 	private static readonly TimeSpan RegexMatchTimeout = TimeSpan.FromSeconds(5); // This is a development-time only feature, so a very long timeout is fine
 
@@ -38,7 +38,7 @@ public class AngularPrerendererBuilder : Prerendering.ISpaPrerendererBuilder
 	}
 
 	/// <inheritdoc />
-	public async Task Build(Core.ISpaBuilder spaBuilder)
+	public async Task Build(Abstractions.ISpaBuilder spaBuilder)
 	{
 		var pkgManagerCommand = spaBuilder.Options.PackageManagerCommand;
 		var sourcePath = spaBuilder.Options.SourcePath;

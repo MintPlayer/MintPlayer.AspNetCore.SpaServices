@@ -8,7 +8,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Internal;
 
 internal sealed class SpaDefaultPageMiddleware
 {
-	public static void Attach(Core.ISpaBuilder spaBuilder)
+	public static void Attach(Abstractions.ISpaBuilder spaBuilder)
 	{
 		ArgumentNullException.ThrowIfNull(spaBuilder);
 

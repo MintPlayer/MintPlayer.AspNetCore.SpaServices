@@ -35,7 +35,7 @@ public static class SpaPrerenderingExtensions
 	/// <param name="spaBuilder">The <see cref="Core.ISpaBuilder"/>.</param>
 	/// <param name="configuration">Supplies configuration for the prerendering middleware.</param>
 	public static IApplicationBuilder UseSpaPrerendering(
-		this Core.ISpaBuilder spaBuilder,
+		this Abstractions.ISpaBuilder spaBuilder,
 		Action<MintPlayer.AspNetCore.Builder.SpaPrerenderingOptions> configuration)
 	{
 		// This is not an extension method on ISpaBuilder, but our own ISpaBuilder

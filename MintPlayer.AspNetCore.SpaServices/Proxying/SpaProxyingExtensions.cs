@@ -16,7 +16,7 @@ public static class SpaProxyingExtensions
 	/// </summary>
 	/// <param name="spaBuilder">The <see cref="ISpaBuilder"/>.</param>
 	/// <param name="baseUri">The target base URI to which requests should be proxied.</param>
-	public static void UseProxyToSpaDevelopmentServer(this Core.ISpaBuilder spaBuilder, string baseUri)
+	public static void UseProxyToSpaDevelopmentServer(this Abstractions.ISpaBuilder spaBuilder, string baseUri)
 	{
 		UseProxyToSpaDevelopmentServer(spaBuilder, new Uri(baseUri));
 	}
@@ -28,7 +28,7 @@ public static class SpaProxyingExtensions
 	/// </summary>
 	/// <param name="spaBuilder">The <see cref="ISpaBuilder"/>.</param>
 	/// <param name="baseUri">The target base URI to which requests should be proxied.</param>
-	public static void UseProxyToSpaDevelopmentServer(this Core.ISpaBuilder spaBuilder, Uri baseUri)
+	public static void UseProxyToSpaDevelopmentServer(this Abstractions.ISpaBuilder spaBuilder, Uri baseUri)
 	{
 		spaBuilder.UseProxyToSpaDevelopmentServer(() => Task.FromResult(baseUri));
 	}
@@ -40,7 +40,7 @@ public static class SpaProxyingExtensions
 	/// </summary>
 	/// <param name="spaBuilder">The <see cref="ISpaBuilder"/>.</param>
 	/// <param name="baseUriTaskFactory">A callback that will be invoked on each request to supply a <see cref="Task"/> that resolves with the target base URI to which requests should be proxied.</param>
-	public static void UseProxyToSpaDevelopmentServer(this Core.ISpaBuilder spaBuilder, Func<Task<Uri>> baseUriTaskFactory)
+	public static void UseProxyToSpaDevelopmentServer(this Abstractions.ISpaBuilder spaBuilder, Func<Task<Uri>> baseUriTaskFactory)
 	{
 		var applicationBuilder = spaBuilder.ApplicationBuilder;
 		var applicationStoppingToken = GetStoppingToken(applicationBuilder);

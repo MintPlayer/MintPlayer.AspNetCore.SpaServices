@@ -5,7 +5,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Prerendering;
 /// <summary>
 /// Describes how to find the JavaScript code that performs prerendering.
 /// </summary>
-public class JavaScriptModuleExport
+internal class JavaScriptModuleExport
 {
 	/// <summary>
 	/// Creates a new instance of <see cref="JavaScriptModuleExport"/>.

@@ -23,7 +23,7 @@ public static class SpaApplicationBuilderExtensions
 	/// This callback will be invoked so that additional middleware can be registered within
 	/// the context of this SPA.
 	/// </param>
-	public static void UseSpaImproved(this IApplicationBuilder app, Action<Core.ISpaBuilder> configuration)
+	public static void UseSpaImproved(this IApplicationBuilder app, Action<Abstractions.ISpaBuilder> configuration)
 	{
 		// Using our own ISpaBuilder, in order to always use the correct extension methods.
 		ArgumentNullException.ThrowIfNull(configuration);

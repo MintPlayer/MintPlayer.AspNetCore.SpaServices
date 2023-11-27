@@ -6,7 +6,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Core;
 /// <summary>
 /// Describes options for hosting a Single Page Application (SPA).
 /// </summary>
-public class SpaOptions
+public class SpaOptions : Abstractions.ISpaOptions
 {
 	private PathString _defaultPage = "/index.html";
 	private string _packageManagerCommand = "npm";

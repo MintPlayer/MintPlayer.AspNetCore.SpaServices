@@ -118,7 +118,7 @@ public class Startup
 
 			if (env.IsDevelopment())
 			{
-				spa.UseAngularCliServerImproved(npmScript: "start");
+				spa.UseAngularCliServer(npmScript: "start");
 			}
 		});
 	}

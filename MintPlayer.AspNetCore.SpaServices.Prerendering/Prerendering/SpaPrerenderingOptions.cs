@@ -18,7 +18,7 @@ public class SpaPrerenderingOptions
 	/// file automatically when the application runs. This property should be left as <c>null</c> in
 	/// production applications.
 	/// </summary>
-	public MintPlayer.AspNetCore.SpaServices.Prerendering.ISpaPrerendererBuilder? BootModuleBuilder { get; set; }
+	public MintPlayer.AspNetCore.SpaServices.Abstractions.ISpaPrerendererBuilder? BootModuleBuilder { get; set; }
 
 	/// <summary>
 	/// Gets or sets the path, relative to your application root, of the JavaScript file

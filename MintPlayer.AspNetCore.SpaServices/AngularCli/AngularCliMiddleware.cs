@@ -18,7 +18,7 @@ internal static class AngularCliMiddleware
 	private static readonly TimeSpan RegexMatchTimeout = TimeSpan.FromSeconds(5); // This is a development-time only feature, so a very long timeout is fine
 
 	public static void Attach(
-		Core.ISpaBuilder spaBuilder,
+		Abstractions.ISpaBuilder spaBuilder,
 		string scriptName)
 	{
 		var pkgManagerCommand = spaBuilder.Options.PackageManagerCommand;

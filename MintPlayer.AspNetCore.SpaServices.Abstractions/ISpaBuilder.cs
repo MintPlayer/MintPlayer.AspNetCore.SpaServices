@@ -3,7 +3,7 @@
 
 using Microsoft.AspNetCore.Builder;
 
-namespace MintPlayer.AspNetCore.SpaServices.Core;
+namespace MintPlayer.AspNetCore.SpaServices.Abstractions;
 
 /// <summary>
 /// Defines a class that provides mechanisms for configuring the hosting
@@ -20,5 +20,5 @@ public interface ISpaBuilder
 	/// <summary>
 	/// Describes configuration options for hosting a SPA.
 	/// </summary>
-	SpaOptions Options { get; }
+	ISpaOptions Options { get; }
 }

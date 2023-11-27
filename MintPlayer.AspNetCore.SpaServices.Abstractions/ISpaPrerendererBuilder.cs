@@ -1,6 +1,4 @@
-using MintPlayer.AspNetCore.SpaServices.Core;
-
-namespace MintPlayer.AspNetCore.SpaServices.Prerendering;
+namespace MintPlayer.AspNetCore.SpaServices.Abstractions;
 
 /// <summary>
 /// Represents the ability to build a Single Page Application (SPA) on demand
