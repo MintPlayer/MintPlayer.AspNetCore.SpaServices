@@ -74,10 +74,10 @@ server.listen(requestedPortOrZero, 'localhost', function () {
 	const addressInfo = server.address() as AddressInfo;
 
 	// Signal to HttpNodeHost which loopback IP address (IPv4 or IPv6) and port it should make its HTTP connections on
-	console.log('[Microsoft.AspNetCore.NodeServices.HttpNodeHost:Listening on {' + addressInfo.address + '} port ' + addressInfo.port + '\]');
+	console.log('[MintPlayer.AspNetCore.NodeServices.HttpNodeHost:Listening on {' + addressInfo.address + '} port ' + addressInfo.port + '\]');
 
 	// Signal to the NodeServices base class that we're ready to accept invocations
-	console.log('[Microsoft.AspNetCore.NodeServices:Listening]');
+	console.log('[MintPlayer.AspNetCore.NodeServices:Listening]');
 });
 
 exitWhenParentExits(parseInt(parsedArgs.parentPid), /* ignoreSigint */ true);

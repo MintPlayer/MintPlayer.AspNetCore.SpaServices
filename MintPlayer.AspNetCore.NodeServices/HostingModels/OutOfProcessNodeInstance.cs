@@ -1,14 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace MintPlayer.AspNetCore.NodeServices.HostingModels;
 
@@ -21,8 +14,7 @@ namespace MintPlayer.AspNetCore.NodeServices.HostingModels;
 /// derived classes use to actually perform the invocations (e.g., they could use HTTP-RPC, or a binary TCP
 /// protocol, or any other RPC-type mechanism).
 /// </summary>
-/// <seealso cref="Microsoft.AspNetCore.NodeServices.HostingModels.INodeInstance" />
-[Obsolete("Use Microsoft.AspNetCore.SpaServices.Extensions")]
+/// <seealso cref="MintPlayer.AspNetCore.NodeServices.HostingModels.INodeInstance" />
 public abstract class OutOfProcessNodeInstance : INodeInstance
 {
 	/// <summary>
@@ -30,7 +22,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 	/// </summary>
 	protected readonly ILogger OutputLogger;
 
-	private const string ConnectionEstablishedMessage = "[Microsoft.AspNetCore.NodeServices:Listening]";
+	private const string ConnectionEstablishedMessage = "[MintPlayer.AspNetCore.NodeServices:Listening]";
 	private readonly TaskCompletionSource<object> _connectionIsReadySource = new TaskCompletionSource<object>();
 	private bool _disposed;
 	private readonly StringAsTempFile _entryPointScript;

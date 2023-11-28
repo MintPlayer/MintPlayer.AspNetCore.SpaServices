@@ -1,12 +1,14 @@
+import { APP_BASE_HREF } from '@angular/common';
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
 import { Person } from '../entities/person';
 
 @Injectable({
 	providedIn: 'root'
 })
 export class PersonService {
-	constructor(private httpClient: HttpClient, @Inject('BASE_URL') private baseUrl: string) {
+	constructor(private httpClient: HttpClient, @Inject(APP_BASE_HREF) private baseUrl: string) {
 	}
 
 	public getPeople(include_relations: boolean, count: number = 20, page: number = 1) {
@@ -29,7 +31,7 @@ export class PersonService {
 	}
 
 	public createPerson(person: Person) {
-		return this.httpClient.post<Person>(`${this.baseUrl}/web/person`, person);
+    return this.httpClient.post<Person>(`${this.baseUrl}/web/person`, person);
 	}
 
 	public updatePerson(person: Person) {

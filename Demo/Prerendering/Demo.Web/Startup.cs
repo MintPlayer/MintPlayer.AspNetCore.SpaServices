@@ -1,17 +1,10 @@
-using Demo.Data.Dal.Services;
 using Demo.Data.Extensions;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Razor;
-using Microsoft.AspNetCore.SpaServices.AngularCli;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using MintPlayer.AspNetCore.SpaServices.Prerendering;
 using MintPlayer.AspNetCore.SpaServices.Routing;
-using System.Linq;
-using System.Threading.Tasks;
+using MintPlayer.AspNetCore.SpaServices.Extensions;
 using WebMarkupMin.AspNetCore8;
+using System.Text.RegularExpressions;
 
 namespace Demo.Web;
 
@@ -34,7 +27,7 @@ public class Startup
 			{
 				options.ConnectionString = Configuration.GetConnectionString("Demo");
 			})
-			.AddSpaStaticFiles(configuration =>
+			.AddSpaStaticFilesImproved(configuration =>
 			{
 				configuration.RootPath = "ClientApp/dist";
 			});
@@ -68,6 +61,8 @@ public class Startup
 				options.MinificationSettings.MinifyEmbeddedJsCode = true;
 				options.MinificationSettings.MinifyEmbeddedJsonData = true;
 				options.MinificationSettings.WhitespaceMinificationMode = WebMarkupMin.Core.WhitespaceMinificationMode.Aggressive;
+				options.MinificationSettings.MinifyEmbeddedCssCode = true;
+				options.MinificationSettings.MinifyInlineCssCode = true;
 			});
 	}
 
@@ -89,7 +84,7 @@ public class Startup
 		app.UseStaticFiles();
 		if (!env.IsDevelopment())
 		{
-			app.UseSpaStaticFiles();
+			app.UseSpaStaticFilesImproved();
 		}
 
 		app.UseRouting();
@@ -101,18 +96,20 @@ public class Startup
 				pattern: "{controller}/{action=Index}/{id?}");
 		});
 
-		app.UseSpa(spa =>
+		app.UseSpaImproved(spa =>
 		{
 			// To learn more about options for serving an Angular SPA from ASP.NET Core,
 			// see https://go.microsoft.com/fwlink/?linkid=864501
 
 			spa.Options.SourcePath = "ClientApp";
+			// For angular 17
+			spa.Options.CliRegexes = [new Regex(@"Local\:\s+(?<openbrowser>https?\:\/\/(.+))")];
 
 			//spa.ApplicationBuilder.UseResponseCaching().UseHsts();
 			spa.UseSpaPrerendering(options =>
 			{
 				options.BootModulePath = $"{spa.Options.SourcePath}/dist/ClientApp/server/main.js";
-				options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder(npmScript: "build:ssr:development") : null;
+				options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder("build:ssr:development", @"Build at\:", 1) : null;
 				options.ExcludeUrls = new[] { "/sockjs-node" };
 
 				options.OnPrepareResponse = (context) =>

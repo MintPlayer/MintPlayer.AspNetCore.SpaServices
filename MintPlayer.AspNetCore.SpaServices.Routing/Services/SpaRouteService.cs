@@ -1,11 +1,6 @@
-using System.Linq;
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Http;
 using System.Diagnostics;
-using System.Threading.Tasks;
-using System;
-using Microsoft.Extensions.DependencyInjection;
+using System.Net;
 
 namespace MintPlayer.AspNetCore.SpaServices.Routing;
 
@@ -14,6 +9,8 @@ public interface ISpaRouteService
 	/// <summary>Returns the SPA route (if any) that matches the requested URL.</summary>
 	/// <param name="httpContext">The current HTTP context</param>
 	Task<SpaRoute> GetCurrentRoute(HttpContext httpContext);
+
+	Task Redirect(HttpContext context, string routeName, Dictionary<string, object> parameters);
 
 	/// <summary>Generates an url for a SPA route.</summary>
 	/// <param name="routeName">Name of the SPA route</param>
@@ -97,6 +94,18 @@ internal class SpaRouteService : ISpaRouteService
 				spaRouteItems = routes.Build();
 			}
 		}
+	}
+
+	public async Task Redirect(HttpContext context, string routeName, Dictionary<string, object> parameters)
+	{
+		context.Response.StatusCode = (int)HttpStatusCode.Moved;
+		var url = await GenerateUrl(routeName, parameters);
+
+		context.Response.OnStarting(() =>
+		{
+			context.Response.Redirect(url);
+			return Task.CompletedTask;
+		});
 	}
 
 	/// <summary>Generates an url for a SPA route.</summary>

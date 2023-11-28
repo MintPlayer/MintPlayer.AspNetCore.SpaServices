@@ -6,19 +6,18 @@
  * available, such as `@angular/elements`.
  */
 
-import 'zone.js/dist/zone-node';
+import 'zone.js/node';
 import '@angular/platform-server/init';
 
-import { renderModule } from '@angular/platform-server';
+import { renderApplication } from '@angular/platform-server';
 import { APP_BASE_HREF } from '@angular/common';
-import { enableProdMode, StaticProvider, Inject } from '@angular/core';
+import { enableProdMode, StaticProvider, Inject, Provider, ApplicationConfig, mergeApplicationConfig } from '@angular/core';
 import { createServerRenderer, BootFuncParams } from 'aspnet-prerendering';
-import { environment } from './environments/environment';
-import { AppServerModule } from './app/app.server.module';
+import { bootstrapApplication } from '@angular/platform-browser';
+import { AppComponent } from './app/app.component';
+import { config as serverConfig } from './app/app.config.server';
 
-if (environment.production) {
-	enableProdMode();
-}
+enableProdMode();
 
 const getBaseUrl = (params: BootFuncParams) => {
 	return params.origin + params.baseUrl.slice(0, -1);
@@ -26,11 +25,9 @@ const getBaseUrl = (params: BootFuncParams) => {
 
 export default createServerRenderer(params => {
 
-	const providers: StaticProvider[] = [
-		{ provide: APP_BASE_HREF, useValue: params.baseUrl },
+  const providers: Provider[] = [
 		{ provide: 'BOOT_PARAMS', useValue: params },
-		{ provide: 'BASE_URL', useFactory: getBaseUrl, deps: ['BOOT_PARAMS'] },
-		{ provide: 'SERVERSIDE', useValue: true },
+    { provide: APP_BASE_HREF, useFactory: getBaseUrl, deps: ['BOOT_PARAMS'] },
 		{ provide: 'MESSAGE', useValue: params.data.message },
 	];
 
@@ -49,16 +46,16 @@ export default createServerRenderer(params => {
 	const options = {
 		document: params.data.originalHtml,
 		url: params.url,
-		extraProviders: providers
-	};
+		//extraProviders: providers
+  };
+
+  const extraConfig: ApplicationConfig = { providers };
+  const config = mergeApplicationConfig(serverConfig, extraConfig);
 
 	// Bypass ssr api call cert warnings in development
 	process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = "0";
 
-	const renderPromise = renderModule(AppServerModule, options);
+  const renderPromise = renderApplication(() => bootstrapApplication(AppComponent, config), options);
 
 	return renderPromise.then(html => ({ html }));
 });
-
-
-export { AppServerModule } from './app/app.server.module';

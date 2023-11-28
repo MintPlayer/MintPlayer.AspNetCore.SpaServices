@@ -1,11 +1,6 @@
 using Demo.Data.Dal.Services;
 using Demo.Web.Extensions;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
 using MintPlayer.AspNetCore.SpaServices.Routing;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Demo.Web.Services;
 
@@ -40,6 +35,9 @@ public class DemoSpaPrerenderingService : MintPlayer.AspNetCore.SpaServices.Prer
 		var route = await spaRouteService.GetCurrentRoute(context);
 		switch (route?.Name)
 		{
+			case "home":
+				await spaRouteService.Redirect(context, "person-list", new Dictionary<string, object> { });
+				break;
 			case "person-list":
 				{
 					var people = await personService.GetPeople();

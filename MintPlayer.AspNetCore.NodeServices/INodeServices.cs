@@ -1,10 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace MintPlayer.AspNetCore.NodeServices;
 
 /// <summary>
@@ -12,7 +8,6 @@ namespace MintPlayer.AspNetCore.NodeServices;
 /// might change over time (e.g., the process might be restarted), the <see cref="INodeServices"/> instance
 /// will remain constant.
 /// </summary>
-[Obsolete("Use Microsoft.AspNetCore.SpaServices.Extensions")]
 public interface INodeServices : IDisposable
 {
 	/// <summary>

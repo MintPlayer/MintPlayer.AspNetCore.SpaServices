@@ -1,43 +1,29 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
+using System.Text;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.NodeServices;
-using Microsoft.AspNetCore.SpaServices;
-using Microsoft.AspNetCore.SpaServices.Extensions.Util;
-using Microsoft.AspNetCore.SpaServices.Prerendering;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Net.Http.Headers;
 using MintPlayer.AspNetCore.NodeServices;
-using MintPlayer.AspNetCore.SpaServices.Prerendering;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using MintPlayer.AspNetCore.SpaServices.Prerendering.Extensions;
 
 namespace MintPlayer.AspNetCore.SpaServices.Prerendering;
 
 /// <summary>
 /// Extension methods for configuring prerendering of a Single Page Application.
 /// </summary>
-[Obsolete("Prerendering is no longer supported out of box")]
 public static class SpaPrerenderingExtensions
 {
 	/// <summary>
 	/// Enables server-side prerendering middleware for a Single Page Application.
 	/// </summary>
-	/// <param name="spaBuilder">The <see cref="ISpaBuilder"/>.</param>
+	/// <param name="spaBuilder">The <see cref="Core.ISpaBuilder"/>.</param>
 	/// <param name="configuration">Supplies configuration for the prerendering middleware.</param>
 	public static IApplicationBuilder UseSpaPrerendering(
-		this ISpaBuilder spaBuilder,
-		Action<MintPlayer.AspNetCore.Builder.SpaPrerenderingOptions> configuration)
+		this Abstractions.ISpaBuilder spaBuilder,
+		Action<SpaPrerenderingOptions> configuration)
 	{
+		// This is not an extension method on ISpaBuilder, but our own ISpaBuilder
+		// This way applications won't take the wrong extension method, but always use this one instead
 		if (spaBuilder == null)
 		{
 			throw new ArgumentNullException(nameof(spaBuilder));
@@ -48,7 +34,7 @@ public static class SpaPrerenderingExtensions
 			throw new ArgumentNullException(nameof(configuration));
 		}
 
-		var options = new Builder.SpaPrerenderingOptions();
+		var options = new SpaPrerenderingOptions();
 		configuration.Invoke(options);
 
 		var capturedBootModulePath = options.BootModulePath;
@@ -150,6 +136,7 @@ public static class SpaPrerenderingExtensions
 				// in development mode.
 				var canPrerender = IsSuccessStatusCode(context.Response.StatusCode)
 					&& IsHtmlContentType(context.Response.ContentType);
+					//&& IsNotRedirect(context.Response.StatusCode);
 				if (!canPrerender)
 				{
 					await outputBuffer.CopyToAsync(context.Response.Body);
@@ -172,8 +159,14 @@ public static class SpaPrerenderingExtensions
 					await spaPrerenderingService.OnSupplyData(context, customData);
 				}
 
-				var (unencodedAbsoluteUrl, unencodedPathAndQuery)
-					= GetUnencodedUrlAndPathQuery(context);
+				// Don't do SSR when we have a redirect
+				if (!IsSuccessStatusCode(context.Response.StatusCode))
+				{
+					await outputBuffer.CopyToAsync(context.Response.Body);
+					return;
+				}
+
+				var (unencodedAbsoluteUrl, unencodedPathAndQuery) = GetUnencodedUrlAndPathQuery(context);
 				var renderResult = await Prerenderer.RenderToString(
 					applicationBasePath,
 					nodeServices,
@@ -276,7 +269,7 @@ public static class SpaPrerenderingExtensions
 	private static INodeServices GetNodeServices(IServiceProvider serviceProvider)
 	{
 		// Use the registered instance, or create a new private instance if none is registered
-		var instance = (INodeServices)serviceProvider.GetService(typeof(INodeServices));
+		var instance = serviceProvider.GetService<INodeServices>();
 		return instance ?? NodeServicesFactory.CreateNodeServices(
 			new NodeServicesOptions(serviceProvider));
 	}

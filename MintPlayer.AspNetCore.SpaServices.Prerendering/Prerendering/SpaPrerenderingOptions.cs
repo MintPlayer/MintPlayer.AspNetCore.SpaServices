@@ -1,9 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using Microsoft.AspNetCore.SpaServices.Prerendering;
-
-namespace MintPlayer.AspNetCore.Builder;
+namespace MintPlayer.AspNetCore.SpaServices.Prerendering;
 
 /// <summary>
 /// Represents options for the SPA prerendering middleware.
@@ -18,7 +16,7 @@ public class SpaPrerenderingOptions
 	/// file automatically when the application runs. This property should be left as <c>null</c> in
 	/// production applications.
 	/// </summary>
-	public ISpaPrerendererBuilder BootModuleBuilder { get; set; }
+	public MintPlayer.AspNetCore.SpaServices.Abstractions.ISpaPrerendererBuilder? BootModuleBuilder { get; set; }
 
 	/// <summary>
 	/// Gets or sets the path, relative to your application root, of the JavaScript file

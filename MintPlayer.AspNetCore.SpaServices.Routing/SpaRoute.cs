@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace MintPlayer.AspNetCore.SpaServices.Routing;
 
 public class SpaRoute

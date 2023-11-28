@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace MintPlayer.AspNetCore.SpaServices.Routing.Data;
 
 public interface ISpaRouteItem

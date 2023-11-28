@@ -1,15 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Hosting;
 using MintPlayer.AspNetCore.NodeServices.HostingModels;
 
 namespace MintPlayer.AspNetCore.NodeServices;
@@ -17,12 +9,11 @@ namespace MintPlayer.AspNetCore.NodeServices;
 /// <summary>
 /// Describes options used to configure an <see cref="INodeServices"/> instance.
 /// </summary>
-[Obsolete("Use Microsoft.AspNetCore.SpaServices.Extensions")]
 public class NodeServicesOptions
 {
 	internal const string TimeoutConfigPropertyName = nameof(InvocationTimeoutMilliseconds);
 	private const int DefaultInvocationTimeoutMilliseconds = 60 * 1000;
-	private const string LogCategoryName = "Microsoft.AspNetCore.NodeServices";
+	private const string LogCategoryName = "MintPlayer.AspNetCore.NodeServices";
 	private static readonly string[] DefaultWatchFileExtensions = { ".js", ".jsx", ".ts", ".tsx", ".json", ".html" };
 
 	/// <summary>

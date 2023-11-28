@@ -1,13 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.IO;
-using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
@@ -21,12 +16,11 @@ namespace MintPlayer.AspNetCore.NodeServices.HostingModels;
 /// input/output-based mechanism that the base class uses to determine when the child process is ready to
 /// accept RPC invocations.
 /// </summary>
-/// <seealso cref="Microsoft.AspNetCore.NodeServices.HostingModels.OutOfProcessNodeInstance" />
-[Obsolete("Use Microsoft.AspNetCore.SpaServices.Extensions")]
+/// <seealso cref="MintPlayer.AspNetCore.NodeServices.HostingModels.OutOfProcessNodeInstance" />
 internal class HttpNodeInstance : OutOfProcessNodeInstance
 {
 	private static readonly Regex EndpointMessageRegex =
-		new Regex(@"^\[Microsoft.AspNetCore.NodeServices.HttpNodeHost:Listening on {(.*?)} port (\d+)\]$");
+		new Regex(@"^\[MintPlayer.AspNetCore.NodeServices.HttpNodeHost:Listening on {(.*?)} port (\d+)\]$");
 
 	private static readonly JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings
 	{

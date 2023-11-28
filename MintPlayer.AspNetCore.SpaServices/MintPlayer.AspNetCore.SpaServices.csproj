@@ -1,14 +1,15 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
+		<LangVersion>12.0</LangVersion>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<OutputType>Library</OutputType>
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices</PackageId>
-		<Version>8.0.0</Version>
+		<Version>8.1.0</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
@@ -31,16 +32,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<None Remove="Content\Node\prerenderer.js" />
-		<None Remove="Content\Node\webpack-dev-middleware.js" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<EmbeddedResource Include="Content\Node\prerenderer.js" />
-		<EmbeddedResource Include="Content\Node\webpack-dev-middleware.js" />
-	</ItemGroup>
-
-	<ItemGroup>
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -50,6 +41,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\MintPlayer.AspNetCore.NodeServices\MintPlayer.AspNetCore.NodeServices.csproj" />
+		<ProjectReference Include="..\MintPlayer.AspNetCore.SpaServices.Abstractions\MintPlayer.AspNetCore.SpaServices.Abstractions.csproj" />
 	</ItemGroup>
 
 </Project>

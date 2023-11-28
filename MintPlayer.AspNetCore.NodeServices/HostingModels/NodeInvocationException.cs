@@ -1,15 +1,12 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-
 namespace MintPlayer.AspNetCore.NodeServices.HostingModels;
 
 /// <summary>
 /// Represents an exception caused by invoking Node.js code.
 /// </summary>
-[Obsolete("Use Microsoft.AspNetCore.SpaServices.Extensions")]
-public class NodeInvocationException : Exception
+internal class NodeInvocationException : Exception
 {
 	/// <summary>
 	/// If true, indicates that the invocation failed because the Node.js instance could not be reached. For example,

@@ -64,11 +64,11 @@ internal sealed class NodeScriptRunner : IDisposable
 
 		applicationStoppingToken.Register(((IDisposable)this).Dispose);
 
-		if (diagnosticSource.IsEnabled("Microsoft.AspNetCore.NodeServices.Npm.NpmStarted"))
+		if (diagnosticSource.IsEnabled("MintPlayer.AspNetCore.NodeServices.Npm.NpmStarted"))
 		{
 			WriteDiagnosticEvent(
 				diagnosticSource,
-				"Microsoft.AspNetCore.NodeServices.Npm.NpmStarted",
+				"MintPlayer.AspNetCore.NodeServices.Npm.NpmStarted",
 				new
 				{
 					processStartInfo = processStartInfo,
