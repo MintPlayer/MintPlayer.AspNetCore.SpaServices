@@ -1,16 +1,10 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace MintPlayer.AspNetCore.NodeServices;
 
-[Obsolete("Use Microsoft.AspNetCore.SpaServices.Extensions")]
 internal static class TaskExtensions
 {
-	[Obsolete("Use Microsoft.AspNetCore.SpaServices.Extensions")]
 	public static Task OrThrowOnCancellation(this Task task, CancellationToken cancellationToken)
 	{
 		return task.IsCompleted
@@ -22,7 +16,6 @@ internal static class TaskExtensions
 				TaskScheduler.Default);
 	}
 
-	[Obsolete("Use Microsoft.AspNetCore.SpaServices.Extensions")]
 	public static Task<T> OrThrowOnCancellation<T>(this Task<T> task, CancellationToken cancellationToken)
 	{
 		return task.IsCompleted

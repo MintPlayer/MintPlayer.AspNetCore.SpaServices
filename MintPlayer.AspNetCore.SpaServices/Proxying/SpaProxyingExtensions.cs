@@ -1,7 +1,9 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-namespace MintPlayer.AspNetCore.SpaServices.Proxying;
+using MintPlayer.AspNetCore.SpaServices.Proxying;
+
+namespace MintPlayer.AspNetCore.SpaServices.Extensions;
 
 /// <summary>
 /// Extension methods for proxying requests to a local SPA development server during

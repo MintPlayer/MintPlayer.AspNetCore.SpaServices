@@ -1,8 +1,6 @@
 using Demo.Data.Dal.Repositories;
 using Demo.Dtos.Dtos;
 using MintPlayer.Pagination;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Demo.Data.Dal.Services;
 

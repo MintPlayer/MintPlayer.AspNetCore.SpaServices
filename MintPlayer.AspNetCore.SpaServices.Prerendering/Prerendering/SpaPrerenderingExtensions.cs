@@ -1,26 +1,10 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
+using System.Text;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.NodeServices;
-using Microsoft.AspNetCore.SpaServices;
-using Microsoft.AspNetCore.SpaServices.Extensions.Util;
-using Microsoft.AspNetCore.SpaServices.Prerendering;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Net.Http.Headers;
 using MintPlayer.AspNetCore.NodeServices;
-using MintPlayer.AspNetCore.SpaServices.Prerendering;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using MintPlayer.AspNetCore.SpaServices.Prerendering.Extensions;
-using MintPlayer.AspNetCore.SpaServices.Core;
 
 namespace MintPlayer.AspNetCore.SpaServices.Prerendering;
 
@@ -36,7 +20,7 @@ public static class SpaPrerenderingExtensions
 	/// <param name="configuration">Supplies configuration for the prerendering middleware.</param>
 	public static IApplicationBuilder UseSpaPrerendering(
 		this Abstractions.ISpaBuilder spaBuilder,
-		Action<MintPlayer.AspNetCore.Builder.SpaPrerenderingOptions> configuration)
+		Action<SpaPrerenderingOptions> configuration)
 	{
 		// This is not an extension method on ISpaBuilder, but our own ISpaBuilder
 		// This way applications won't take the wrong extension method, but always use this one instead
@@ -50,7 +34,7 @@ public static class SpaPrerenderingExtensions
 			throw new ArgumentNullException(nameof(configuration));
 		}
 
-		var options = new Builder.SpaPrerenderingOptions();
+		var options = new SpaPrerenderingOptions();
 		configuration.Invoke(options);
 
 		var capturedBootModulePath = options.BootModulePath;
@@ -285,7 +269,7 @@ public static class SpaPrerenderingExtensions
 	private static INodeServices GetNodeServices(IServiceProvider serviceProvider)
 	{
 		// Use the registered instance, or create a new private instance if none is registered
-		var instance = (INodeServices)serviceProvider.GetService(typeof(INodeServices));
+		var instance = serviceProvider.GetService<INodeServices>();
 		return instance ?? NodeServicesFactory.CreateNodeServices(
 			new NodeServicesOptions(serviceProvider));
 	}

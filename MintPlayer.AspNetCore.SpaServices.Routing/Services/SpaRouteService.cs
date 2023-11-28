@@ -1,11 +1,5 @@
-using System.Linq;
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Http;
 using System.Diagnostics;
-using System.Threading.Tasks;
-using System;
-using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 
 namespace MintPlayer.AspNetCore.SpaServices.Routing;

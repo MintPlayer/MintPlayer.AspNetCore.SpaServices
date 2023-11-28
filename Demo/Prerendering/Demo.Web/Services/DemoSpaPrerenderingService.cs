@@ -1,7 +1,5 @@
 using Demo.Data.Dal.Services;
 using Demo.Web.Extensions;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
 using MintPlayer.AspNetCore.SpaServices.Routing;
 
 namespace Demo.Web.Services;

@@ -2,19 +2,14 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
-using System.Net.Http;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using MintPlayer.AspNetCore.SpaServices.Proxying;
 using MintPlayer.AspNetCore.SpaServices.Utils;
 
 namespace MintPlayer.AspNetCore.SpaServices.AngularCli;
 
 internal static class AngularCliMiddleware
 {
-	private const string LogCategoryName = "Microsoft.AspNetCore.SpaServices";
+	private const string LogCategoryName = "MintPlayer.AspNetCore.SpaServices";
 	private static readonly TimeSpan RegexMatchTimeout = TimeSpan.FromSeconds(5); // This is a development-time only feature, so a very long timeout is fine
 
 	public static void Attach(Abstractions.ISpaBuilder spaBuilder, string scriptName)
@@ -39,7 +34,7 @@ internal static class AngularCliMiddleware
 		var diagnosticSource = appBuilder.ApplicationServices.GetRequiredService<DiagnosticSource>();
 		var angularCliServerInfoTask = StartAngularCliServerAsync(sourcePath, scriptName, pkgManagerCommand, devServerPort, spaBuilder.Options.CliRegexes, logger, diagnosticSource, applicationStoppingToken);
 
-		SpaProxyingExtensions.UseProxyToSpaDevelopmentServer(spaBuilder, () =>
+        Extensions.SpaProxyingExtensions.UseProxyToSpaDevelopmentServer(spaBuilder, () =>
 		{
 			// On each request, we create a separate startup task with its own timeout. That way, even if
 			// the first request times out, subsequent requests could still work.

@@ -1,7 +1,3 @@
-using System;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.SpaServices;
-using Microsoft.Extensions.DependencyInjection;
 using MintPlayer.AspNetCore.SpaServices.Prerendering;
 
 namespace MintPlayer.AspNetCore.SpaServices.Routing;

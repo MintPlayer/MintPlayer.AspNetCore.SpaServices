@@ -3,7 +3,7 @@
 
 using MintPlayer.AspNetCore.SpaServices.Proxying;
 
-namespace Microsoft.AspNetCore.SpaServices.Extensions.Proxy;
+namespace MintPlayer.AspNetCore.SpaServices.Extensions.Proxy;
 
 // This duplicates and updates the proxying logic in SpaServices so that we can update
 // the project templates without waiting for 2.1 to ship. When 2.1 is ready to ship,

@@ -13,7 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 })
 export class AppComponent {
   title = 'ClientApp';
-  message = '';
+  message = 'test';
 
   constructor(private translateService: TranslateService, private router: Router, private route: ActivatedRoute, @Inject('MESSAGE') message: string) {
     this.message = message;
