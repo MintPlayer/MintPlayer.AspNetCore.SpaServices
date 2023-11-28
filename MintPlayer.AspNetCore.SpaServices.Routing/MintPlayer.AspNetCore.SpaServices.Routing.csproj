@@ -5,13 +5,13 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<OutputType>Library</OutputType>
+		<PublishAot>true</PublishAot>
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices.Routing</PackageId>
-		<Version>8.1.0</Version>
+		<Version>8.2.0</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
 
 		<Description>This package simplifies the SPA prerendering. Define your SPA routes in your service registration and check which SPA route is activated in the SupplyData callback.</Description>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
