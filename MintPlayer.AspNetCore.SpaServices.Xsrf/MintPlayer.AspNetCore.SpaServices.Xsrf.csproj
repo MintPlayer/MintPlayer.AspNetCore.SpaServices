@@ -5,13 +5,13 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<OutputType>Library</OutputType>
+		<PublishAot>true</PublishAot>
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices.Xsrf</PackageId>
-		<Version>8.1.0</Version>
+		<Version>8.2.0</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
 
 		<Description>This package contains an ASP.NET Core middleware that manages CSRF for single-page applications.</Description>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>

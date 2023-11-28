@@ -59,11 +59,7 @@ public class DemoSpaPrerenderingService : MintPlayer.AspNetCore.SpaServices.Prer
 					}
 					else
 					{
-						context.Response.OnStarting(async () =>
-						{
-							var url = await spaRouteService.GenerateUrl($"{route.Name}-name", new { personid = personid, name = (person.FirstName + " " + person.LastName).Slugify() });
-							context.Response.Redirect(url);
-						});
+						await spaRouteService.Redirect(context, $"{route.Name}-name", new { personid = personid, name = (person.FirstName + " " + person.LastName).Slugify() });
 					}
 				}
 				break;
@@ -86,8 +82,7 @@ public class DemoSpaPrerenderingService : MintPlayer.AspNetCore.SpaServices.Prer
 					}
 					else
 					{
-						var url = await spaRouteService.GenerateUrl(route.Name, new { personid = personid, name = (person.FirstName + " " + person.LastName).Slugify() });
-						context.Response.Redirect(url);
+						await spaRouteService.Redirect(context, route.Name, new { personid = personid, name = (person.FirstName + " " + person.LastName).Slugify() });
 					}
 				}
 				break;

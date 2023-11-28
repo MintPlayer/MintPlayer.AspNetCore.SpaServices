@@ -9,6 +9,7 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules\**</DefaultItemExcludes>
+		<IsPackable>false</IsPackable>
 
 		<!-- Set this to true if you enable server-side prerendering -->
 		<BuildServerSideRenderer>false</BuildServerSideRenderer>

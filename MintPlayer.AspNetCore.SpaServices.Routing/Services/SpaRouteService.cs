@@ -10,6 +10,18 @@ public interface ISpaRouteService
 	/// <param name="httpContext">The current HTTP context</param>
 	Task<SpaRoute> GetCurrentRoute(HttpContext httpContext);
 
+	/// <summary>Correctly sets up a redirect when used from the <see cref="MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService"/></summary>
+	/// <param name="context"><see cref="HttpContext"/> from the <see cref="MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService.OnSupplyData(HttpContext, IDictionary{string, object})"/></param>
+	/// <param name="routeName">Name of the route</param>
+	/// <param name="parameters">Parameters</param>
+	/// <returns></returns>
+	Task Redirect<T>(HttpContext context, string routeName, T parameters);
+
+	/// <summary>Correctly sets up a redirect when used from the <see cref="MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService"/></summary>
+	/// <param name="context"><see cref="HttpContext"/> from the <see cref="MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService.OnSupplyData(HttpContext, IDictionary{string, object})"/></param>
+	/// <param name="routeName">Name of the route</param>
+	/// <param name="parameters">Parameters</param>
+	/// <returns></returns>
 	Task Redirect(HttpContext context, string routeName, Dictionary<string, object> parameters);
 
 	/// <summary>Generates an url for a SPA route.</summary>
@@ -97,6 +109,18 @@ internal class SpaRouteService : ISpaRouteService
 	}
 
 	public async Task Redirect(HttpContext context, string routeName, Dictionary<string, object> parameters)
+	{
+		context.Response.StatusCode = (int)HttpStatusCode.Moved;
+		var url = await GenerateUrl(routeName, parameters);
+
+		context.Response.OnStarting(() =>
+		{
+			context.Response.Redirect(url);
+			return Task.CompletedTask;
+		});
+	}
+
+	public async Task Redirect<T>(HttpContext context, string routeName, T parameters)
 	{
 		context.Response.StatusCode = (int)HttpStatusCode.Moved;
 		var url = await GenerateUrl(routeName, parameters);
