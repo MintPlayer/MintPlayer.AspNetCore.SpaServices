@@ -4,11 +4,11 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
 		<TypeScriptToolsVersion>Latest</TypeScriptToolsVersion>
-		<IsPackable>false</IsPackable>
 		<SpaRoot>ClientApp\</SpaRoot>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules\**</DefaultItemExcludes>
+		<PublishAot>true</PublishAot>
 
 		<!-- Set this to true if you enable server-side prerendering -->
 		<BuildServerSideRenderer>true</BuildServerSideRenderer>
