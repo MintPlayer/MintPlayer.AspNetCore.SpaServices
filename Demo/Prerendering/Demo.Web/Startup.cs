@@ -69,6 +69,8 @@ public class Startup
 	// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
 	public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 	{
+		var mgr = new MintPlayer.Dotnet.JobObjects.ChildProcessManager();
+
 		if (env.IsDevelopment())
 		{
 			app.UseDeveloperExceptionPage();
@@ -109,7 +111,7 @@ public class Startup
 			spa.UseSpaPrerendering(options =>
 			{
 				options.BootModulePath = $"{spa.Options.SourcePath}/dist/ClientApp/server/main.js";
-				options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder("build:ssr:development", @"Build at\:", 1) : null;
+				options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder("build:ssr:development", @"Build at\:", 1, mgr) : null;
 				options.ExcludeUrls = new[] { "/sockjs-node" };
 
 				options.OnPrepareResponse = (context) =>
@@ -117,13 +119,13 @@ public class Startup
 					context.Response.Headers.Add("Whatever", "Oasis");
 					return Task.CompletedTask;
 				};
-			});
+			}, mgr);
 
 			app.UseWebMarkupMin();
 
 			if (env.IsDevelopment())
 			{
-				spa.UseAngularCliServer(npmScript: "start");
+				spa.UseAngularCliServer(npmScript: "start", mgr);
 			}
 		});
 	}

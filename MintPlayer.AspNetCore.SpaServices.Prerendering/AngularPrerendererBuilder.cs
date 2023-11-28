@@ -1,3 +1,4 @@
+using MintPlayer.Dotnet.JobObjects;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
@@ -10,12 +11,13 @@ public class AngularPrerendererBuilder : Abstractions.ISpaPrerendererBuilder
 	private readonly string npmScript;
 	private readonly Regex finishedRegex;
 	private readonly int finishedRegexIndex;
+	private readonly ChildProcessManager mgr;
 
 	/// <summary>
 	/// Constructs an instance of <see cref="AngularPrerendererBuilder"/>.
 	/// </summary>
 	/// <param name="npmScript">The name of the script in your package.json file that builds the server-side bundle for your Angular application.</param>
-	public AngularPrerendererBuilder(string npmScript) : this(npmScript, @"Build at\:", 2) { }
+	public AngularPrerendererBuilder(string npmScript, MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr) : this(npmScript, @"Build at\:", 2, mgr) { }
 	//public AngularPrerendererBuilder(string npmScript) : this(npmScript, "Entrypoint main", 1) { }
 
 	/// <summary>
@@ -24,7 +26,7 @@ public class AngularPrerendererBuilder : Abstractions.ISpaPrerendererBuilder
 	/// <param name="npmScript">The name of the script in your package.json file that builds the server-side bundle for your Angular application.</param>
 	/// <param name="finishedRegex">Regular expression which indicates that the build command completed.</param>
 	/// <param name="finishedRegexNumber">Occurrance of the <see cref="finishedRegex"/> (index).</param>
-	public AngularPrerendererBuilder(string npmScript, string finishedRegex, int finishedRegexNumber)
+	public AngularPrerendererBuilder(string npmScript, string finishedRegex, int finishedRegexNumber, MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr)
 	{
 		if (string.IsNullOrEmpty(npmScript))
 		{
@@ -35,6 +37,7 @@ public class AngularPrerendererBuilder : Abstractions.ISpaPrerendererBuilder
 		//this.finishedRegex = new Regex(finishedRegex ?? "Entrypoint main", RegexOptions.None, RegexMatchTimeout);
 		this.finishedRegex = new Regex(finishedRegex ?? @"Build at\:", RegexOptions.None, RegexMatchTimeout);
 		this.finishedRegexIndex = finishedRegexNumber;
+		this.mgr = mgr;
 	}
 
 	/// <inheritdoc />
@@ -58,7 +61,7 @@ public class AngularPrerendererBuilder : Abstractions.ISpaPrerendererBuilder
 			null,
 			pkgManagerCommand,
 			diagnosticSource,
-			applicationStoppingToken);
+			applicationStoppingToken, mgr);
 		scriptRunner.AttachToLogger(logger);
 
 		using (var stdOutReader = new Internals.EventedStreamStringReader(scriptRunner.StdOut))

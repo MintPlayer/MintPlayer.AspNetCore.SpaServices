@@ -22,7 +22,7 @@ internal sealed class NodeScriptRunner : IDisposable
 
 	private static readonly Regex AnsiColorRegex = new Regex("\x001b\\[[0-9;]*m", RegexOptions.None, TimeSpan.FromSeconds(1));
 
-	public NodeScriptRunner(string workingDirectory, string scriptName, string? arguments, IDictionary<string, string>? envVars, string pkgManagerCommand, DiagnosticSource diagnosticSource, CancellationToken applicationStoppingToken)
+	public NodeScriptRunner(string workingDirectory, string scriptName, string? arguments, IDictionary<string, string>? envVars, string pkgManagerCommand, DiagnosticSource diagnosticSource, CancellationToken applicationStoppingToken, MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr)
 	{
 		if (string.IsNullOrEmpty(workingDirectory))
 		{
@@ -68,7 +68,7 @@ internal sealed class NodeScriptRunner : IDisposable
 			}
 		}
 
-		_npmProcess = LaunchNodeProcess(processStartInfo, pkgManagerCommand);
+		_npmProcess = LaunchNodeProcess(processStartInfo, pkgManagerCommand, mgr);
 		StdOut = new EventedStreamReader(_npmProcess.StandardOutput);
 		StdErr = new EventedStreamReader(_npmProcess.StandardError);
 
@@ -131,11 +131,12 @@ internal sealed class NodeScriptRunner : IDisposable
 	private static string StripAnsiColors(string line)
 		=> AnsiColorRegex.Replace(line, string.Empty);
 
-	private static Process LaunchNodeProcess(ProcessStartInfo startInfo, string commandName)
+	private static Process LaunchNodeProcess(ProcessStartInfo startInfo, string commandName, MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr)
 	{
 		try
 		{
 			var process = Process.Start(startInfo)!;
+			mgr.AddProcess(process);
 
 			// See equivalent comment in OutOfProcessNodeInstance.cs for why
 			process.EnableRaisingEvents = true;

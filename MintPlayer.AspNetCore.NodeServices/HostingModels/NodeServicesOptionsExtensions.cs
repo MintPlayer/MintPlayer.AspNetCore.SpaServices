@@ -12,8 +12,8 @@ public static class NodeServicesOptionsExtensions
 	/// Configures the <see cref="INodeServices"/> service so that it will use out-of-process
 	/// Node.js instances and perform RPC calls over HTTP.
 	/// </summary>
-	public static void UseHttpHosting(this NodeServicesOptions options)
+	public static void UseHttpHosting(this NodeServicesOptions options, MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr)
 	{
-		options.NodeInstanceFactory = () => new HttpNodeInstance(options);
+		options.NodeInstanceFactory = () => new HttpNodeInstance(options, mgr);
 	}
 }

@@ -57,7 +57,8 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		IDictionary<string, string> environmentVars,
 		int invocationTimeoutMilliseconds,
 		bool launchWithDebugging,
-		int debuggingPort)
+		int debuggingPort,
+		MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr)
 	{
 		if (nodeOutputLogger == null)
 		{
@@ -71,7 +72,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 
 		var startInfo = PrepareNodeProcessStartInfo(_entryPointScript.FileName, projectPath, commandLineArguments,
 			environmentVars, _launchWithDebugging, debuggingPort);
-		_nodeProcess = LaunchNodeProcess(startInfo);
+		_nodeProcess = LaunchNodeProcess(startInfo, mgr);
 		_watchFileExtensions = watchFileExtensions;
 		_fileSystemWatcher = BeginFileWatcher(projectPath);
 		ConnectToInputOutputStreams();
@@ -316,11 +317,12 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		startInfo.Environment[name] = value;
 	}
 
-	private static Process LaunchNodeProcess(ProcessStartInfo startInfo)
+	private static Process LaunchNodeProcess(ProcessStartInfo startInfo, MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr)
 	{
 		try
 		{
 			var process = Process.Start(startInfo);
+			mgr.AddProcess(process);
 
 			// On Mac at least, a killed child process is left open as a zombie until the parent
 			// captures its exit code. We don't need the exit code for this process, and don't want

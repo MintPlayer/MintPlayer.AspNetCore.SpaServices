@@ -20,7 +20,7 @@ public static class SpaPrerenderingExtensions
 	/// <param name="configuration">Supplies configuration for the prerendering middleware.</param>
 	public static IApplicationBuilder UseSpaPrerendering(
 		this Abstractions.ISpaBuilder spaBuilder,
-		Action<SpaPrerenderingOptions> configuration)
+		Action<SpaPrerenderingOptions> configuration, MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr)
 	{
 		// This is not an extension method on ISpaBuilder, but our own ISpaBuilder
 		// This way applications won't take the wrong extension method, but always use this one instead
@@ -52,7 +52,7 @@ public static class SpaPrerenderingExtensions
 		// Get all the necessary context info that will be used for each prerendering call
 		var applicationBuilder = spaBuilder.ApplicationBuilder;
 		var serviceProvider = applicationBuilder.ApplicationServices;
-		var nodeServices = GetNodeServices(serviceProvider);
+		var nodeServices = GetNodeServices(serviceProvider, mgr);
 		var applicationStoppingToken = serviceProvider.GetRequiredService<IHostApplicationLifetime>()
 			.ApplicationStopping;
 		var applicationBasePath = serviceProvider.GetRequiredService<IWebHostEnvironment>()
@@ -266,11 +266,11 @@ public static class SpaPrerenderingExtensions
 		}
 	}
 
-	private static INodeServices GetNodeServices(IServiceProvider serviceProvider)
+	private static INodeServices GetNodeServices(IServiceProvider serviceProvider, MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr)
 	{
 		// Use the registered instance, or create a new private instance if none is registered
 		var instance = serviceProvider.GetService<INodeServices>();
 		return instance ?? NodeServicesFactory.CreateNodeServices(
-			new NodeServicesOptions(serviceProvider));
+			new NodeServicesOptions(serviceProvider, mgr));
 	}
 }

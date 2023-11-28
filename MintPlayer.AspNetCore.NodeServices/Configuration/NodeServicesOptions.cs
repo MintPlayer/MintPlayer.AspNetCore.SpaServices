@@ -20,7 +20,7 @@ public class NodeServicesOptions
 	/// Creates a new instance of <see cref="NodeServicesOptions"/>.
 	/// </summary>
 	/// <param name="serviceProvider">The <see cref="IServiceProvider"/>.</param>
-	public NodeServicesOptions(IServiceProvider serviceProvider)
+	public NodeServicesOptions(IServiceProvider serviceProvider, MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr)
 	{
 		if (serviceProvider == null)
 		{
@@ -56,7 +56,7 @@ public class NodeServicesOptions
 			? loggerFactory.CreateLogger(LogCategoryName)
 			: NullLogger.Instance;
 		// By default, we use this package's built-in out-of-process-via-HTTP hosting/transport
-		this.UseHttpHosting();
+		this.UseHttpHosting(mgr);
 	}
 
 	/// <summary>

@@ -26,6 +26,7 @@ public class Startup
 	// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
 	public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 	{
+		var mgr = new MintPlayer.Dotnet.JobObjects.ChildProcessManager();
 		if (env.IsDevelopment())
 		{
 			app.UseDeveloperExceptionPage();
@@ -65,7 +66,7 @@ public class Startup
 			if (env.IsDevelopment())
 			{
 				spa.UseProxyToSpaDevelopmentServer("http://localhost:4200");
-				spa.UseAngularCliServer(npmScript: "start");
+				spa.UseAngularCliServer(npmScript: "start", mgr);
 			}
 		});
 	}

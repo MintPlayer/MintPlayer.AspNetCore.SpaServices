@@ -32,7 +32,7 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 	private bool _disposed;
 	private string _endpoint;
 
-	public HttpNodeInstance(NodeServicesOptions options, int port = 0)
+	public HttpNodeInstance(NodeServicesOptions options, MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr, int port = 0)
 	: base(
 			EmbeddedResourceReader.Read(
 				typeof(HttpNodeInstance),
@@ -45,7 +45,8 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 			options.EnvironmentVariables,
 			options.InvocationTimeoutMilliseconds,
 			options.LaunchWithDebugging,
-			options.DebuggingPort)
+			options.DebuggingPort,
+			mgr)
 	{
 		_client = new HttpClient();
 		_client.Timeout = TimeSpan.FromMilliseconds(options.InvocationTimeoutMilliseconds + 1000);

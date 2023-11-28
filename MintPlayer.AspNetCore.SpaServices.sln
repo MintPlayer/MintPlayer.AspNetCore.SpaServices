@@ -27,7 +27,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MintPlayer.AspNetCore.SpaSe
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XsrfDemo", "Demo\Xsrf\XsrfDemo.csproj", "{8285A88D-1E79-4B2F-98FE-7F827D5E8BC3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MintPlayer.AspNetCore.SpaServices.Abstractions", "MintPlayer.AspNetCore.SpaServices.Abstractions\MintPlayer.AspNetCore.SpaServices.Abstractions.csproj", "{19B7F065-5838-448A-B7DF-C10BC047C7B3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MintPlayer.AspNetCore.SpaServices.Abstractions", "MintPlayer.AspNetCore.SpaServices.Abstractions\MintPlayer.AspNetCore.SpaServices.Abstractions.csproj", "{19B7F065-5838-448A-B7DF-C10BC047C7B3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MintPlayer.Dotnet.JobObjects", "MintPlayer.Dotnet.JobObjects\MintPlayer.Dotnet.JobObjects.csproj", "{DE07946B-BEE9-4E34-B3B9-0F8784D8DED9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -75,6 +77,10 @@ Global
 		{19B7F065-5838-448A-B7DF-C10BC047C7B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{19B7F065-5838-448A-B7DF-C10BC047C7B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{19B7F065-5838-448A-B7DF-C10BC047C7B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DE07946B-BEE9-4E34-B3B9-0F8784D8DED9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE07946B-BEE9-4E34-B3B9-0F8784D8DED9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE07946B-BEE9-4E34-B3B9-0F8784D8DED9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE07946B-BEE9-4E34-B3B9-0F8784D8DED9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

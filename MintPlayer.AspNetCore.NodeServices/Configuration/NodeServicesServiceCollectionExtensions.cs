@@ -14,15 +14,15 @@ public static class NodeServicesServiceCollectionExtensions
 	/// Adds NodeServices support to the <paramref name="serviceCollection"/>.
 	/// </summary>
 	/// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
-	public static void AddNodeServices(this IServiceCollection serviceCollection)
-		=> AddNodeServices(serviceCollection, _ => { });
+	public static void AddNodeServices(this IServiceCollection serviceCollection, MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr)
+		=> AddNodeServices(serviceCollection, _ => { }, mgr);
 
 	/// <summary>
 	/// Adds NodeServices support to the <paramref name="serviceCollection"/>.
 	/// </summary>
 	/// <param name="serviceCollection">The <see cref="IServiceCollection"/>.</param>
 	/// <param name="setupAction">A callback that will be invoked to populate the <see cref="NodeServicesOptions"/>.</param>
-	public static void AddNodeServices(this IServiceCollection serviceCollection, Action<NodeServicesOptions> setupAction)
+	public static void AddNodeServices(this IServiceCollection serviceCollection, Action<NodeServicesOptions> setupAction, MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr)
 	{
 		if (setupAction == null)
 		{
@@ -33,7 +33,7 @@ public static class NodeServicesServiceCollectionExtensions
 		{
 			// First we let NodeServicesOptions take its defaults from the IServiceProvider,
 			// then we let the developer override those options
-			var options = new NodeServicesOptions(serviceProvider);
+			var options = new NodeServicesOptions(serviceProvider, mgr);
 			setupAction(options);
 
 			return NodeServicesFactory.CreateNodeServices(options);

@@ -18,7 +18,7 @@ public static class AngularCliMiddlewareExtensions
 	/// </summary>
 	/// <param name="spaBuilder">The <see cref="ISpaBuilder"/>.</param>
 	/// <param name="npmScript">The name of the script in your package.json file that launches the Angular CLI process.</param>
-	public static void UseAngularCliServer(this Abstractions.ISpaBuilder spaBuilder, string npmScript)
+	public static void UseAngularCliServer(this Abstractions.ISpaBuilder spaBuilder, string npmScript, MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr)
 	{
 		ArgumentNullException.ThrowIfNull(spaBuilder);
 
@@ -29,6 +29,6 @@ public static class AngularCliMiddlewareExtensions
 			throw new InvalidOperationException($"To use {nameof(UseAngularCliServer)}, you must supply a non-empty value for the {nameof(Core.SpaOptions.SourcePath)} property of {nameof(Core.SpaOptions)} when calling {nameof(MintPlayer.AspNetCore.SpaServices.Extensions.SpaApplicationBuilderExtensions.UseSpaImproved)}.");
 		}
 
-        AngularCli.AngularCliMiddleware.Attach(spaBuilder, npmScript);
+        AngularCli.AngularCliMiddleware.Attach(spaBuilder, npmScript, mgr);
 	}
 }

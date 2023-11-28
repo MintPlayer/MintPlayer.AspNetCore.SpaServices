@@ -12,7 +12,7 @@ internal static class AngularCliMiddleware
 	private const string LogCategoryName = "MintPlayer.AspNetCore.SpaServices";
 	private static readonly TimeSpan RegexMatchTimeout = TimeSpan.FromSeconds(5); // This is a development-time only feature, so a very long timeout is fine
 
-	public static void Attach(Abstractions.ISpaBuilder spaBuilder, string scriptName)
+	public static void Attach(Abstractions.ISpaBuilder spaBuilder, string scriptName, MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr)
 	{
 		var pkgManagerCommand = spaBuilder.Options.PackageManagerCommand;
 		var sourcePath = spaBuilder.Options.SourcePath;
@@ -32,7 +32,7 @@ internal static class AngularCliMiddleware
 		var applicationStoppingToken = appBuilder.ApplicationServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
 		var logger = LoggerFinder.GetOrCreateLogger(appBuilder, LogCategoryName);
 		var diagnosticSource = appBuilder.ApplicationServices.GetRequiredService<DiagnosticSource>();
-		var angularCliServerInfoTask = StartAngularCliServerAsync(sourcePath, scriptName, pkgManagerCommand, devServerPort, spaBuilder.Options.CliRegexes, logger, diagnosticSource, applicationStoppingToken);
+		var angularCliServerInfoTask = StartAngularCliServerAsync(sourcePath, scriptName, pkgManagerCommand, devServerPort, spaBuilder.Options.CliRegexes, logger, diagnosticSource, applicationStoppingToken, mgr);
 
         Extensions.SpaProxyingExtensions.UseProxyToSpaDevelopmentServer(spaBuilder, () =>
 		{
@@ -55,7 +55,8 @@ internal static class AngularCliMiddleware
 		Regex[]? finishedRegexes,
 		ILogger logger,
 		DiagnosticSource diagnosticSource,
-		CancellationToken applicationStoppingToken)
+		CancellationToken applicationStoppingToken,
+		MintPlayer.Dotnet.JobObjects.ChildProcessManager mgr)
 	{
 		if (portNumber == default)
 		{
@@ -66,7 +67,7 @@ internal static class AngularCliMiddleware
 			logger.LogInformation($"Starting @angular/cli on port {portNumber}...");
 		}
 
-		var scriptRunner = new Npm.NodeScriptRunner(sourcePath, scriptName, $"--port {portNumber}", null, pkgManagerCommand, diagnosticSource, applicationStoppingToken);
+		var scriptRunner = new Npm.NodeScriptRunner(sourcePath, scriptName, $"--port {portNumber}", null, pkgManagerCommand, diagnosticSource, applicationStoppingToken, mgr);
 		scriptRunner.AttachToLogger(logger);
 
 		string? openBrowserUrl = null;
