@@ -1,7 +1,9 @@
 import { isPlatformServer } from '@angular/common';
 import { Component, Inject, PLATFORM_ID } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Title } from '@angular/platform-browser';
+import { TranslateModule } from '@ngx-translate/core';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
 import { SlugifyPipe } from '../../../pipes/slugify.pipe';
@@ -9,7 +11,13 @@ import { SlugifyPipe } from '../../../pipes/slugify.pipe';
 @Component({
 	selector: 'app-person-edit',
 	templateUrl: './edit.component.html',
-	styleUrls: ['./edit.component.scss']
+  styleUrls: ['./edit.component.scss'],
+  standalone: true,
+  imports: [
+    FormsModule,
+    TranslateModule,
+    SlugifyPipe
+  ]
 })
 export class PersonEditComponent {
 

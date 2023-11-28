@@ -4,6 +4,7 @@ using MintPlayer.AspNetCore.SpaServices.Prerendering;
 using MintPlayer.AspNetCore.SpaServices.Routing;
 using MintPlayer.AspNetCore.SpaServices.Extensions;
 using WebMarkupMin.AspNetCore8;
+using System.Text.RegularExpressions;
 
 namespace Demo.Web;
 
@@ -60,6 +61,8 @@ public class Startup
 				options.MinificationSettings.MinifyEmbeddedJsCode = true;
 				options.MinificationSettings.MinifyEmbeddedJsonData = true;
 				options.MinificationSettings.WhitespaceMinificationMode = WebMarkupMin.Core.WhitespaceMinificationMode.Aggressive;
+				options.MinificationSettings.MinifyEmbeddedCssCode = true;
+				options.MinificationSettings.MinifyInlineCssCode = true;
 			});
 	}
 
@@ -99,12 +102,14 @@ public class Startup
 			// see https://go.microsoft.com/fwlink/?linkid=864501
 
 			spa.Options.SourcePath = "ClientApp";
+			// For angular 17
+			spa.Options.CliRegexes = [new Regex(@"Local\:\s+(?<openbrowser>https?\:\/\/(.+))")];
 
 			//spa.ApplicationBuilder.UseResponseCaching().UseHsts();
 			spa.UseSpaPrerendering(options =>
 			{
 				options.BootModulePath = $"{spa.Options.SourcePath}/dist/ClientApp/server/main.js";
-				options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder(npmScript: "build:ssr:development") : null;
+				options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder("build:ssr:development", @"Build at\:", 1) : null;
 				options.ExcludeUrls = new[] { "/sockjs-node" };
 
 				options.OnPrepareResponse = (context) =>
