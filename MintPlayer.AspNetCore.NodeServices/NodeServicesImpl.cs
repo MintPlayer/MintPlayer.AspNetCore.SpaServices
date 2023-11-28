@@ -1,9 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using MintPlayer.AspNetCore.NodeServices.HostingModels;
 
 namespace MintPlayer.AspNetCore.NodeServices;
@@ -19,8 +16,7 @@ namespace MintPlayer.AspNetCore.NodeServices;
 /// alive for a defined period so that any in-flight RPC calls can complete. This latter feature is
 /// analogous to the "connection draining" feature implemented by HTTP load balancers.
 /// </summary>
-/// <seealso cref="Microsoft.AspNetCore.NodeServices.INodeServices" />
-[Obsolete("Use Microsoft.AspNetCore.SpaServices.Extensions")]
+/// <seealso cref="MintPlayer.AspNetCore.NodeServices.INodeServices" />
 internal class NodeServicesImpl : INodeServices
 {
 	private static TimeSpan ConnectionDrainingTimespan = TimeSpan.FromSeconds(15);

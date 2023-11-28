@@ -1,7 +1,3 @@
-using System;
-using System.Linq;
-using System.Collections.Generic;
-
 namespace MintPlayer.AspNetCore.SpaServices.Routing.Extensions;
 
 internal static class IEnumerable

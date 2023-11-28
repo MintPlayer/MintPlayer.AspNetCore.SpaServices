@@ -1,11 +1,7 @@
 using Demo.Dtos.Dtos;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
 using MintPlayer.Pagination;
 using MintPlayer.Pagination.Extensions;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Demo.Data.Dal.Repositories;
 

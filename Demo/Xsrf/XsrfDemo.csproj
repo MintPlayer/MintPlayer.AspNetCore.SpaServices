@@ -6,15 +6,13 @@
 		<TypeScriptToolsVersion>Latest</TypeScriptToolsVersion>
 		<IsPackable>false</IsPackable>
 		<SpaRoot>ClientApp\</SpaRoot>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
 		<DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules\**</DefaultItemExcludes>
 
 		<!-- Set this to true if you enable server-side prerendering -->
 		<BuildServerSideRenderer>false</BuildServerSideRenderer>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="8.0.0" />
-	</ItemGroup>
 
 	<ItemGroup>
 		<!-- Don't publish the SPA source files, but do show them in the project files list -->
@@ -25,6 +23,7 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\MintPlayer.AspNetCore.SpaServices.Xsrf\MintPlayer.AspNetCore.SpaServices.Xsrf.csproj" />
+	  <ProjectReference Include="..\..\MintPlayer.AspNetCore.SpaServices\MintPlayer.AspNetCore.SpaServices.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -23,9 +23,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Prerendering", "Prerenderin
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Xsrf", "Xsrf", "{1A21BD78-EE98-4909-BEA6-3D32A0608889}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MintPlayer.AspNetCore.SpaServices.Xsrf", "MintPlayer.AspNetCore.SpaServices.Xsrf\MintPlayer.AspNetCore.SpaServices.Xsrf.csproj", "{7C4C1B95-8E73-4460-9009-93DDBDA4A7CA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MintPlayer.AspNetCore.SpaServices.Xsrf", "MintPlayer.AspNetCore.SpaServices.Xsrf\MintPlayer.AspNetCore.SpaServices.Xsrf.csproj", "{7C4C1B95-8E73-4460-9009-93DDBDA4A7CA}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XsrfDemo", "Demo\Xsrf\XsrfDemo.csproj", "{8285A88D-1E79-4B2F-98FE-7F827D5E8BC3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MintPlayer.AspNetCore.SpaServices.Abstractions", "MintPlayer.AspNetCore.SpaServices.Abstractions\MintPlayer.AspNetCore.SpaServices.Abstractions.csproj", "{19B7F065-5838-448A-B7DF-C10BC047C7B3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -69,6 +71,10 @@ Global
 		{8285A88D-1E79-4B2F-98FE-7F827D5E8BC3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8285A88D-1E79-4B2F-98FE-7F827D5E8BC3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8285A88D-1E79-4B2F-98FE-7F827D5E8BC3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{19B7F065-5838-448A-B7DF-C10BC047C7B3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19B7F065-5838-448A-B7DF-C10BC047C7B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19B7F065-5838-448A-B7DF-C10BC047C7B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19B7F065-5838-448A-B7DF-C10BC047C7B3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

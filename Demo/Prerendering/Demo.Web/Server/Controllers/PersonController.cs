@@ -1,9 +1,6 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Demo.Data.Dal.Services;
 using Demo.Dtos.Dtos;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using MintPlayer.Pagination;
 
 namespace Demo.Web.Controllers;

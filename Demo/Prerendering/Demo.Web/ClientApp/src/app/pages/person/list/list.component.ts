@@ -1,20 +1,32 @@
-import { Component, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, Inject, PLATFORM_ID, Optional } from '@angular/core';
+import { RouterModule } from '@angular/router';
+import { Title } from '@angular/platform-browser';
+import { isPlatformServer, CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
-import { Title } from '@angular/platform-browser';
-import { isPlatformServer } from '@angular/common';
+import { SlugifyPipe } from '../../../pipes/slugify.pipe';
 
 @Component({
 	selector: 'app-person-list',
 	templateUrl: './list.component.html',
-	styleUrls: ['./list.component.scss']
+  styleUrls: ['./list.component.scss'],
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterModule,
+    TranslateModule,
+    SlugifyPipe
+  ]
 })
 export class PersonListComponent {
 
-	constructor(private personService: PersonService, @Inject(PLATFORM_ID) private platformId: Object, @Inject('PEOPLE') private peopleInj: Person[], private titleService: Title) {
+  constructor(private personService: PersonService, private titleService: Title, @Inject(PLATFORM_ID) private platformId: Object, @Optional() @Inject('PEOPLE') private peopleInj?: Person[]) {
 		this.titleService.setTitle('People');
 		if (isPlatformServer(platformId)) {
-			this.people = peopleInj;
+			this.people = peopleInj!;
 		} else {
 			this.loadPeople();
 		}

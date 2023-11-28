@@ -175,9 +175,9 @@ var requestedPortOrZero = parsedArgs.port || 0; // 0 means 'let the OS decide'
 server.listen(requestedPortOrZero, 'localhost', function () {
     var addressInfo = server.address();
     // Signal to HttpNodeHost which loopback IP address (IPv4 or IPv6) and port it should make its HTTP connections on
-    console.log('[Microsoft.AspNetCore.NodeServices.HttpNodeHost:Listening on {' + addressInfo.address + '} port ' + addressInfo.port + '\]');
+    console.log('[MintPlayer.AspNetCore.NodeServices.HttpNodeHost:Listening on {' + addressInfo.address + '} port ' + addressInfo.port + '\]');
     // Signal to the NodeServices base class that we're ready to accept invocations
-    console.log('[Microsoft.AspNetCore.NodeServices:Listening]');
+    console.log('[MintPlayer.AspNetCore.NodeServices:Listening]');
 });
 ExitWhenParentExits_1.exitWhenParentExits(parseInt(parsedArgs.parentPid), /* ignoreSigint */ true);
 function readRequestBodyAsJson(request, callback) {
