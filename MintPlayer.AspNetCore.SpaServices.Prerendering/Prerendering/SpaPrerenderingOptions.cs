@@ -30,6 +30,11 @@ public class SpaPrerenderingOptions
 	public string[] ExcludeUrls { get; set; }
 
 	/// <summary>
+	/// Path to the Node executable
+	/// </summary>
+	public string NodePath { get; set; } = "node";
+
+	/// <summary>
 	/// This method is called after the prerendering logic completes, and before the next middleware is called.
 	/// </summary>
 	public Func<HttpContext, Task> OnPrepareResponse { get; set; }

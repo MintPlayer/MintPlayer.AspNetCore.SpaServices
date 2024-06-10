@@ -34,9 +34,7 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 
 	public HttpNodeInstance(NodeServicesOptions options, int port = 0)
 	: base(
-			EmbeddedResourceReader.Read(
-				typeof(HttpNodeInstance),
-				"/Content/Node/entrypoint-http.js"),
+			EmbeddedResourceReader.Read(typeof(HttpNodeInstance), "/Content/Node/entrypoint-http.js"),
 			options.ProjectPath,
 			options.WatchFileExtensions,
 			MakeCommandLineOptions(port),
@@ -45,7 +43,8 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 			options.EnvironmentVariables,
 			options.InvocationTimeoutMilliseconds,
 			options.LaunchWithDebugging,
-			options.DebuggingPort)
+			options.DebuggingPort,
+			options.NodePath)
 	{
 		_client = new HttpClient();
 		_client.Timeout = TimeSpan.FromMilliseconds(options.InvocationTimeoutMilliseconds + 1000);
