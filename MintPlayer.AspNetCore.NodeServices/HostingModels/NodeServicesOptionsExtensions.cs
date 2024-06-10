@@ -14,6 +14,10 @@ public static class NodeServicesOptionsExtensions
 	/// </summary>
 	public static void UseHttpHosting(this NodeServicesOptions options)
 	{
-		options.NodeInstanceFactory = () => new HttpNodeInstance(options);
+		options.NodeInstanceFactory = () =>
+		{
+			var instance = new HttpNodeInstance(options);
+			return instance;
+		};
 	}
 }

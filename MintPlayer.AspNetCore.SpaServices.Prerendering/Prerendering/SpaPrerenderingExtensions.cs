@@ -52,11 +52,9 @@ public static class SpaPrerenderingExtensions
 		// Get all the necessary context info that will be used for each prerendering call
 		var applicationBuilder = spaBuilder.ApplicationBuilder;
 		var serviceProvider = applicationBuilder.ApplicationServices;
-		var nodeServices = GetNodeServices(serviceProvider);
-		var applicationStoppingToken = serviceProvider.GetRequiredService<IHostApplicationLifetime>()
-			.ApplicationStopping;
-		var applicationBasePath = serviceProvider.GetRequiredService<IWebHostEnvironment>()
-			.ContentRootPath;
+		var nodeServices = GetNodeServices(serviceProvider, opts => opts.NodePath = options.NodePath);
+		var applicationStoppingToken = serviceProvider.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
+		var applicationBasePath = serviceProvider.GetRequiredService<IWebHostEnvironment>().ContentRootPath;
 		var moduleExport = new JavaScriptModuleExport(capturedBootModulePath);
 		var excludePathStrings = (options.ExcludeUrls ?? Array.Empty<string>())
 			.Select(url => new PathString(url))
@@ -266,11 +264,22 @@ public static class SpaPrerenderingExtensions
 		}
 	}
 
-	private static INodeServices GetNodeServices(IServiceProvider serviceProvider)
+	private static INodeServices GetNodeServices(IServiceProvider serviceProvider, Action<NodeServicesOptions> optionAction)
 	{
 		// Use the registered instance, or create a new private instance if none is registered
 		var instance = serviceProvider.GetService<INodeServices>();
-		return instance ?? NodeServicesFactory.CreateNodeServices(
-			new NodeServicesOptions(serviceProvider));
+		if (instance == null)
+		{
+			// Will always be this case
+			var opts = new NodeServicesOptions(serviceProvider);
+			optionAction(opts);
+			var result = NodeServicesFactory.CreateNodeServices(opts);
+			return result;
+		}
+		else
+		{
+			// Will never be called for the moment
+			return instance;
+		}
 	}
 }

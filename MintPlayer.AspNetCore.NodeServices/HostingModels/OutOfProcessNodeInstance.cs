@@ -57,7 +57,8 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		IDictionary<string, string> environmentVars,
 		int invocationTimeoutMilliseconds,
 		bool launchWithDebugging,
-		int debuggingPort)
+		int debuggingPort,
+		string nodePath)
 	{
 		if (nodeOutputLogger == null)
 		{
@@ -70,7 +71,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		_launchWithDebugging = launchWithDebugging;
 
 		var startInfo = PrepareNodeProcessStartInfo(_entryPointScript.FileName, projectPath, commandLineArguments,
-			environmentVars, _launchWithDebugging, debuggingPort);
+			environmentVars, _launchWithDebugging, debuggingPort, nodePath);
 		_nodeProcess = LaunchNodeProcess(startInfo);
 		_watchFileExtensions = watchFileExtensions;
 		_fileSystemWatcher = BeginFileWatcher(projectPath);
@@ -208,7 +209,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 	/// <returns></returns>
 	protected virtual ProcessStartInfo PrepareNodeProcessStartInfo(
 		string entryPointFilename, string projectPath, string commandLineArguments,
-		IDictionary<string, string> environmentVars, bool launchWithDebugging, int debuggingPort)
+		IDictionary<string, string> environmentVars, bool launchWithDebugging, int debuggingPort, string nodePath)
 	{
 		// This method is virtual, as it provides a way to override the NODE_PATH or the path to node.exe
 		string debuggingArgs;
@@ -223,7 +224,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		}
 
 		var thisProcessPid = Process.GetCurrentProcess().Id;
-		var startInfo = new ProcessStartInfo("node")
+		var startInfo = new ProcessStartInfo(nodePath)
 		{
 			Arguments = $"{debuggingArgs}\"{entryPointFilename}\" --parentPid {thisProcessPid} {commandLineArguments ?? string.Empty}",
 			UseShellExecute = false,

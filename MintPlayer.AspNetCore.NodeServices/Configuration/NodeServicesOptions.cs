@@ -105,4 +105,9 @@ public class NodeServicesOptions
 	/// A token that indicates when the host application is stopping.
 	/// </summary>
 	public CancellationToken ApplicationStoppingToken { get; set; }
+
+	/// <summary>
+	/// Explicitly pass the path to the Node executable.
+	/// </summary>
+	public string NodePath { get; set; } = "node";
 }
