@@ -17,6 +17,10 @@ import { SlugifyPipe } from '../../../pipes/slugify.pipe';
     FormsModule,
     TranslateModule,
     SlugifyPipe
+  ],
+  providers: [
+	SlugifyPipe,
+	{ provide: 'PERSON', useValue: {} }
   ]
 })
 export class PersonEditComponent {

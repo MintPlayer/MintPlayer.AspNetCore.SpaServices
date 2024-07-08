@@ -16,7 +16,7 @@ public static class DemoExtensions
 		return services
 			.AddDbContext<DemoContext>(db_options =>
 			{
-				db_options.UseSqlServer(opt.ConnectionString, b => b.MigrationsAssembly("Demo.Data"));
+				db_options.UseSqlite(opt.ConnectionString, b => b.MigrationsAssembly("Demo.Data"));
 			})
 			.AddScoped<IPersonRepository, PersonRepository>()
 			.AddScoped<IPersonService, PersonService>();

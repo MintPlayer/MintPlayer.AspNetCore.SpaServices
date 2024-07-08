@@ -26,12 +26,12 @@ internal class DemoContext : DbContext
 		if (configuration == null)
 		{
 			// Only used when generating migrations
-			var migrationsConnectionString = @"Server=(localdb)\mssqllocaldb;Database=RoutingDemo;Trusted_Connection=True;ConnectRetryCount=0";
-			optionsBuilder.UseSqlServer(migrationsConnectionString, options => options.MigrationsAssembly("Demo.Data"));
+			var migrationsConnectionString = @"Data Source=demo.db";
+			optionsBuilder.UseSqlite(migrationsConnectionString, options => options.MigrationsAssembly("Demo.Data"));
 		}
 		else
 		{
-			optionsBuilder.UseSqlServer(configuration.GetConnectionString("Demo"));
+			optionsBuilder.UseSqlite(configuration.GetConnectionString("Demo"));
 		}
 	}
 
