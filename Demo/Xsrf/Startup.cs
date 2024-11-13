@@ -40,7 +40,6 @@ public class Startup
 		app.UseHttpsRedirection();
 		app.UseAntiforgery();
 
-		app.UseStaticFiles();
 		if (!env.IsDevelopment())
 		{
 			app.UseSpaStaticFilesImproved();
@@ -50,6 +49,7 @@ public class Startup
 
 		app.UseEndpoints(endpoints =>
 		{
+			endpoints.MapStaticAssets();
 			endpoints.MapControllerRoute(
 				name: "default",
 				pattern: "{controller}/{action=Index}/{id?}");
