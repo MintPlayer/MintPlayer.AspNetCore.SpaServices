@@ -81,7 +81,6 @@ public class Startup
 		}
 
 		app.UseHttpsRedirection();
-		app.UseStaticFiles();
 		if (!env.IsDevelopment())
 		{
 			app.UseSpaStaticFilesImproved();
@@ -91,6 +90,7 @@ public class Startup
 
 		app.UseEndpoints(endpoints =>
 		{
+			endpoints.MapStaticAssets();
 			endpoints.MapControllerRoute(
 				name: "default",
 				pattern: "{controller}/{action=Index}/{id?}");
@@ -109,7 +109,7 @@ public class Startup
 			spa.UseSpaPrerendering(options =>
 			{
 				options.BootModulePath = $"{spa.Options.SourcePath}/dist/ClientApp/server/main.js";
-				//options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder("build:ssr:development", @"Build at\:", 1) : null;
+				options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder("build:ssr:development", @"Build at\:", 1) : null;
 				options.ExcludeUrls = new[] { "/sockjs-node" };
 
 				options.OnPrepareResponse = (context) =>
