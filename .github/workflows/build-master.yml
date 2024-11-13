@@ -34,13 +34,13 @@ jobs:
     - name: Test
       run: dotnet test --no-restore --verbosity normal
       
-    #- name: Pack
-    #  run: dotnet pack --no-build --configuration Release
-    #  
-    #- name: PushNuget
-    #  run: dotnet nuget push **/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.PUBLISH_TO_NUGET_ORG }} --skip-duplicate
-    #  
-    #- name: PushGithub
-    #  run: dotnet nuget push "**/*.nupkg" -NoSymbols -SkipDuplicate
-    #  env:
-    #    NUGET_AUTH_TOKEN: ${{ github.token }}
+    - name: Pack
+      run: dotnet pack --no-build --configuration Release
+     
+    - name: PushNuget
+      run: dotnet nuget push **/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.PUBLISH_TO_NUGET_ORG }} --skip-duplicate
+     
+    - name: PushGithub
+      run: dotnet nuget push **/*.nupkg --no-symbols --skip-duplicate
+      env:
+        NUGET_AUTH_TOKEN: ${{ github.token }}
