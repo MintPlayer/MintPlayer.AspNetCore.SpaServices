@@ -173,7 +173,7 @@ public static class SpaPrerenderingExtensions
 					unencodedAbsoluteUrl,
 					unencodedPathAndQuery,
 					customDataParameter: customData,
-					timeoutMilliseconds: 0,
+					timeoutMilliseconds: options.TimeoutMilliseconds,
 					requestPathBase: context.Request.PathBase.ToString());
 
 				await ServePrerenderResult(context, renderResult);

@@ -35,6 +35,13 @@ public class SpaPrerenderingOptions
 	public string NodePath { get; set; } = "node";
 
 	/// <summary>
+	/// DEV: Max number of milliseconds to wait before the server bundle is built.
+	/// Defaults to "0" (30s).
+	/// "-1" means wait indefinitely.
+	/// </summary>
+	public int TimeoutMilliseconds { get; set; } = 0;
+
+	/// <summary>
 	/// This method is called after the prerendering logic completes, and before the next middleware is called.
 	/// </summary>
 	public Func<HttpContext, Task> OnPrepareResponse { get; set; }
