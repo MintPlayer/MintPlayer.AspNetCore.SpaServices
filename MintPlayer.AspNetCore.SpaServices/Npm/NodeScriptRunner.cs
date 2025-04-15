@@ -7,6 +7,8 @@ using System.Text.RegularExpressions;
 using MintPlayer.AspNetCore.SpaServices.Utils;
 using Microsoft.Extensions.Logging;
 
+
+
 // This is under the NodeServices namespace because post 2.1 it will be moved to that package
 namespace MintPlayer.AspNetCore.SpaServices.Npm;
 
@@ -19,8 +21,6 @@ internal sealed class NodeScriptRunner : IDisposable
 	private Process? _npmProcess;
 	public EventedStreamReader StdOut { get; }
 	public EventedStreamReader StdErr { get; }
-
-	private static readonly Regex AnsiColorRegex = new Regex("\x001b\\[[0-9;]*m", RegexOptions.None, TimeSpan.FromSeconds(1));
 
 	public NodeScriptRunner(string workingDirectory, string scriptName, string? arguments, IDictionary<string, string>? envVars, string pkgManagerCommand, DiagnosticSource diagnosticSource, CancellationToken applicationStoppingToken)
 	{
@@ -101,7 +101,7 @@ internal sealed class NodeScriptRunner : IDisposable
 			{
 				// Node tasks commonly emit ANSI colors, but it wouldn't make sense to forward
 				// those to loggers (because a logger isn't necessarily any kind of terminal)
-				logger.LogInformation(StripAnsiColors(line));
+				logger.LogInformation(RegexHelpers.StripAnsiColors(line));
 			}
 		};
 
@@ -109,7 +109,7 @@ internal sealed class NodeScriptRunner : IDisposable
 		{
 			if (!string.IsNullOrWhiteSpace(line))
 			{
-				logger.LogError(StripAnsiColors(line));
+				logger.LogError(RegexHelpers.StripAnsiColors(line));
 			}
 		};
 
@@ -127,9 +127,6 @@ internal sealed class NodeScriptRunner : IDisposable
 			}
 		};
 	}
-
-	private static string StripAnsiColors(string line)
-		=> AnsiColorRegex.Replace(line, string.Empty);
 
 	private static Process LaunchNodeProcess(ProcessStartInfo startInfo, string commandName)
 	{
