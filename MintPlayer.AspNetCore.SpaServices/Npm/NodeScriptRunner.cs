@@ -3,11 +3,7 @@
 
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Text.RegularExpressions;
 using MintPlayer.AspNetCore.SpaServices.Utils;
-using Microsoft.Extensions.Logging;
-
-
 
 // This is under the NodeServices namespace because post 2.1 it will be moved to that package
 namespace MintPlayer.AspNetCore.SpaServices.Npm;
