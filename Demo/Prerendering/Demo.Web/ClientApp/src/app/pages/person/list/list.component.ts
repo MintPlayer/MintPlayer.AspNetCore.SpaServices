@@ -19,7 +19,8 @@ import { SlugifyPipe } from '../../../pipes/slugify.pipe';
     RouterModule,
     TranslateModule,
     SlugifyPipe
-  ]
+  ],
+  providers: [SlugifyPipe]
 })
 export class PersonListComponent {
 

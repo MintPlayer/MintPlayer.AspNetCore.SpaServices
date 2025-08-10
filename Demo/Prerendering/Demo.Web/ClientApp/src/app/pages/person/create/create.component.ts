@@ -15,7 +15,8 @@ import { SlugifyPipe } from '../../../pipes/slugify.pipe';
     FormsModule,
     TranslateModule,
     SlugifyPipe
-  ]
+  ],
+  providers: [SlugifyPipe]
 })
 export class PersonCreateComponent {
 

@@ -7,8 +7,8 @@ namespace Demo.Data;
 internal class DemoContext : DbContext
 {
 	// From Data project:
-	// dotnet ef migrations add AddPeople
-	// dotnet ef database update
+	// dotnet ef migrations add AddPeople --project ./Demo.Data.csproj --startup-project ../Demo.Web/Demo.Web.csproj
+	// dotnet ef database update --project ./Demo.Data.csproj --startup-project ../Demo.Web/Demo.Web.csproj
 	// From Web project:
 	// dotnet ef migrations script --output "MigrationScripts\AddPeople.sql" --context DemoContext
 
