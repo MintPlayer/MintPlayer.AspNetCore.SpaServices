@@ -1,14 +1,14 @@
 "use strict";
-exports.__esModule = true;
-exports.parseArgs = void 0;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.parseArgs = parseArgs;
 function parseArgs(args) {
     // Very simplistic parsing which is sufficient for the cases needed. We don't want to bring in any external
     // dependencies (such as an args-parsing library) to this file.
-    var result = {};
-    var currentKey = null;
-    args.forEach(function (arg) {
+    const result = {};
+    let currentKey = null;
+    args.forEach(arg => {
         if (arg.indexOf('--') === 0) {
-            var argName = arg.substring(2);
+            const argName = arg.substring(2);
             result[argName] = undefined;
             currentKey = argName;
         }
@@ -19,4 +19,3 @@ function parseArgs(args) {
     });
     return result;
 }
-exports.parseArgs = parseArgs;

@@ -96,7 +96,32 @@
 /***/ (function (module, exports, __webpack_require__) {
 
 		"use strict";
-
+                        // Ensure this file exports a function named "renderToString" for NodeServices compatibility
+                        //exports.renderToString = function (
+                        //    applicationBasePath,
+                        //    bootModule,
+                        //    requestAbsoluteUrl,
+                        //    requestPathAndQuery,
+                        //    customDataParameter,
+                        //    timeoutMilliseconds,
+                        //    requestPathBase
+                        //) {
+                        //    // Your prerendering logic here.
+                        //    // This is a stub implementation. Replace with actual logic as needed.
+                        //    return new Promise((resolve, reject) => {
+                        //        try {
+                        //            // Example: return a simple HTML string
+                        //            resolve({
+                        //                html: `<div>Prerendered content for ${requestAbsoluteUrl}</div>`,
+                        //                globals: {},
+                        //                redirectUrl: null,
+                        //                statusCode: 200
+                        //            });
+                        //        } catch (err) {
+                        //            reject(err);
+                        //        }
+                        //    });
+                        //};
 		exports.__esModule = true;
 		var path = __webpack_require__(2);
 		// Separate declaration and export just to add type checking on function signature

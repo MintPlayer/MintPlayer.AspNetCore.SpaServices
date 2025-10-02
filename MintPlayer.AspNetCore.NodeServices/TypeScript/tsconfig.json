@@ -1,8 +1,8 @@
 {
 	"compilerOptions": {
-		"target": "es3",
-		"module": "commonjs",
-		"moduleResolution": "node",
+		"target": "es2020",
+		"module": "node16", // or "nodenext"
+		"moduleResolution": "node16", // or "nodenext"
 		"types": [ "node" ]
 	},
 	"exclude": [

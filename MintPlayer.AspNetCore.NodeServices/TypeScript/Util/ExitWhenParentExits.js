@@ -32,11 +32,11 @@ differently between Windows and Linux/OS X:
 Of these, the only cross-platform approach that is actually documented as a valid strategy is simply polling
 to check whether the parent PID is still running. So that's what we do here.
 */
-exports.__esModule = true;
-exports.exitWhenParentExits = void 0;
-var pollIntervalMs = 1000;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.exitWhenParentExits = exitWhenParentExits;
+const pollIntervalMs = 1000;
 function exitWhenParentExits(parentPid, ignoreSigint) {
-    setInterval(function () {
+    setInterval(() => {
         if (!processExists(parentPid)) {
             // Can't log anything at this point, because out stdout was connected to the parent,
             // but the parent is gone.
@@ -57,12 +57,11 @@ function exitWhenParentExits(parentPid, ignoreSigint) {
         // ongoing EventSource connections before letting the Node process exit, independently of the .NET
         // process exiting. However, doing this well in general is very nontrivial (see all the discussion at
         // https://github.com/nodejs/node/issues/2642).
-        process.on('SIGINT', function () {
+        process.on('SIGINT', () => {
             console.log('Received SIGINT. Waiting for .NET process to exit...');
         });
     }
 }
-exports.exitWhenParentExits = exitWhenParentExits;
 function processExists(pid) {
     try {
         // Sending signal 0 - on all platforms - tests whether the process exists. As long as it doesn't
@@ -74,7 +73,7 @@ function processExists(pid) {
         // If the reason for the error is that we don't have permission to ask about this process,
         // report that as a separate problem.
         if (ex.code === 'EPERM') {
-            throw new Error("Attempted to check whether process " + pid + " was running, but got a permissions error.");
+            throw new Error(`Attempted to check whether process ${pid} was running, but got a permissions error.`);
         }
         return false;
     }

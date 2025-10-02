@@ -1,3 +1,5 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 // When Node writes to stdout/strerr, we capture that and convert the lines into calls on the
 // active .NET ILogger. But by default, stdout/stderr don't have any way of distinguishing
 // linebreaks inside log messages from the linebreaks that delimit separate log messages,
@@ -12,16 +14,16 @@
 // Note that it's better to do the interception at the stdout/stderr level, rather than at
 // the console.log/console.error (etc.) level, because this takes place after any native
 // message formatting has taken place (e.g., inserting values for % placeholders).
-var findInternalNewlinesRegex = /\n(?!$)/g;
-var encodedNewline = '__ns_newline__';
+const findInternalNewlinesRegex = /\n(?!$)/g;
+const encodedNewline = '__ns_newline__';
 encodeNewlinesWrittenToStream(process.stdout);
 encodeNewlinesWrittenToStream(process.stderr);
 function encodeNewlinesWrittenToStream(outputStream) {
-    var origWriteFunction = outputStream.write;
+    const origWriteFunction = outputStream.write;
     outputStream.write = function (value) {
         // Only interfere with the write if it's definitely a string
         if (typeof value === 'string') {
-            var argsClone = Array.prototype.slice.call(arguments, 0);
+            const argsClone = Array.prototype.slice.call(arguments, 0);
             argsClone[0] = encodeNewlinesInString(value);
             origWriteFunction.apply(this, argsClone);
         }

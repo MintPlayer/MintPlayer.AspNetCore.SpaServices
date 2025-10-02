@@ -55,7 +55,8 @@ const server = http.createServer((req, res) => {
 
 		try {
 			const resolvedPath = path.resolve(process.cwd(), bodyJson.moduleName);
-			const invokedModule = dynamicRequire(resolvedPath);
+			const x = import(resolvedPath);
+			const invokedModule = import(resolvedPath);
 			const func = bodyJson.exportedFunctionName ? invokedModule[bodyJson.exportedFunctionName] : invokedModule;
 			if (!func) {
 				throw new Error('The module "' + resolvedPath + '" has no export named "' + bodyJson.exportedFunctionName + '"');

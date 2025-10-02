@@ -1,20 +1,53 @@
 "use strict";
-exports.__esModule = true;
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
 // Limit dependencies to core Node modules. This means the code in this file has to be very low-level and unattractive,
 // but simplifies things for the consumer of this module.
 require("./Util/PatchModuleResolutionLStat");
 require("./Util/OverrideStdOutputs");
-var http = require("http");
-var path = require("path");
-var ArgsUtil_1 = require("./Util/ArgsUtil");
-var ExitWhenParentExits_1 = require("./Util/ExitWhenParentExits");
+const http = __importStar(require("http"));
+const path = __importStar(require("path"));
+const ArgsUtil_1 = require("./Util/ArgsUtil");
+const ExitWhenParentExits_1 = require("./Util/ExitWhenParentExits");
 // Webpack doesn't support dynamic requires for files not present at compile time, so grab a direct
 // reference to Node's runtime 'require' function.
-var dynamicRequire = eval('require');
-var server = http.createServer(function (req, res) {
-    readRequestBodyAsJson(req, function (bodyJson) {
-        var hasSentResult = false;
-        var callback = function (errorValue, successValue) {
+const dynamicRequire = eval('require');
+const server = http.createServer((req, res) => {
+    readRequestBodyAsJson(req, bodyJson => {
+        let hasSentResult = false;
+        const callback = (errorValue, successValue) => {
             if (!hasSentResult) {
                 hasSentResult = true;
                 if (errorValue) {
@@ -22,7 +55,7 @@ var server = http.createServer(function (req, res) {
                 }
                 else if (typeof successValue !== 'string') {
                     // Arbitrary object/number/etc - JSON-serialize it
-                    var successValueJson = void 0;
+                    let successValueJson;
                     try {
                         successValueJson = JSON.stringify(successValue);
                     }
@@ -53,9 +86,10 @@ var server = http.createServer(function (req, res) {
             }
         });
         try {
-            var resolvedPath = path.resolve(process.cwd(), bodyJson.moduleName);
-            var invokedModule = dynamicRequire(resolvedPath);
-            var func = bodyJson.exportedFunctionName ? invokedModule[bodyJson.exportedFunctionName] : invokedModule;
+            const resolvedPath = path.resolve(process.cwd(), bodyJson.moduleName);
+            const x = import(resolvedPath);
+            const invokedModule = import(resolvedPath);
+            const func = bodyJson.exportedFunctionName ? invokedModule[bodyJson.exportedFunctionName] : invokedModule;
             if (!func) {
                 throw new Error('The module "' + resolvedPath + '" has no export named "' + bodyJson.exportedFunctionName + '"');
             }
@@ -66,20 +100,20 @@ var server = http.createServer(function (req, res) {
         }
     });
 });
-var parsedArgs = ArgsUtil_1.parseArgs(process.argv);
-var requestedPortOrZero = parsedArgs.port || 0; // 0 means 'let the OS decide'
+const parsedArgs = (0, ArgsUtil_1.parseArgs)(process.argv);
+const requestedPortOrZero = parsedArgs.port || 0; // 0 means 'let the OS decide'
 server.listen(requestedPortOrZero, 'localhost', function () {
-    var addressInfo = server.address();
+    const addressInfo = server.address();
     // Signal to HttpNodeHost which loopback IP address (IPv4 or IPv6) and port it should make its HTTP connections on
     console.log('[MintPlayer.AspNetCore.NodeServices.HttpNodeHost:Listening on {' + addressInfo.address + '} port ' + addressInfo.port + '\]');
     // Signal to the NodeServices base class that we're ready to accept invocations
     console.log('[MintPlayer.AspNetCore.NodeServices:Listening]');
 });
-ExitWhenParentExits_1.exitWhenParentExits(parseInt(parsedArgs.parentPid), /* ignoreSigint */ true);
+(0, ExitWhenParentExits_1.exitWhenParentExits)(parseInt(parsedArgs.parentPid), /* ignoreSigint */ true);
 function readRequestBodyAsJson(request, callback) {
-    var requestBodyAsString = '';
-    request.on('data', function (chunk) { requestBodyAsString += chunk; });
-    request.on('end', function () { callback(JSON.parse(requestBodyAsString)); });
+    let requestBodyAsString = '';
+    request.on('data', chunk => { requestBodyAsString += chunk; });
+    request.on('end', () => { callback(JSON.parse(requestBodyAsString)); });
 }
 function respondWithError(res, errorValue) {
     res.statusCode = 500;
