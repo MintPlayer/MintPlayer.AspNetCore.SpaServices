@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.Razor;
 using MintPlayer.AspNetCore.SpaServices.Prerendering;
 using MintPlayer.AspNetCore.SpaServices.Routing;
 using MintPlayer.AspNetCore.SpaServices.Extensions;
-using WebMarkupMin.AspNetCore8;
+using WebMarkupMin.AspNetCoreLatest;
 using System.Text.RegularExpressions;
 
 namespace Demo.Web;
