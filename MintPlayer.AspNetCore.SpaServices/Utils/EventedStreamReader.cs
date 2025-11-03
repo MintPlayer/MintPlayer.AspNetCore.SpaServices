@@ -53,7 +53,8 @@ internal sealed class EventedStreamReader
 
 		onReceivedLineHandler = line =>
 		{
-			var match = regex.Match(line);
+			
+			var match = regex.Match(RegexHelpers.StripAnsiColors(line));
 			if (match.Success)
 			{
 				ResolveIfStillPending(() => tcs.SetResult(match));
