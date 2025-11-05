@@ -48,10 +48,4 @@ public interface ISpaOptions
 	/// to become ready to serve to the client.
 	/// </summary>
 	public TimeSpan StartupTimeout { get; set; }
-
-	/// <summary>
-	/// Gets or sets the regexes the middleware waits for while booting the dev server.
-	/// Extracts the <code>openbrowser</code> group from the match.
-	/// </summary>
-	public Regex[]? CliRegexes { get; set; }
 }

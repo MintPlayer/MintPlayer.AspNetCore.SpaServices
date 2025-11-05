@@ -102,8 +102,6 @@ public class Startup
 			// see https://go.microsoft.com/fwlink/?linkid=864501
 
 			spa.Options.SourcePath = "ClientApp";
-			// For angular 17
-			spa.Options.CliRegexes = [new Regex(@"Local\:\s+(?<openbrowser>https?\:\/\/(.+))")];
 
 			//spa.ApplicationBuilder.UseResponseCaching().UseHsts();
 			spa.UseSpaPrerendering(options =>
@@ -123,7 +121,7 @@ public class Startup
 
 			if (env.IsDevelopment())
 			{
-				spa.UseAngularCliServer(npmScript: "start");
+				spa.UseAngularCliServer(npmScript: "start", cliRegexes: [new Regex(@"Local\:\s+(?<openbrowser>https?\:\/\/(.+))")]);
 			}
 		});
 	}

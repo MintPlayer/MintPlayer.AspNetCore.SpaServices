@@ -12,7 +12,7 @@ internal static class AngularCliMiddleware
 	private const string LogCategoryName = "MintPlayer.AspNetCore.SpaServices";
 	private static readonly TimeSpan RegexMatchTimeout = TimeSpan.FromSeconds(5); // This is a development-time only feature, so a very long timeout is fine
 
-	public static void Attach(Abstractions.ISpaBuilder spaBuilder, string scriptName)
+	public static void Attach(Abstractions.ISpaBuilder spaBuilder, string? scriptName = null, Regex[]? cliRegexes = null)
 	{
 		var pkgManagerCommand = spaBuilder.Options.PackageManagerCommand;
 		var sourcePath = spaBuilder.Options.SourcePath;
@@ -22,17 +22,16 @@ internal static class AngularCliMiddleware
 			throw new ArgumentException("Property 'SourcePath' cannot be null or empty", nameof(spaBuilder));
 		}
 
-		if (string.IsNullOrEmpty(scriptName))
-		{
-			throw new ArgumentException("Cannot be null or empty", nameof(scriptName));
-		}
+		if (string.IsNullOrEmpty(scriptName)) scriptName = "start";
+		if (cliRegexes == null || cliRegexes.Length == 0)
+			cliRegexes = [new Regex("open your browser on (?<openbrowser>http\\S+)", RegexOptions.None, RegexMatchTimeout)];
 
 		// Start Angular CLI and attach to middleware pipeline
 		var appBuilder = spaBuilder.ApplicationBuilder;
 		var applicationStoppingToken = appBuilder.ApplicationServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
 		var logger = LoggerFinder.GetOrCreateLogger(appBuilder, LogCategoryName);
 		var diagnosticSource = appBuilder.ApplicationServices.GetRequiredService<DiagnosticSource>();
-		var angularCliServerInfoTask = StartAngularCliServerAsync(sourcePath, scriptName, pkgManagerCommand, devServerPort, spaBuilder.Options.CliRegexes, logger, diagnosticSource, applicationStoppingToken);
+		var angularCliServerInfoTask = StartAngularCliServerAsync(sourcePath, scriptName, pkgManagerCommand, devServerPort, cliRegexes, logger, diagnosticSource, applicationStoppingToken);
 
         Extensions.SpaProxyingExtensions.UseProxyToSpaDevelopmentServer(spaBuilder, () =>
 		{

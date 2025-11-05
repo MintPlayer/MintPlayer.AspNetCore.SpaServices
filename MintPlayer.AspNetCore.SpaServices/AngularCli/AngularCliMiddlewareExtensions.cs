@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Text.RegularExpressions;
+
 namespace MintPlayer.AspNetCore.SpaServices.Extensions;
 
 /// <summary>
@@ -18,7 +20,11 @@ public static class AngularCliMiddlewareExtensions
 	/// </summary>
 	/// <param name="spaBuilder">The <see cref="ISpaBuilder"/>.</param>
 	/// <param name="npmScript">The name of the script in your package.json file that launches the Angular CLI process.</param>
-	public static void UseAngularCliServer(this Abstractions.ISpaBuilder spaBuilder, string npmScript)
+	/// <param name="cliRegexes">
+	/// Gets or sets the regexes the middleware waits for while booting the dev server.
+	/// Extracts the <code>openbrowser</code> group from the match.
+	/// </param>
+	public static void UseAngularCliServer(this Abstractions.ISpaBuilder spaBuilder, string? npmScript = null, Regex[]? cliRegexes = null)
 	{
 		ArgumentNullException.ThrowIfNull(spaBuilder);
 
@@ -29,6 +35,6 @@ public static class AngularCliMiddlewareExtensions
 			throw new InvalidOperationException($"To use {nameof(UseAngularCliServer)}, you must supply a non-empty value for the {nameof(Core.SpaOptions.SourcePath)} property of {nameof(Core.SpaOptions)} when calling {nameof(MintPlayer.AspNetCore.SpaServices.Extensions.SpaApplicationBuilderExtensions.UseSpaImproved)}.");
 		}
 
-        AngularCli.AngularCliMiddleware.Attach(spaBuilder, npmScript);
+        AngularCli.AngularCliMiddleware.Attach(spaBuilder, npmScript, cliRegexes);
 	}
 }

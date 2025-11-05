@@ -9,7 +9,7 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices.Abstractions</PackageId>
-		<Version>10.0.0-rc.1</Version>
+		<Version>10.0.0-rc.4</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 
