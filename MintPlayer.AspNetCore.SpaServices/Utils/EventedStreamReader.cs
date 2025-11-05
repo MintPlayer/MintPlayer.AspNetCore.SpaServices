@@ -10,7 +10,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Utils;
 /// Wraps a <see cref="StreamReader"/> to expose an evented API, issuing notifications
 /// when the stream emits partial lines, completed lines, or finally closes.
 /// </summary>
-internal sealed class EventedStreamReader
+internal sealed partial class EventedStreamReader
 {
 	public delegate void OnReceivedChunkHandler(ArraySegment<char> chunk);
 	public delegate void OnReceivedLineHandler(string line);
@@ -53,7 +53,8 @@ internal sealed class EventedStreamReader
 
 		onReceivedLineHandler = line =>
 		{
-			var match = regex.Match(line);
+			var cleanedLine = AnsiCharacterRegex().Replace(line, string.Empty);
+			var match = regex.Match(cleanedLine);
 			if (match.Success)
 			{
 				ResolveIfStillPending(() => tcs.SetResult(match));
@@ -70,6 +71,9 @@ internal sealed class EventedStreamReader
 
 		return tcs.Task;
 	}
+
+	[GeneratedRegex(@"\x1B\[[0-9;]*[ -/]*[@-~]")]
+	private partial Regex AnsiCharacterRegex();
 
 	private async Task Run()
 	{
