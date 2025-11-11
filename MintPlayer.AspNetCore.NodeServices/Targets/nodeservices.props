@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<SpaRoot Condition=" '$(SpaRoot)' == '' ">ClientApp\</SpaRoot>
+		<BuildServerSideRenderer Condition=" '$(BuildServerSideRenderer)' == '' ">true</BuildServerSideRenderer>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Don't publish the SPA source files, but do show them in the project files list -->
+		<None Remove="$(SpaRoot)**" />
+		<Compile Remove="$(SpaRoot)**" />
+		<Content Remove="$(SpaRoot)**" />
+		<EmbeddedResource Remove="$(SpaRoot)**" />
+		
+		<None Include="$(SpaRoot)**" Exclude="$(SpaRoot)node_modules\**" />
+	</ItemGroup>
+</Project>
