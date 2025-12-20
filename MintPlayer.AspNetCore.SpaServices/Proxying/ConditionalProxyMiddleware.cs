@@ -40,6 +40,14 @@ internal sealed class ConditionalProxyMiddleware
 
     public Task Invoke(HttpContext context)
     {
+        // If an endpoint was already matched by routing, skip proxying and let the
+        // request continue to the endpoint. This allows API endpoints to be handled
+        // by ASP.NET Core even when the SPA dev server is running.
+        if (context.GetEndpoint() != null)
+        {
+            return _next.Invoke(context);
+        }
+
         if (context.Request.Path.StartsWithSegments(_pathPrefix) || _pathPrefixIsRoot)
         {
             return InvokeCore(context);
