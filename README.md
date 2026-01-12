@@ -14,6 +14,55 @@ This project facilitates server-side prerendering in ASP.NET Core.
 | MintPlayer.AspNetCore.SpaServices.Prerendering | [![NuGet Version](https://img.shields.io/nuget/v/MintPlayer.AspNetCore.SpaServices.Prerendering.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Prerendering) | [![NuGet Version](https://img.shields.io/nuget/vpre/MintPlayer.AspNetCore.SpaServices.Prerendering.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Prerendering) | [![NuGet](https://img.shields.io/nuget/dt/MintPlayer.AspNetCore.SpaServices.Prerendering.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Prerendering) |
 | MintPlayer.AspNetCore.SpaServices.Routing      | [![NuGet Version](https://img.shields.io/nuget/v/MintPlayer.AspNetCore.SpaServices.Routing.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing)           | [![NuGet Version](https://img.shields.io/nuget/vpre/MintPlayer.AspNetCore.SpaServices.Routing.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing)           |[![NuGet](https://img.shields.io/nuget/dt/MintPlayer.AspNetCore.SpaServices.Routing.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing)            |
 
+## MSBuild Integration
+
+The packages automatically configure your project with MSBuild props and targets for SPA development. These are applied transitively to all projects that reference these packages.
+
+### Properties
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `EnableSpaBuilder` | `true` | Master switch to enable/disable all SPA build automation |
+| `SpaRoot` | `ClientApp\` | Path to your SPA source folder |
+| `BuildServerSideRenderer` | `true` | Whether to build the SSR bundle during publish |
+
+### Build Targets
+
+| Target | Runs | Description |
+|--------|------|-------------|
+| `DebugEnsureNodeEnv` | Before Build (Debug only) | Ensures Node.js is installed and runs `npm install` if `node_modules` doesn't exist |
+| `PublishRunWebpack` | After ComputeFilesToPublish | Builds the SPA and includes output in publish folder |
+
+### Disabling SPA Builder
+
+If your project references these packages but doesn't have a SPA, disable all build automation:
+
+```xml
+<PropertyGroup>
+  <EnableSpaBuilder>false</EnableSpaBuilder>
+</PropertyGroup>
+```
+
+### Custom SPA Root
+
+If your SPA is in a different folder:
+
+```xml
+<PropertyGroup>
+  <SpaRoot>src\frontend\</SpaRoot>
+</PropertyGroup>
+```
+
+### Client-Only Builds (No SSR)
+
+To skip SSR bundle during publish:
+
+```xml
+<PropertyGroup>
+  <BuildServerSideRenderer>false</BuildServerSideRenderer>
+</PropertyGroup>
+```
+
 ## Server-side rendering
 If you haven't setup SSR yet, please consult [this manual](https://medium.com/@pieterjandeclippel/server-side-rendering-in-asp-net-core-angular-6df7adacbdaa).
 

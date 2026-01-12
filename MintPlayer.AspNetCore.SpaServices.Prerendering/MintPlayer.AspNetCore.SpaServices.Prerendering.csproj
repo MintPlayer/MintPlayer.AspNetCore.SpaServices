@@ -10,9 +10,10 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices.Prerendering</PackageId>
-		<Version>10.0.1</Version>
+		<Version>10.0.2</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 
 		<Description>This package is built as a dependency of MintPlayer.AspNetCore.SpaServices.Routing.</Description>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
@@ -30,6 +31,9 @@
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>
+	<ItemGroup>
+		<None Include="README.md" Pack="true" PackagePath="\"/>
+	</ItemGroup>
 	<ItemGroup>
 	  <None Remove="Content\Node\prerenderer.js" />
 	</ItemGroup>

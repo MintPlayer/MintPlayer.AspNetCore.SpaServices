@@ -10,9 +10,10 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices</PackageId>
-		<Version>10.0.1</Version>
+		<Version>10.0.2</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 
 		<Description>This package contains the ASP.NET Core prerenderer.</Description>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
@@ -30,6 +31,10 @@
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="README.md" Pack="true" PackagePath="\"/>
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />

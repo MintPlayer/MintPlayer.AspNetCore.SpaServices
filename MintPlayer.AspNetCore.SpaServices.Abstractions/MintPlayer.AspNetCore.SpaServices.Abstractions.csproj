@@ -13,6 +13,7 @@
 		<Version>10.0.0</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 
 		<Description>Abstractions for MintPlayer.AspNetCore.SpaServices.</Description>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
@@ -30,4 +31,8 @@
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="README.md" Pack="true" PackagePath="\"/>
+	</ItemGroup>
 </Project>
