@@ -120,6 +120,10 @@
               "fileReplacements": [],
               "sourceMap": false,
               "optimization": true
+            },
+            "development": {
+              "sourceMap": true,
+              "optimization": false
             }
           },
           "defaultConfiguration": "production"

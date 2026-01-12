@@ -64,7 +64,6 @@ public class Startup
 
 			if (env.IsDevelopment())
 			{
-				spa.UseProxyToSpaDevelopmentServer("http://localhost:4200");
 				spa.UseAngularCliServer(npmScript: "start");
 			}
 		});
