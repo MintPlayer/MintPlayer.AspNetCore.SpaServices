@@ -9,7 +9,7 @@
     "serve:ssr": "node dist/server/main.js",
     "build:ssr": "ng build && ng run ClientApp:server",
     "build:ssr:development": "ng build --configuration=development && ng run ClientApp:server:development",
-    "build:ssr:prod": "ng build --configuration=production && ng run ClientApp:server:production",
+    "build:ssr:production": "ng build --configuration=production && ng run ClientApp:server:production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
