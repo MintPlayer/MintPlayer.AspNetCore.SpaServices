@@ -11,14 +11,13 @@ import { SlugifyPipe } from '../../../pipes/slugify.pipe';
 @Component({
 	selector: 'app-person-edit',
 	templateUrl: './edit.component.html',
-  styleUrls: ['./edit.component.scss'],
-  standalone: true,
-  imports: [
-    FormsModule,
-    TranslateModule,
-    SlugifyPipe
-  ],
-  providers: [SlugifyPipe]
+	styleUrls: ['./edit.component.scss'],
+	imports: [
+		FormsModule,
+		TranslateModule,
+		SlugifyPipe
+	],
+	providers: [SlugifyPipe]
 })
 export class PersonEditComponent {
 
@@ -56,5 +55,4 @@ export class PersonEditComponent {
 		lastName: '',
 	};
 	oldPersonName: string = '';
-
 }

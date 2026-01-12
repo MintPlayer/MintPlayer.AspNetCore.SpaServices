@@ -7,7 +7,6 @@ import { BsNavbarComponent, BsNavbarModule } from '@mintplayer/ng-bootstrap/navb
   selector: 'app-nav-menu',
   templateUrl: './nav-menu.component.html',
   styleUrls: ['./nav-menu.component.css'],
-  standalone: true,
   imports: [RouterModule, BsNavbarModule],
 })
 export class NavMenuComponent {

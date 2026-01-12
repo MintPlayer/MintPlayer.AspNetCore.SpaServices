@@ -1,6 +1,9 @@
 {
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
+  "cli": {
+    "packageManager": "npm"
+  },
   "newProjectRoot": "projects",
   "projects": {
     "ClientApp": {
@@ -26,7 +29,10 @@
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": [
-              "src/favicon.ico",
+              {
+                "glob": "**/*",
+                "input": "public"
+              },
               "src/assets"
             ],
             "styles": [
@@ -87,7 +93,10 @@
             "tsConfig": "tsconfig.spec.json",
             "inlineStyleLanguage": "scss",
             "assets": [
-              "src/favicon.ico",
+              {
+                "glob": "**/*",
+                "input": "public"
+              },
               "src/assets"
             ],
             "styles": [
@@ -100,21 +109,17 @@
         "server": {
           "builder": "@angular-devkit/build-angular:server",
           "options": {
-            "outputPath": "dist/ClientApp/server",
+            "outputPath": "dist/server",
             "main": "src/main.server.ts",
             "tsConfig": "tsconfig.server.json",
-            "inlineStyleLanguage": "scss"
+            "sourceMap": true,
+            "optimization": false
           },
           "configurations": {
             "production": {
-              "outputHashing": "media"
-            },
-            "development": {
-              "optimization": false,
-              "sourceMap": true,
-              "extractLicenses": false,
-              "vendorChunk": true,
-              "buildOptimizer": false
+              "fileReplacements": [],
+              "sourceMap": false,
+              "optimization": true
             }
           },
           "defaultConfiguration": "production"

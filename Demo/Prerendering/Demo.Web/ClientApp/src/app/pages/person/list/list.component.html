@@ -20,10 +20,12 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr *ngFor="let person of people">
-						<td class="text-nowrap"><a [routerLink]='["/person", person.id, (person.firstName + " " + person.lastName) | slugify]' [title]="'Details for ' + person.firstName + ' ' + person.lastName">{{ person.firstName }}</a></td>
-						<td class="text-nowrap">{{ person.lastName }}</td>
-					</tr>
+					@for (person of people; track person.id) {
+						<tr>
+							<td class="text-nowrap"><a [routerLink]='["/person", person.id, (person.firstName + " " + person.lastName) | slugify]' [title]="'Details for ' + person.firstName + ' ' + person.lastName">{{ person.firstName }}</a></td>
+							<td class="text-nowrap">{{ person.lastName }}</td>
+						</tr>
+					}
 				</tbody>
 			</table>
 		</div>

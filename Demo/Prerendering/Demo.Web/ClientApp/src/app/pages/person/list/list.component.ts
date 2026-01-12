@@ -11,20 +11,19 @@ import { SlugifyPipe } from '../../../pipes/slugify.pipe';
 @Component({
 	selector: 'app-person-list',
 	templateUrl: './list.component.html',
-  styleUrls: ['./list.component.scss'],
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    RouterModule,
-    TranslateModule,
-    SlugifyPipe
-  ],
-  providers: [SlugifyPipe]
+	styleUrls: ['./list.component.scss'],
+	imports: [
+		CommonModule,
+		FormsModule,
+		RouterModule,
+		TranslateModule,
+		SlugifyPipe
+	],
+	providers: [SlugifyPipe]
 })
 export class PersonListComponent {
 
-  constructor(private personService: PersonService, private titleService: Title, @Inject(PLATFORM_ID) private platformId: Object, @Optional() @Inject('PEOPLE') private peopleInj?: Person[]) {
+	constructor(private personService: PersonService, private titleService: Title, @Inject(PLATFORM_ID) private platformId: Object, @Optional() @Inject('PEOPLE') private peopleInj?: Person[]) {
 		this.titleService.setTitle('People');
 		if (isPlatformServer(platformId)) {
 			this.people = peopleInj!;
@@ -40,5 +39,4 @@ export class PersonListComponent {
 	}
 
 	people: Person[] = [];
-
 }

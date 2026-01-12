@@ -9,18 +9,17 @@ import { SlugifyPipe } from '../../../pipes/slugify.pipe';
 @Component({
 	selector: 'app-person-create',
 	templateUrl: './create.component.html',
-  styleUrls: ['./create.component.scss'],
-  standalone: true,
-  imports: [
-    FormsModule,
-    TranslateModule,
-    SlugifyPipe
-  ],
-  providers: [SlugifyPipe]
+	styleUrls: ['./create.component.scss'],
+	imports: [
+		FormsModule,
+		TranslateModule,
+		SlugifyPipe
+	],
+	providers: [SlugifyPipe]
 })
 export class PersonCreateComponent {
 
-  constructor(private router: Router, private slugifyPipe: SlugifyPipe, @Optional() private personService?: PersonService) {
+	constructor(private router: Router, private slugifyPipe: SlugifyPipe, @Optional() private personService?: PersonService) {
 	}
 
 	person: Person = {
@@ -29,12 +28,11 @@ export class PersonCreateComponent {
 		lastName: '',
 	};
 
-  savePerson() {
-    if (this.personService) {
-      this.personService.createPerson(this.person).subscribe((person) => {
-        this.router.navigate(['/person', person.id, this.slugifyPipe.transform(`${person.firstName} ${person.lastName}`)]);
-      });
-    }
+	savePerson() {
+		if (this.personService) {
+			this.personService.createPerson(this.person).subscribe((person) => {
+				this.router.navigate(['/person', person.id, this.slugifyPipe.transform(`${person.firstName} ${person.lastName}`)]);
+			});
+		}
 	}
-
 }

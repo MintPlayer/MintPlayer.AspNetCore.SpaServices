@@ -5,7 +5,6 @@ import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-fetch-data',
   templateUrl: './fetch-data.component.html',
-  standalone: true,
   imports: [CommonModule]
 })
 export class FetchDataComponent {

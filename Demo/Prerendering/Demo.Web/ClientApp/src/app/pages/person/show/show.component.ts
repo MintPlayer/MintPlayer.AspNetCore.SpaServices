@@ -11,20 +11,19 @@ import { SlugifyPipe } from '../../../pipes/slugify.pipe';
 @Component({
 	selector: 'app-person-show',
 	templateUrl: './show.component.html',
-  styleUrls: ['./show.component.scss'],
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    RouterModule,
-    TranslateModule,
-    SlugifyPipe
-  ],
-  providers: [SlugifyPipe]
+	styleUrls: ['./show.component.scss'],
+	imports: [
+		CommonModule,
+		FormsModule,
+		RouterModule,
+		TranslateModule,
+		SlugifyPipe
+	],
+	providers: [SlugifyPipe]
 })
 export class PersonShowComponent {
 
-  constructor(private personService: PersonService, private router: Router, private route: ActivatedRoute, private titleService: Title, @Inject(PLATFORM_ID) private platformId: Object, @Optional() @Inject('PERSON') private personInj?: Person) {
+	constructor(private personService: PersonService, private router: Router, private route: ActivatedRoute, private titleService: Title, @Inject(PLATFORM_ID) private platformId: Object, @Optional() @Inject('PERSON') private personInj?: Person) {
 		if (isPlatformServer(platformId)) {
 			this.setPerson(personInj!);
 		} else {
@@ -57,5 +56,4 @@ export class PersonShowComponent {
 		firstName: '',
 		lastName: '',
 	};
-
 }
