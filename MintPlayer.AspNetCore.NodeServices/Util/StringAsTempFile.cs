@@ -20,7 +20,8 @@ public sealed class StringAsTempFile : IDisposable
 	/// <param name="applicationStoppingToken">A token that indicates when the host application is stopping.</param>
 	public StringAsTempFile(string content, CancellationToken applicationStoppingToken)
 	{
-		FileName = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+		// Use .js extension so Node.js ESM can recognize the file type
+		FileName = Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(Path.GetRandomFileName()) + ".js");
 		File.WriteAllText(FileName, content);
 
 		// Because .NET finalizers don't reliably run when the process is terminating, also
