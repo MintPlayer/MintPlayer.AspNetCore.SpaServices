@@ -4,16 +4,27 @@ import './Util/PatchModuleResolutionLStat';
 import './Util/OverrideStdOutputs';
 import * as http from 'http';
 import * as path from 'path';
+import * as url from 'url';
 import { parseArgs } from './Util/ArgsUtil';
 import { exitWhenParentExits } from './Util/ExitWhenParentExits';
 import { AddressInfo } from 'net';
 
-// Webpack doesn't support dynamic requires for files not present at compile time, so grab a direct
-// reference to Node's runtime 'require' function.
-const dynamicRequire: (name: string) => any = eval('require');
+// Use dynamic import() which supports both CommonJS and ESM modules
+// We use Function constructor to prevent webpack from transforming the import() call
+// This is similar to how eval('require') was used before for CommonJS
+const dynamicImport: (modulePath: string) => Promise<any> = new Function(
+	'modulePath',
+	'return import(modulePath)'
+) as any;
+
+async function importModule(modulePath: string): Promise<any> {
+	// Convert to file:// URL for ESM compatibility on Windows
+	const moduleUrl = url.pathToFileURL(modulePath).href;
+	return dynamicImport(moduleUrl);
+}
 
 const server = http.createServer((req, res) => {
-	readRequestBodyAsJson(req, bodyJson => {
+	readRequestBodyAsJson(req, async bodyJson => {
 		let hasSentResult = false;
 		const callback = (errorValue, successValue) => {
 			if (!hasSentResult) {
@@ -55,15 +66,46 @@ const server = http.createServer((req, res) => {
 
 		try {
 			const resolvedPath = path.resolve(process.cwd(), bodyJson.moduleName);
-			const invokedModule = dynamicRequire(resolvedPath);
-			const func = bodyJson.exportedFunctionName ? invokedModule[bodyJson.exportedFunctionName] : invokedModule;
-			if (!func) {
-				throw new Error('The module "' + resolvedPath + '" has no export named "' + bodyJson.exportedFunctionName + '"');
+			const invokedModule = await importModule(resolvedPath);
+
+			// Handle both CommonJS and ESM exports
+			// When loading CommonJS modules via import(), the module.exports becomes invokedModule.default
+			// So we need to unwrap it first if it's a CommonJS module loaded via ESM import
+			let moduleExports = invokedModule;
+			if (invokedModule.default && typeof invokedModule.default === 'object' && invokedModule.default.__esModule) {
+				// This is a CommonJS module with __esModule flag, loaded via import()
+				// The actual exports are in invokedModule.default
+				moduleExports = invokedModule.default;
+			}
+
+			let func;
+			if (bodyJson.exportedFunctionName) {
+				// Named export requested
+				func = moduleExports[bodyJson.exportedFunctionName];
+				// Also check the original module in case it's a true ESM named export
+				if (func === undefined) {
+					func = invokedModule[bodyJson.exportedFunctionName];
+				}
+			} else if (typeof moduleExports === 'function') {
+				// The module itself is a function (module.exports = function)
+				func = moduleExports;
+			} else if (typeof moduleExports.default === 'function') {
+				// TypeScript/ESM style default export
+				func = moduleExports.default;
+			} else if (typeof invokedModule.default === 'function') {
+				// Direct ESM default export
+				func = invokedModule.default;
+			} else {
+				func = moduleExports;
+			}
+
+			if (!func || typeof func !== 'function') {
+				throw new Error('The module "' + resolvedPath + '" has no export named "' + (bodyJson.exportedFunctionName || 'default') + '"');
 			}
 
 			func.apply(null, [callback].concat(bodyJson.args));
-		} catch (synchronousException) {
-			callback(synchronousException, null);
+		} catch (err) {
+			callback(err, null);
 		}
 	});
 });

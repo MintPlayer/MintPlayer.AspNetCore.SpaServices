@@ -108,11 +108,11 @@ public class Startup
 			{
 				options.BootModulePath = $"{spa.Options.SourcePath}/dist/ClientApp/server/main.js";
 				options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder("build:ssr:development", @"Build at\:", 1) : null;
-				options.ExcludeUrls = new[] { "/sockjs-node" };
+				options.ExcludeUrls = ["/sockjs-node"];
 
 				options.OnPrepareResponse = (context) =>
 				{
-					context.Response.Headers.Add("Whatever", "Oasis");
+					context.Response.Headers["Whatever"] = "Oasis";
 					return Task.CompletedTask;
 				};
 			});

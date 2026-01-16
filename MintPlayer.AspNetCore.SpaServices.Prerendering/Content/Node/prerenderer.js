@@ -99,6 +99,18 @@
 
 		exports.__esModule = true;
 		var path = __webpack_require__(2);
+		var url = __webpack_require__(4);
+
+		// Use dynamic import() which supports both CommonJS and ESM modules
+		// We use Function constructor to prevent webpack from transforming the import() call
+		var dynamicImport = new Function('modulePath', 'return import(modulePath)');
+
+		async function importModule(modulePath) {
+			// Convert to file:// URL for ESM compatibility on Windows
+			var moduleUrl = url.pathToFileURL(modulePath).href;
+			return dynamicImport(moduleUrl);
+		}
+
 		// Separate declaration and export just to add type checking on function signature
 		exports.renderToString = renderToStringImpl;
 		// This function is invoked by .NET code (via NodeServices). Its job is to hand off execution to the application's
@@ -115,10 +127,10 @@
 		//     don't have to deploy node_modules to production.
 		// To determine whether we're in mode [1] or [2], the code locates your prerendering boot function, and checks whether
 		// a certain flag is attached to the function instance.
-		function renderToStringImpl(callback, applicationBasePath, bootModule, absoluteRequestUrl, requestPathAndQuery, customDataParameter, overrideTimeoutMilliseconds) {
+		async function renderToStringImpl(callback, applicationBasePath, bootModule, absoluteRequestUrl, requestPathAndQuery, customDataParameter, overrideTimeoutMilliseconds, requestPathBase) {
 			try {
 				var forceLegacy = isLegacyAspNetPrerendering();
-				var renderToStringFunc = !forceLegacy && findRenderToStringFunc(applicationBasePath, bootModule);
+				var renderToStringFunc = !forceLegacy && await findRenderToStringFunc(applicationBasePath, bootModule);
 				var isNotLegacyMode = renderToStringFunc && renderToStringFunc['isServerRenderer'];
 				if (isNotLegacyMode) {
 					// Current (non-legacy) mode - we invoke the exported function directly (instead of going through aspnet-prerendering)
@@ -130,7 +142,7 @@
 					// Legacy mode - just hand off execution to 'aspnet-prerendering' v1.x, which must exist in node_modules at runtime
 					var aspNetPrerenderingV1RenderToString = __webpack_require__(3).renderToString;
 					if (aspNetPrerenderingV1RenderToString) {
-						aspNetPrerenderingV1RenderToString(callback, applicationBasePath, bootModule, absoluteRequestUrl, requestPathAndQuery, customDataParameter, overrideTimeoutMilliseconds);
+						aspNetPrerenderingV1RenderToString(callback, applicationBasePath, bootModule, absoluteRequestUrl, requestPathAndQuery, customDataParameter, overrideTimeoutMilliseconds, requestPathBase);
 					}
 					else {
 						callback('If you use aspnet-prerendering >= 2.0.0, you must update your server-side boot module to call createServerRenderer. '
@@ -147,36 +159,60 @@
 			}
 		}
 		;
-		function findBootModule(applicationBasePath, bootModule) {
+		async function findBootModule(applicationBasePath, bootModule) {
 			var bootModuleNameFullPath = path.resolve(applicationBasePath, bootModule.moduleName);
 			if (bootModule.webpackConfig) {
 				// If you're using asp-prerender-webpack-config, you're definitely in legacy mode
 				return null;
 			}
 			else {
-				return require(bootModuleNameFullPath);
+				// Use dynamic import to support both CommonJS and ESM modules
+				var loadedModule = await importModule(bootModuleNameFullPath);
+				return loadedModule;
 			}
 		}
-		function findRenderToStringFunc(applicationBasePath, bootModule) {
+		async function findRenderToStringFunc(applicationBasePath, bootModule) {
 			// First try to load the module
-			var foundBootModule = findBootModule(applicationBasePath, bootModule);
+			var foundBootModule = await findBootModule(applicationBasePath, bootModule);
 			if (foundBootModule === null) {
 				return null; // Must be legacy mode
 			}
+
+			// When loading CommonJS modules via import(), the module.exports becomes loadedModule.default
+			// So we need to unwrap it first if it's a CommonJS module loaded via ESM import
+			var moduleExports = foundBootModule;
+			if (foundBootModule.default && typeof foundBootModule.default === 'object' && foundBootModule.default.__esModule) {
+				// This is a CommonJS module with __esModule flag, loaded via import()
+				// The actual exports are in foundBootModule.default
+				moduleExports = foundBootModule.default;
+			}
+
 			// Now try to pick out the function they want us to invoke
 			var renderToStringFunc;
 			if (bootModule.exportName) {
 				// Explicitly-named export
-				renderToStringFunc = foundBootModule[bootModule.exportName];
+				renderToStringFunc = moduleExports[bootModule.exportName];
+				// Also check the original module in case it's a true ESM named export
+				if (renderToStringFunc === undefined) {
+					renderToStringFunc = foundBootModule[bootModule.exportName];
+				}
 			}
-			else if (typeof foundBootModule !== 'function') {
-				// TypeScript-style default export
-				renderToStringFunc = foundBootModule["default"];
+			else if (typeof moduleExports === 'function') {
+				// The module itself is a function (module.exports = function)
+				renderToStringFunc = moduleExports;
+			}
+			else if (typeof moduleExports.default === 'function') {
+				// TypeScript/ESM style default export
+				renderToStringFunc = moduleExports.default;
+			}
+			else if (typeof foundBootModule.default === 'function') {
+				// Direct ESM default export
+				renderToStringFunc = foundBootModule.default;
 			}
 			else {
-				// Native default export
-				renderToStringFunc = foundBootModule;
+				renderToStringFunc = moduleExports;
 			}
+
 			// Validate the result
 			if (typeof renderToStringFunc !== 'function') {
 				if (bootModule.exportName) {
@@ -219,6 +255,12 @@
 /***/ (function (module, exports) {
 
 		module.exports = require("aspnet-prerendering");
+
+/***/ }),
+/* 4 */
+/***/ (function (module, exports) {
+
+		module.exports = require("url");
 
 /***/ })
 /******/ ])));
