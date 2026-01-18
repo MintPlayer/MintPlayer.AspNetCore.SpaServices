@@ -6,24 +6,25 @@ import { APP_BASE_HREF } from '@angular/common';
 import { App } from './app/app';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { config as serverConfig } from './app/app.config.server';
+import { MESSAGE_TOKEN, PERSON_TOKEN, PEOPLE_TOKEN } from './app/tokens';
 
 enableProdMode();
 
 export default createServerRenderer(params => {
   const providers: StaticProvider[] = [
     { provide: APP_BASE_HREF, useValue: params.origin + params.baseUrl.slice(0, -1) },
-    { provide: 'MESSAGE', useValue: params.data.message },
+    { provide: MESSAGE_TOKEN, useValue: params.data.message },
   ];
 
   if ('people' in params.data) {
-    providers.push({ provide: 'PEOPLE', useValue: params.data.people });
+    providers.push({ provide: PEOPLE_TOKEN, useValue: params.data.people });
   } else {
-    providers.push({ provide: 'PEOPLE', useValue: null });
+    providers.push({ provide: PEOPLE_TOKEN, useValue: null });
   }
   if ('person' in params.data) {
-    providers.push({ provide: 'PERSON', useValue: params.data.person });
+    providers.push({ provide: PERSON_TOKEN, useValue: params.data.person });
   } else {
-    providers.push({ provide: 'PERSON', useValue: null });
+    providers.push({ provide: PERSON_TOKEN, useValue: null });
   }
 
   const options = {

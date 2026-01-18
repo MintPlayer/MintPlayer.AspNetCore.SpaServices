@@ -1,30 +1,38 @@
-import { Component, Inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, effect, ChangeDetectionStrategy } from '@angular/core';
 import { RouterOutlet, Router, ActivatedRoute } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateService } from '@ngx-translate/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MESSAGE_TOKEN } from './tokens';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, RouterOutlet],
+  imports: [RouterOutlet],
   templateUrl: './app.html',
-  styleUrl: './app.scss'
+  styleUrl: './app.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class App {
-  title = 'ClientApp';
-  message = 'test';
+  private readonly translateService = inject(TranslateService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  readonly message = inject(MESSAGE_TOKEN);
 
-  constructor(private translateService: TranslateService, private router: Router, private route: ActivatedRoute, @Inject('MESSAGE') message: string) {
-    this.message = message;
+  title = 'ClientApp';
+
+  private readonly queryParams = toSignal(this.route.queryParamMap);
+
+  constructor() {
     this.translateService.setDefaultLang('en');
-    this.route.queryParamMap
-      .pipe(takeUntilDestroyed())
-      .subscribe((params: any) => {
+
+    effect(() => {
+      const params = this.queryParams();
+      if (params) {
         const lang = params.get('lang');
         if (lang) {
           this.translateService.use(lang);
         }
-      });
+      }
+    });
   }
 
   useLanguage(language: string) {

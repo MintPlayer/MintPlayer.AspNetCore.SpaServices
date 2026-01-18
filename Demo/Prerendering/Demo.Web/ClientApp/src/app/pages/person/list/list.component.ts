@@ -1,19 +1,20 @@
-import { Component, Inject, PLATFORM_ID, Optional } from '@angular/core';
+import { Component, inject, PLATFORM_ID, signal, ChangeDetectionStrategy } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { Title } from '@angular/platform-browser';
-import { isPlatformServer, CommonModule } from '@angular/common';
+import { isPlatformServer } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
 import { SlugifyPipe } from '../../../pipes/slugify.pipe';
+import { PEOPLE_TOKEN } from '../../../tokens';
 
 @Component({
 	selector: 'app-person-list',
 	templateUrl: './list.component.html',
 	styleUrls: ['./list.component.scss'],
+	changeDetection: ChangeDetectionStrategy.OnPush,
 	imports: [
-		CommonModule,
 		FormsModule,
 		RouterModule,
 		TranslateModule,
@@ -22,11 +23,17 @@ import { SlugifyPipe } from '../../../pipes/slugify.pipe';
 	providers: [SlugifyPipe]
 })
 export class PersonListComponent {
+	private readonly personService = inject(PersonService);
+	private readonly titleService = inject(Title);
+	private readonly platformId = inject(PLATFORM_ID);
+	private readonly peopleInj = inject(PEOPLE_TOKEN, { optional: true });
 
-	constructor(private personService: PersonService, private titleService: Title, @Inject(PLATFORM_ID) private platformId: Object, @Optional() @Inject('PEOPLE') private peopleInj?: Person[]) {
+	people = signal<Person[]>([]);
+
+	constructor() {
 		this.titleService.setTitle('People');
-		if (isPlatformServer(platformId)) {
-			this.people = peopleInj!;
+		if (isPlatformServer(this.platformId)) {
+			this.people.set(this.peopleInj ?? []);
 		} else {
 			this.loadPeople();
 		}
@@ -34,9 +41,7 @@ export class PersonListComponent {
 
 	private loadPeople() {
 		this.personService.getPeople(false).subscribe(people => {
-			this.people = people;
+			this.people.set(people);
 		});
 	}
-
-	people: Person[] = [];
 }

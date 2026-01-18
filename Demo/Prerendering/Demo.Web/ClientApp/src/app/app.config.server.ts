@@ -3,6 +3,7 @@ import { mergeApplicationConfig, ApplicationConfig, importProvidersFrom } from '
 import { provideServerRendering } from '@angular/platform-server';
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { appConfig } from './app.config';
+import { MESSAGE_TOKEN } from './tokens';
 
 import * as translationEn from '../assets/i18n/en.json';
 import * as translationNl from '../assets/i18n/nl.json';
@@ -29,7 +30,7 @@ const serverConfig: ApplicationConfig = {
         }
       })
     ),
-    { provide: 'MESSAGE', useValue: 'MESS_FROM_SERV' }
+    { provide: MESSAGE_TOKEN, useValue: 'MESS_FROM_SERV' }
   ]
 };
 

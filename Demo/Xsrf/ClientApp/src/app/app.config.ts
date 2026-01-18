@@ -1,12 +1,14 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient, withXsrfConfiguration } from '@angular/common/http';
 
 import { routes } from './app.routes';
+import { BASE_URL_TOKEN } from './tokens';
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    provideZonelessChangeDetection(),
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     // XSRF protection is enabled by default
@@ -18,7 +20,7 @@ export const appConfig: ApplicationConfig = {
     //provideHttpClient(withNoXsrfProtection()),
     provideAnimations(),
     {
-      provide: 'BASE_URL',
+      provide: BASE_URL_TOKEN,
       useFactory: () => {
         let baseHref = document.getElementsByTagName('base')[0].href;
 

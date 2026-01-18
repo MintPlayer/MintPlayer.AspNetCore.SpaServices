@@ -1,13 +1,14 @@
-import { Component } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-counter-component',
   templateUrl: './counter.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CounterComponent {
-  public currentCount = 0;
+  currentCount = signal(0);
 
-  public incrementCounter() {
-    this.currentCount++;
+  incrementCounter() {
+    this.currentCount.update(count => count + 1);
   }
 }

@@ -1,29 +1,23 @@
-import { AfterViewInit, Component, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, viewChild, computed, ChangeDetectionStrategy } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { BsNavbarComponent, BsNavbarModule } from '@mintplayer/ng-bootstrap/navbar';
+import { BsNavbarModule } from '@mintplayer/ng-bootstrap/navbar';
 import { NavMenuComponent } from './components/nav-menu/nav-menu.component';
 
 @Component({
   selector: 'app-root',
   imports: [
-    CommonModule,
     RouterOutlet,
     FormsModule,
     BsNavbarModule,
     NavMenuComponent,
   ],
   templateUrl: './app.html',
-  styleUrl: './app.scss'
+  styleUrl: './app.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class App implements AfterViewInit {
+export class App {
   title = 'ClientApp';
-  nav?: BsNavbarComponent;
-  @ViewChild('menu') menu?: NavMenuComponent;
-
-  ngAfterViewInit() {
-    setTimeout(() => this.nav = this.menu?.nav, 5);
-    console.log('hello');
-  }
+  menu = viewChild<NavMenuComponent>('menu');
+  nav = computed(() => this.menu()?.nav());
 }

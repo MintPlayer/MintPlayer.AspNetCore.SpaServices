@@ -20,7 +20,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					@for (person of people; track person.id) {
+					@for (person of people(); track person.id) {
 						<tr>
 							<td class="text-nowrap"><a [routerLink]='["/person", person.id, (person.firstName + " " + person.lastName) | slugify]' [title]="'Details for ' + person.firstName + ' ' + person.lastName">{{ person.firstName }}</a></td>
 							<td class="text-nowrap">{{ person.lastName }}</td>

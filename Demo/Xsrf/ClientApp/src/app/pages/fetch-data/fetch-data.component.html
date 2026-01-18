@@ -2,11 +2,11 @@
 
 <p>This component demonstrates fetching data from the server.</p>
 
-@if (forecasts.length === 0) {
+@if (forecasts().length === 0) {
   <p><em>Loading...</em></p>
 }
 
-@if (forecasts.length > 0) {
+@if (forecasts().length > 0) {
   <table class='table table-striped' aria-labelledby="tableLabel">
     <thead>
       <tr>
@@ -17,7 +17,7 @@
       </tr>
     </thead>
     <tbody>
-      @for (forecast of forecasts; track forecast.date) {
+      @for (forecast of forecasts(); track forecast.date) {
         <tr>
           <td>{{ forecast.date }}</td>
           <td>{{ forecast.temperatureC }}</td>

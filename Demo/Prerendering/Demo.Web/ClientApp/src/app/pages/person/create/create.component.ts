@@ -1,4 +1,4 @@
-import { Component, Optional } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
@@ -10,17 +10,17 @@ import { SlugifyPipe } from '../../../pipes/slugify.pipe';
 	selector: 'app-person-create',
 	templateUrl: './create.component.html',
 	styleUrls: ['./create.component.scss'],
+	changeDetection: ChangeDetectionStrategy.OnPush,
 	imports: [
 		FormsModule,
-		TranslateModule,
-		SlugifyPipe
+		TranslateModule
 	],
 	providers: [SlugifyPipe]
 })
 export class PersonCreateComponent {
-
-	constructor(private router: Router, private slugifyPipe: SlugifyPipe, @Optional() private personService?: PersonService) {
-	}
+	private readonly router = inject(Router);
+	private readonly slugifyPipe = inject(SlugifyPipe);
+	private readonly personService = inject(PersonService, { optional: true });
 
 	person: Person = {
 		id: 0,
