@@ -1,17 +1,13 @@
 using Microsoft.AspNetCore.Antiforgery;
+using MintPlayer.SourceGenerators.Attributes;
 
 namespace MintPlayer.AspNetCore.SpaServices.Xsrf;
 
 // You may need to install the Microsoft.AspNetCore.Http.Abstractions package into your project
-internal class Antiforgery
+internal partial class Antiforgery
 {
-	private readonly RequestDelegate next;
-	private readonly IAntiforgery antiforgery;
-	public Antiforgery(RequestDelegate next, IAntiforgery antiforgery)
-	{
-		this.next = next;
-		this.antiforgery = antiforgery;
-	}
+	[Inject] private readonly RequestDelegate next;
+	[Inject] private readonly IAntiforgery antiforgery;
 
 	public async Task Invoke(HttpContext httpContext)
 	{

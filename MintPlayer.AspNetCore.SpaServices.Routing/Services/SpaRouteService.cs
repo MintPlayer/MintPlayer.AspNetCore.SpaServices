@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.Net;
+using MintPlayer.SourceGenerators.Attributes;
 
 namespace MintPlayer.AspNetCore.SpaServices.Routing;
 
@@ -81,14 +82,10 @@ public interface ISpaRouteService
 	Task<string> GenerateUrl<T>(string routeName, T parameters, string protocol, string host, string fragment);
 }
 
-internal class SpaRouteService : ISpaRouteService
+internal partial class SpaRouteService : ISpaRouteService
 {
 	private readonly Regex rgx_keys = new Regex(@"\{(?<key>[^\{]+)\}");
-	private readonly IServiceProvider serviceProvider;
-	public SpaRouteService(IServiceProvider serviceProvider)
-	{
-		this.serviceProvider = serviceProvider;
-	}
+	[Inject] private readonly IServiceProvider serviceProvider;
 
 	/// <summary>Build result</summary>
 	private IEnumerable<Data.ISpaRouteItem> spaRouteItems;

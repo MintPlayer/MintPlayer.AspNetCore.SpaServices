@@ -2,6 +2,7 @@ using Demo.Dtos.Dtos;
 using Microsoft.EntityFrameworkCore;
 using MintPlayer.Pagination;
 using MintPlayer.Pagination.Extensions;
+using MintPlayer.SourceGenerators.Attributes;
 
 namespace Demo.Data.Dal.Repositories;
 
@@ -15,13 +16,10 @@ internal interface IPersonRepository
 	Task DeletePerson(int personId);
 	Task SaveChangesAsync();
 }
-internal class PersonRepository : IPersonRepository
+
+internal partial class PersonRepository : IPersonRepository
 {
-	private readonly DemoContext demoContext;
-	public PersonRepository(DemoContext demoContext)
-	{
-		this.demoContext = demoContext;
-	}
+	[Inject] private readonly DemoContext demoContext;
 
 	public async Task<PaginationResponse<Person>> PagePeople(PaginationRequest<Person> request)
 	{
