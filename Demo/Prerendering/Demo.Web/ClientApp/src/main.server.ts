@@ -35,7 +35,7 @@ export default createServerRenderer(params => {
   // Bypass ssr api call cert warnings in development
   process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = "0";
 
-  const renderPromise = renderApplication(() => bootstrapApplication(App, serverConfig), options);
+  const renderPromise = renderApplication((context) => bootstrapApplication(App, serverConfig, context), options);
 
   return renderPromise.then(html => ({ html }));
 });
