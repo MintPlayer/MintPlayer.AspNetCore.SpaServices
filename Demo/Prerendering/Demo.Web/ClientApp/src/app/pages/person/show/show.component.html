@@ -1,35 +1,37 @@
-<div class="container" *ngIf="person != null">
-	<div class="form-group row">
-		<div class="col-12">
-			<h1 class="d-inline-block">{{ person.firstName }} {{ person.lastName }}</h1>
-			<span class="d-block d-sm-inline-block float-none float-sm-end">
-				<span class="btn-group">
-					<a class="btn btn-primary d-block d-sm-inline-block" [routerLink]='["/person", person.id, (person.firstName + " " + person.lastName) | slugify, "edit"]'>
-						<i class="fa fa-edit"></i>
-						Edit
-					</a>
-					<button class="btn btn-secondary d-block d-sm-inline-block w-100 w-sm-auto" (click)="deletePerson()">
-						<i class="fa fa-trash"></i>
-						Remove
-					</button>
+@if (person(); as p) {
+	<bs-grid>
+		<div class="form-group mb-3" bsRow>
+			<div [xxs]="12">
+				<h1 class="d-inline-block">{{ p.firstName }} {{ p.lastName }}</h1>
+				<span class="d-block d-sm-inline-block float-none float-sm-end">
+					<span class="btn-group">
+						<a class="btn btn-primary d-block d-sm-inline-block" [routerLink]='["/person", p.id, (p.firstName + " " + p.lastName) | slugify, "edit"]'>
+							<i class="fa fa-edit"></i>
+							{{ 'actions.edit' | translate }}
+						</a>
+						<button class="btn btn-secondary d-block d-sm-inline-block w-100 w-sm-auto" (click)="deletePerson()">
+							<i class="fa fa-trash"></i>
+							{{ 'actions.remove' | translate }}
+						</button>
+					</span>
 				</span>
-			</span>
+			</div>
 		</div>
-	</div>
-	<div class="row">
-		<div class="col-sm-4 col-xl-2">
-			<label class="font-weight-bold">{{ 'person.firstName' | translate }}</label>
+		<div class="mb-3" bsRow>
+			<div [sm]="4" [xl]="2">
+				<label class="font-weight-bold">{{ 'person.firstName' | translate }}</label>
+			</div>
+			<div [sm]="8" [xl]="10">
+				<label>{{ p.firstName }}</label>
+			</div>
 		</div>
-		<div class="col-sm-8 col-xl-10">
-			<label>{{ person.firstName }}</label>
+		<div class="mb-3" bsRow>
+			<div [sm]="4" [xl]="2">
+				<label class="font-weight-bold">{{ 'person.lastName' | translate }}</label>
+			</div>
+			<div [sm]="8" [xl]="10">
+				<label>{{ p.lastName }}</label>
+			</div>
 		</div>
-	</div>
-	<div class="row">
-		<div class="col-sm-4 col-xl-2">
-			<label class="font-weight-bold">{{ 'person.lastName' | translate }}</label>
-		</div>
-		<div class="col-sm-8 col-xl-10">
-			<label>{{ person.lastName }}</label>
-		</div>
-	</div>
-</div>
+	</bs-grid>
+}

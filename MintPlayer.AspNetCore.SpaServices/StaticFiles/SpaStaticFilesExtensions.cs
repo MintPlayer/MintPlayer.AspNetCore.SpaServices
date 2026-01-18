@@ -37,7 +37,7 @@ public static class SpaStaticFilesExtensions
 					$"was set on the {nameof(StaticFiles.SpaStaticFilesOptions)}.");
 			}
 
-			return new StaticFiles.DefaultSpaStaticFileProvider(serviceProvider, options);
+			return new StaticFiles.DefaultSpaStaticFileProvider(serviceProvider: serviceProvider, options: options);
 		});
 	}
 

@@ -1,61 +1,42 @@
-/***************************************************************************************************
- * Initialize the server environment - for example, adding DOM built-in types to the global scope.
- *
- * NOTE:
- * This import must come before any imports (direct or transitive) that rely on DOM built-ins being
- * available, such as `@angular/elements`.
- */
-
-import 'zone.js/node';
-import '@angular/platform-server/init';
-
+import 'reflect-metadata';
 import { renderApplication } from '@angular/platform-server';
+import { enableProdMode, StaticProvider } from '@angular/core';
+import { createServerRenderer } from 'aspnet-prerendering';
 import { APP_BASE_HREF } from '@angular/common';
-import { enableProdMode, StaticProvider, Inject, Provider, ApplicationConfig, mergeApplicationConfig } from '@angular/core';
-import { createServerRenderer, BootFuncParams } from 'aspnet-prerendering';
+import { App } from './app/app';
 import { bootstrapApplication } from '@angular/platform-browser';
-import { AppComponent } from './app/app.component';
 import { config as serverConfig } from './app/app.config.server';
+import { MESSAGE_TOKEN, PERSON_TOKEN, PEOPLE_TOKEN } from './app/tokens';
 
 enableProdMode();
 
-const getBaseUrl = (params: BootFuncParams) => {
-	return params.origin + params.baseUrl.slice(0, -1);
-}
-
 export default createServerRenderer(params => {
+  const providers: StaticProvider[] = [
+    { provide: APP_BASE_HREF, useValue: params.origin + params.baseUrl.slice(0, -1) },
+    { provide: MESSAGE_TOKEN, useValue: params.data.message },
+  ];
 
-  const providers: Provider[] = [
-		{ provide: 'BOOT_PARAMS', useValue: params },
-    { provide: APP_BASE_HREF, useFactory: getBaseUrl, deps: ['BOOT_PARAMS'] },
-		{ provide: 'MESSAGE', useValue: params.data.message },
-	];
+  if ('people' in params.data) {
+    providers.push({ provide: PEOPLE_TOKEN, useValue: params.data.people });
+  } else {
+    providers.push({ provide: PEOPLE_TOKEN, useValue: null });
+  }
+  if ('person' in params.data) {
+    providers.push({ provide: PERSON_TOKEN, useValue: params.data.person });
+  } else {
+    providers.push({ provide: PERSON_TOKEN, useValue: null });
+  }
 
-	if ('people' in params.data) {
-		providers.push({ provide: 'PEOPLE', useValue: params.data.people });
-	} else {
-		providers.push({ provide: 'PEOPLE', useValue: null });
-	}
-	if ('person' in params.data) {
-		providers.push({ provide: 'PERSON', useValue: params.data.person });
-	} else {
-		providers.push({ provide: 'PERSON', useValue: null });
-	}
-
-
-	const options = {
-		document: params.data.originalHtml,
-		url: params.url,
-		//extraProviders: providers
+  const options = {
+    document: params.data.originalHtml,
+    url: params.url,
+    platformProviders: providers
   };
 
-  const extraConfig: ApplicationConfig = { providers };
-  const config = mergeApplicationConfig(serverConfig, extraConfig);
+  // Bypass ssr api call cert warnings in development
+  process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = "0";
 
-	// Bypass ssr api call cert warnings in development
-	process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = "0";
+  const renderPromise = renderApplication((context) => bootstrapApplication(App, serverConfig, context), options);
 
-  const renderPromise = renderApplication(() => bootstrapApplication(AppComponent, config), options);
-
-	return renderPromise.then(html => ({ html }));
+  return renderPromise.then(html => ({ html }));
 });

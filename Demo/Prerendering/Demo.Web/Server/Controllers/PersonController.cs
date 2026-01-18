@@ -2,21 +2,16 @@ using Demo.Data.Dal.Services;
 using Demo.Dtos.Dtos;
 using Microsoft.AspNetCore.Mvc;
 using MintPlayer.Pagination;
+using MintPlayer.SourceGenerators.Attributes;
 
 namespace Demo.Web.Controllers;
 
 [ApiController]
 [Route("web/[controller]")]
-public class PersonController : Controller
+public partial class PersonController : Controller
 {
-	private readonly ILogger<PersonController> logger;
-	private readonly IPersonService personService;
-
-	public PersonController(ILogger<PersonController> logger, IPersonService personService)
-	{
-		this.logger = logger;
-		this.personService = personService;
-	}
+	[Inject] private readonly ILogger<PersonController> logger;
+	[Inject] private readonly IPersonService personService;
 
 	// POST: web/Person/page
 	[HttpPost("page", Name = "web-v1-person-page")]

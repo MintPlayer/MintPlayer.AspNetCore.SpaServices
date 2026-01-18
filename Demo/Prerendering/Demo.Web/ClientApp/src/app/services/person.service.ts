@@ -1,7 +1,6 @@
 import { APP_BASE_HREF } from '@angular/common';
 import { Injectable, Inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
 import { Person } from '../entities/person';
 
 @Injectable({
@@ -31,7 +30,7 @@ export class PersonService {
 	}
 
 	public createPerson(person: Person) {
-    return this.httpClient.post<Person>(`${this.baseUrl}/web/person`, person);
+		return this.httpClient.post<Person>(`${this.baseUrl}/web/person`, person);
 	}
 
 	public updatePerson(person: Person) {

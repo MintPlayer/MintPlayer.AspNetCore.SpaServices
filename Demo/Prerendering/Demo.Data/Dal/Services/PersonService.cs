@@ -1,6 +1,7 @@
 using Demo.Data.Dal.Repositories;
 using Demo.Dtos.Dtos;
 using MintPlayer.Pagination;
+using MintPlayer.SourceGenerators.Attributes;
 
 namespace Demo.Data.Dal.Services;
 
@@ -13,13 +14,10 @@ public interface IPersonService
 	Task<Person> UpdatePerson(Person person);
 	Task DeletePerson(int personId);
 }
-internal class PersonService : IPersonService
+
+internal partial class PersonService : IPersonService
 {
-	private readonly IPersonRepository personRepository;
-	public PersonService(IPersonRepository personRepository)
-	{
-		this.personRepository = personRepository;
-	}
+	[Inject] private readonly IPersonRepository personRepository;
 
 	public Task<PaginationResponse<Person>> PagePeople(PaginationRequest<Person> request)
 	{

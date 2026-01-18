@@ -1,17 +1,13 @@
 using Microsoft.AspNetCore.Antiforgery;
+using MintPlayer.SourceGenerators.Attributes;
 
 namespace MintPlayer.AspNetCore.SpaServices.Xsrf;
 
 // You may need to install the Microsoft.AspNetCore.Http.Abstractions package into your project
-internal class Antiforgery
+internal partial class Antiforgery
 {
-	private readonly RequestDelegate next;
-	private readonly IAntiforgery antiforgery;
-	public Antiforgery(RequestDelegate next, IAntiforgery antiforgery)
-	{
-		this.next = next;
-		this.antiforgery = antiforgery;
-	}
+	[Inject] private readonly RequestDelegate next;
+	[Inject] private readonly IAntiforgery antiforgery;
 
 	public async Task Invoke(HttpContext httpContext)
 	{
@@ -33,7 +29,11 @@ internal class Antiforgery
 // Extension method used to add the middleware to the HTTP request pipeline.
 public static class AntiforgeryExtensions
 {
-	public static IApplicationBuilder UseAntiforgery(this IApplicationBuilder builder)
+	/// <summary>
+	/// Adds a middleware to the http-request pipeline that generates an XSRF-token for the current user
+	/// and stores it in a cookie named "XSRF-TOKEN".
+	/// </summary>
+	public static IApplicationBuilder UseAntiforgeryGenerator(this IApplicationBuilder builder)
 	{
 		return builder.UseMiddleware<Antiforgery>();
 	}

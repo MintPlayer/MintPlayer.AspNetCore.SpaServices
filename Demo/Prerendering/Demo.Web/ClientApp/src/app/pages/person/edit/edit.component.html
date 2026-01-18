@@ -1,31 +1,27 @@
-<div class="container">
-	<form (submit)="updatePerson()">
-		<div class="form-group row">
-			<div class="col-12">
-				<h1 class="d-inline-block">{{ oldPersonName }}</h1>
-				<span class="float-right">
-					<button type="submit" class="btn btn-primary">
+<bs-form (submit)="updatePerson()">
+	<bs-grid>
+		<div bsRow bsFormGroup class="mb-3">
+			<div [xxs]="12">
+				<h1 class="d-inline-block">{{ oldPersonName() }}</h1>
+				<span class="float-end">
+					<button type="submit" [color]="colors.primary">
 						<i class="fa fa-save"></i>
-						Update
+						{{ 'actions.update' | translate }}
 					</button>
 				</span>
 			</div>
 		</div>
-		<div class="form-group row">
-			<label for="txt_first_name" class="input-label col-sm-4 col-xl-2">First name</label>
-			<div class="col-sm-8 col-xl-10">
-				<div class="input-group">
-					<input type="text" [(ngModel)]="person.firstName" class="form-control" id="txt_first_name" name="first_name" autofocus />
-				</div>
+		<div bsRow bsFormGroup class="mb-3">
+			<label [bsFor]="txtFirstName" class="input-label" [sm]="4" [xl]="2">{{ 'person.firstName' | translate }}</label>
+			<div [sm]="8" [xl]="10">
+				<input type="text" [formField]="personForm.firstName" class="form-control" #txtFirstName autofocus />
 			</div>
 		</div>
-		<div class="form-group row">
-			<label for="txt_last_name" class="input-label col-sm-4 col-xl-2">Last name</label>
-			<div class="col-sm-8 col-xl-10">
-				<div class="input-group">
-					<input type="text" [(ngModel)]="person.lastName" class="form-control" id="txt_last_name" name="last_name" autofocus />
-				</div>
+		<div bsRow bsFormGroup class="mb-3">
+			<label [bsFor]="txtLastName" class="input-label" [sm]="4" [xl]="2">{{ 'person.lastName' | translate }}</label>
+			<div [sm]="8" [xl]="10">
+				<input type="text" [formField]="personForm.lastName" class="form-control" #txtLastName />
 			</div>
 		</div>
-	</form>
-</div>
+	</bs-grid>
+</bs-form>

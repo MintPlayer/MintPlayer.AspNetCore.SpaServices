@@ -1,18 +1,14 @@
 using Demo.Data.Dal.Services;
 using Demo.Web.Extensions;
 using MintPlayer.AspNetCore.SpaServices.Routing;
+using MintPlayer.SourceGenerators.Attributes;
 
 namespace Demo.Web.Services;
 
-public class DemoSpaPrerenderingService : MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService
+public partial class DemoSpaPrerenderingService : MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService
 {
-	private readonly ISpaRouteService spaRouteService;
-	private readonly IPersonService personService;
-	public DemoSpaPrerenderingService(ISpaRouteService spaRouteService, IPersonService personService)
-	{
-		this.spaRouteService = spaRouteService;
-		this.personService = personService;
-	}
+	[Inject] private readonly ISpaRouteService spaRouteService;
+	[Inject] private readonly IPersonService personService;
 
 	public Task BuildRoutes(MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaRouteBuilder routeBuilder)
 	{

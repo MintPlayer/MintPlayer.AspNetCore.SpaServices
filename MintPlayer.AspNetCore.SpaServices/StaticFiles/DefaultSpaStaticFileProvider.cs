@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using Microsoft.Extensions.FileProviders;
+using MintPlayer.SourceGenerators.Attributes;
 
 namespace MintPlayer.AspNetCore.SpaServices.StaticFiles;
 
@@ -9,11 +10,15 @@ namespace MintPlayer.AspNetCore.SpaServices.StaticFiles;
 /// Provides an implementation of <see cref="ISpaStaticFileProvider"/> that supplies
 /// physical files at a location configured using <see cref="SpaStaticFilesOptions"/>.
 /// </summary>
-internal sealed class DefaultSpaStaticFileProvider : ISpaStaticFileProvider
+internal sealed partial class DefaultSpaStaticFileProvider : ISpaStaticFileProvider
 {
-	private readonly IFileProvider? _fileProvider;
+	private IFileProvider? _fileProvider;
 
-	public DefaultSpaStaticFileProvider(IServiceProvider serviceProvider, SpaStaticFilesOptions options)
+	[Inject] private readonly IServiceProvider serviceProvider;
+	[Inject] private readonly SpaStaticFilesOptions options;
+
+	[PostConstruct, NoInterfaceMember]
+	public void Initialize()
 	{
 		ArgumentNullException.ThrowIfNull(options);
 

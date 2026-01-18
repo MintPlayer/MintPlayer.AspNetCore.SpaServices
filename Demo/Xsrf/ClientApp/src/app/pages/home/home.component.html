@@ -2,5 +2,6 @@
 <div class="mb-3">
   <button (click)="sendRequest()" [color]="colors.primary">Send a post request</button>
 </div>
-<bs-alert [type]="status.success ? colors.success : colors.danger" *ngIf="(status$ | async) as status">{{ status.message }}</bs-alert>
-
+@if (status(); as s) {
+  <bs-alert [type]="s.success ? colors.success : colors.danger">{{ s.message }}</bs-alert>
+}

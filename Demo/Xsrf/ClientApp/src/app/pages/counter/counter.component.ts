@@ -1,14 +1,18 @@
-import { Component } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Color } from '@mintplayer/ng-bootstrap';
+import { BsButtonTypeDirective } from '@mintplayer/ng-bootstrap/button-type';
 
 @Component({
   selector: 'app-counter-component',
   templateUrl: './counter.component.html',
-  standalone: true,
+  imports: [BsButtonTypeDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CounterComponent {
-  public currentCount = 0;
+  colors = Color;
+  currentCount = signal(0);
 
-  public incrementCounter() {
-    this.currentCount++;
+  incrementCounter() {
+    this.currentCount.update(count => count + 1);
   }
 }

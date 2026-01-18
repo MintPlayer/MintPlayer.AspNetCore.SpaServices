@@ -1,34 +1,43 @@
-import { Component, Inject, PLATFORM_ID, Optional } from '@angular/core';
+import { Component, inject, PLATFORM_ID, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { Title } from '@angular/platform-browser';
-import { isPlatformServer, CommonModule } from '@angular/common';
+import { isPlatformServer } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
+import { BsGridModule } from '@mintplayer/ng-bootstrap/grid';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
 import { SlugifyPipe } from '../../../pipes/slugify.pipe';
+import { PERSON_TOKEN } from '../../../tokens';
 
 @Component({
 	selector: 'app-person-show',
 	templateUrl: './show.component.html',
-  styleUrls: ['./show.component.scss'],
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    RouterModule,
-    TranslateModule,
-    SlugifyPipe
-  ],
-  providers: [SlugifyPipe]
+	styleUrls: ['./show.component.scss'],
+	changeDetection: ChangeDetectionStrategy.OnPush,
+	imports: [
+		FormsModule,
+		RouterModule,
+		TranslateModule,
+		SlugifyPipe,
+		BsGridModule
+	],
+	providers: [SlugifyPipe]
 })
 export class PersonShowComponent {
+	private readonly personService = inject(PersonService);
+	private readonly router = inject(Router);
+	private readonly route = inject(ActivatedRoute);
+	private readonly titleService = inject(Title);
+	private readonly platformId = inject(PLATFORM_ID);
+	private readonly personInj = inject(PERSON_TOKEN, { optional: true });
 
-  constructor(private personService: PersonService, private router: Router, private route: ActivatedRoute, private titleService: Title, @Inject(PLATFORM_ID) private platformId: Object, @Optional() @Inject('PERSON') private personInj?: Person) {
-		if (isPlatformServer(platformId)) {
-			this.setPerson(personInj!);
+	person = signal<Person | null>(null);
+
+	constructor() {
+		if (isPlatformServer(this.platformId)) {
+			this.setPerson(this.personInj!);
 		} else {
-			console.log(this.route.paramMap);
 			const strId = this.route.snapshot.paramMap.get('id');
 			if (strId) {
 				const id = parseInt(strId);
@@ -40,22 +49,18 @@ export class PersonShowComponent {
 	}
 
 	private setPerson(person: Person) {
-		this.person = person;
+		this.person.set(person);
 		if (person !== null) {
 			this.titleService.setTitle(`${person.firstName} ${person.lastName}`);
 		}
 	}
 
-	public deletePerson() {
-		this.personService.deletePerson(this.person).subscribe(() => {
-			this.router.navigate(['/person']);
-		});
+	deletePerson() {
+		const person = this.person();
+		if (person) {
+			this.personService.deletePerson(person).subscribe(() => {
+				this.router.navigate(['/person']);
+			});
+		}
 	}
-
-	person: Person = {
-		id: 0,
-		firstName: '',
-		lastName: '',
-	};
-
 }
