@@ -1,8 +1,10 @@
 <body>
   <app-nav-menu #menu></app-nav-menu>
-  <bs-grid [bsNavbarContent]="nav()">
-    <div class="p-4">
-      <router-outlet></router-outlet>
-    </div>
-  </bs-grid>
+  <div [bsNavbarContent]="nav()">
+    <bs-grid>
+      <div class="p-4">
+        <router-outlet></router-outlet>
+      </div>
+    </bs-grid>
+  </div>
 </body>

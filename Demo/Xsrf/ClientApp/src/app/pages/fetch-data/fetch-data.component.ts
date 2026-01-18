@@ -1,5 +1,7 @@
 import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { BsTableComponent } from '@mintplayer/ng-bootstrap/table';
 import { BASE_URL_TOKEN } from '../../tokens';
 
 interface WeatherForecast {
@@ -12,6 +14,7 @@ interface WeatherForecast {
 @Component({
   selector: 'app-fetch-data',
   templateUrl: './fetch-data.component.html',
+  imports: [DatePipe, BsTableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FetchDataComponent {
