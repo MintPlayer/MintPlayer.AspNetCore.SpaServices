@@ -1,11 +1,11 @@
 <bs-grid [stopFullWidthAt]="'never'">
 	<div class="form-group mb-3" bsRow>
 		<div [xxs]="12">
-			<h1 class="d-inline-block">All people</h1>
+			<h1 class="d-inline-block">{{ 'pages.allPeople' | translate }}</h1>
 			<span class="float-end">
 				<a [routerLink]='["/person","create"]' class="btn btn-primary">
 					<i class="fa fa-plus"></i>
-					Create person
+					{{ 'actions.createPerson' | translate }}
 				</a>
 			</span>
 		</div>

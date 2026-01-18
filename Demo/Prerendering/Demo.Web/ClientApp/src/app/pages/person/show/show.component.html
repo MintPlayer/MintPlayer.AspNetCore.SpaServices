@@ -7,11 +7,11 @@
 					<span class="btn-group">
 						<a class="btn btn-primary d-block d-sm-inline-block" [routerLink]='["/person", p.id, (p.firstName + " " + p.lastName) | slugify, "edit"]'>
 							<i class="fa fa-edit"></i>
-							Edit
+							{{ 'actions.edit' | translate }}
 						</a>
 						<button class="btn btn-secondary d-block d-sm-inline-block w-100 w-sm-auto" (click)="deletePerson()">
 							<i class="fa fa-trash"></i>
-							Remove
+							{{ 'actions.remove' | translate }}
 						</button>
 					</span>
 				</span>

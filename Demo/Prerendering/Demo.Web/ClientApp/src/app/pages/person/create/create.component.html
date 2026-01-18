@@ -2,17 +2,17 @@
 	<form (submit)="savePerson()">
 		<div class="form-group mb-3" bsRow>
 			<div [xxs]="12">
-				<h1 class="d-inline-block">Create new person</h1>
+				<h1 class="d-inline-block">{{ 'pages.createNewPerson' | translate }}</h1>
 				<span class="float-end">
 					<button type="submit" class="btn btn-primary">
 						<i class="fa fa-save"></i>
-						Create person
+						{{ 'actions.createPerson' | translate }}
 					</button>
 				</span>
 			</div>
 		</div>
 		<div class="form-group mb-3" bsRow>
-			<label for="txt_first_name" class="input-label" [sm]="4" [xl]="2">First name</label>
+			<label for="txt_first_name" class="input-label" [sm]="4" [xl]="2">{{ 'person.firstName' | translate }}</label>
 			<div [sm]="8" [xl]="10">
 				<div class="input-group">
 					<input type="text" [(ngModel)]="person.firstName" class="form-control" id="txt_first_name" name="first_name" autofocus />
@@ -20,7 +20,7 @@
 			</div>
 		</div>
 		<div class="form-group mb-3" bsRow>
-			<label for="txt_last_name" class="input-label" [sm]="4" [xl]="2">Last name</label>
+			<label for="txt_last_name" class="input-label" [sm]="4" [xl]="2">{{ 'person.lastName' | translate }}</label>
 			<div [sm]="8" [xl]="10">
 				<div class="input-group">
 					<input type="text" [(ngModel)]="person.lastName" class="form-control" id="txt_last_name" name="last_name" />

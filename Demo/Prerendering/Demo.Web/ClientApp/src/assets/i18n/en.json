@@ -2,5 +2,15 @@
 	"person": {
 		"firstName": "First name",
 		"lastName": "Last name"
+	},
+	"actions": {
+		"update": "Update",
+		"edit": "Edit",
+		"remove": "Remove",
+		"createPerson": "Create person"
+	},
+	"pages": {
+		"allPeople": "All people",
+		"createNewPerson": "Create new person"
 	}
 }
