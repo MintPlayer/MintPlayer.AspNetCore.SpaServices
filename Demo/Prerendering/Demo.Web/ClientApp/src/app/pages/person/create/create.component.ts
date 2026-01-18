@@ -2,6 +2,7 @@ import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
+import { BsGridModule } from '@mintplayer/ng-bootstrap/grid';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
 import { SlugifyPipe } from '../../../pipes/slugify.pipe';
@@ -13,7 +14,8 @@ import { SlugifyPipe } from '../../../pipes/slugify.pipe';
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	imports: [
 		FormsModule,
-		TranslateModule
+		TranslateModule,
+		BsGridModule
 	],
 	providers: [SlugifyPipe]
 })

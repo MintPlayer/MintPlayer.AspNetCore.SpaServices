@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 import { TranslateModule } from '@ngx-translate/core';
+import { BsGridModule } from '@mintplayer/ng-bootstrap/grid';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
 import { SlugifyPipe } from '../../../pipes/slugify.pipe';
@@ -16,7 +17,8 @@ import { PERSON_TOKEN } from '../../../tokens';
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	imports: [
 		FormsModule,
-		TranslateModule
+		TranslateModule,
+		BsGridModule
 	],
 	providers: [SlugifyPipe]
 })

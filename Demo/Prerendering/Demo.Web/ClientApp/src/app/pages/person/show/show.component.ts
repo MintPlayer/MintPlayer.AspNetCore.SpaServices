@@ -4,6 +4,7 @@ import { Title } from '@angular/platform-browser';
 import { isPlatformServer } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
+import { BsGridModule } from '@mintplayer/ng-bootstrap/grid';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
 import { SlugifyPipe } from '../../../pipes/slugify.pipe';
@@ -18,7 +19,8 @@ import { PERSON_TOKEN } from '../../../tokens';
 		FormsModule,
 		RouterModule,
 		TranslateModule,
-		SlugifyPipe
+		SlugifyPipe,
+		BsGridModule
 	],
 	providers: [SlugifyPipe]
 })

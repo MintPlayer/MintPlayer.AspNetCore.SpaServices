@@ -1,7 +1,7 @@
-<div class="container">
+<bs-grid>
 	<form (submit)="savePerson()">
-		<div class="form-group row">
-			<div class="col-12">
+		<div class="form-group mb-3" bsRow>
+			<div [xxs]="12">
 				<h1 class="d-inline-block">Create new person</h1>
 				<span class="float-end">
 					<button type="submit" class="btn btn-primary">
@@ -11,21 +11,21 @@
 				</span>
 			</div>
 		</div>
-		<div class="form-group row">
-			<label for="txt_first_name" class="input-label col-sm-4 col-xl-2">First name</label>
-			<div class="col-sm-8 col-xl-10">
+		<div class="form-group mb-3" bsRow>
+			<label for="txt_first_name" class="input-label" [sm]="4" [xl]="2">First name</label>
+			<div [sm]="8" [xl]="10">
 				<div class="input-group">
 					<input type="text" [(ngModel)]="person.firstName" class="form-control" id="txt_first_name" name="first_name" autofocus />
 				</div>
 			</div>
 		</div>
-		<div class="form-group row">
-			<label for="txt_last_name" class="input-label col-sm-4 col-xl-2">Last name</label>
-			<div class="col-sm-8 col-xl-10">
+		<div class="form-group mb-3" bsRow>
+			<label for="txt_last_name" class="input-label" [sm]="4" [xl]="2">Last name</label>
+			<div [sm]="8" [xl]="10">
 				<div class="input-group">
 					<input type="text" [(ngModel)]="person.lastName" class="form-control" id="txt_last_name" name="last_name" />
 				</div>
 			</div>
 		</div>
 	</form>
-</div>
+</bs-grid>
