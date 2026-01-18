@@ -42,7 +42,7 @@
 	</Target>
 
 	<ItemGroup>
-		<None Include="README.md" Pack="true" PackagePath="\"/>
+		<None Include="README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -50,8 +50,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="MintPlayer.SourceGenerators" Version="10.11.0" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
-		<PackageReference Include="MintPlayer.SourceGenerators.Attributes" Version="10.11.0" />
+		<PackageReference Include="MintPlayer.SourceGenerators" Version="10.11.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+		<PackageReference Include="MintPlayer.SourceGenerators.Attributes" Version="10.11.0" GeneratePathProperty="true" />
 	</ItemGroup>
 
 	<ItemGroup>
