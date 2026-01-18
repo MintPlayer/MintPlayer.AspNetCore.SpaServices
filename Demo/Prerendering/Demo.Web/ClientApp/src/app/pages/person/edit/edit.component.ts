@@ -1,10 +1,15 @@
 import { isPlatformServer } from '@angular/common';
 import { Component, inject, PLATFORM_ID, signal, ChangeDetectionStrategy } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { form, FormField } from '@angular/forms/signals';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 import { TranslateModule } from '@ngx-translate/core';
 import { BsGridModule } from '@mintplayer/ng-bootstrap/grid';
+import { BsForDirective } from '@mintplayer/ng-bootstrap/for';
+import { FocusOnLoadDirective } from '@mintplayer/ng-focus-on-load';
+import { BsFormModule } from '@mintplayer/ng-bootstrap/form';
+import { Color } from '@mintplayer/ng-bootstrap';
+import { BsButtonTypeDirective } from '@mintplayer/ng-bootstrap/button-type';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
 import { SlugifyPipe } from '../../../pipes/slugify.pipe';
@@ -16,9 +21,13 @@ import { PERSON_TOKEN } from '../../../tokens';
 	styleUrls: ['./edit.component.scss'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	imports: [
-		FormsModule,
+		FormField,
 		TranslateModule,
-		BsGridModule
+		BsFormModule,
+		BsGridModule,
+		BsForDirective,
+		BsButtonTypeDirective,
+		FocusOnLoadDirective
 	],
 	providers: [SlugifyPipe]
 })
@@ -31,11 +40,13 @@ export class PersonEditComponent {
 	private readonly titleService = inject(Title);
 	private readonly slugifyPipe = inject(SlugifyPipe);
 
-	person: Person = {
+	colors = Color;
+	person = signal<Person>({
 		id: 0,
 		firstName: '',
 		lastName: '',
-	};
+	});
+	personForm = form(this.person);
 	oldPersonName = signal('');
 
 	constructor() {
@@ -53,16 +64,17 @@ export class PersonEditComponent {
 	}
 
 	private setPerson(person: Person) {
-		this.person = person;
 		if (person !== null) {
+			this.person.set(person);
 			this.titleService.setTitle(`Edit person: ${person.firstName} ${person.lastName}`);
 			this.oldPersonName.set(`${person.firstName} ${person.lastName}`);
 		}
 	}
 
 	updatePerson() {
-		this.personService.updatePerson(this.person).subscribe(() => {
-			this.router.navigate(["/person", this.person.id, this.slugifyPipe.transform(`${this.person.firstName} ${this.person.lastName}`)]);
+		const person = this.person();
+		this.personService.updatePerson(person).subscribe(() => {
+			this.router.navigate(["/person", person.id, this.slugifyPipe.transform(`${person.firstName} ${person.lastName}`)]);
 		});
 	}
 }

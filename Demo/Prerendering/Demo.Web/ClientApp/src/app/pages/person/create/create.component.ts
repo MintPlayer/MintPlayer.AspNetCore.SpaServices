@@ -1,7 +1,11 @@
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { form, FormField } from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
+import { Color } from '@mintplayer/ng-bootstrap';
+import { BsButtonTypeDirective } from '@mintplayer/ng-bootstrap/button-type';
+import { BsForDirective } from '@mintplayer/ng-bootstrap/for';
+import { BsFormModule } from '@mintplayer/ng-bootstrap/form';
 import { BsGridModule } from '@mintplayer/ng-bootstrap/grid';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
@@ -13,8 +17,11 @@ import { SlugifyPipe } from '../../../pipes/slugify.pipe';
 	styleUrls: ['./create.component.scss'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	imports: [
-		FormsModule,
+		FormField,
 		TranslateModule,
+		BsButtonTypeDirective,
+		BsForDirective,
+		BsFormModule,
 		BsGridModule
 	],
 	providers: [SlugifyPipe]
@@ -22,19 +29,19 @@ import { SlugifyPipe } from '../../../pipes/slugify.pipe';
 export class PersonCreateComponent {
 	private readonly router = inject(Router);
 	private readonly slugifyPipe = inject(SlugifyPipe);
-	private readonly personService = inject(PersonService, { optional: true });
+	private readonly personService = inject(PersonService);
 
-	person: Person = {
+	colors = Color;
+	person = signal<Person>({
 		id: 0,
 		firstName: '',
 		lastName: '',
-	};
+	});
+	personForm = form(this.person);
 
 	savePerson() {
-		if (this.personService) {
-			this.personService.createPerson(this.person).subscribe((person) => {
-				this.router.navigate(['/person', person.id, this.slugifyPipe.transform(`${person.firstName} ${person.lastName}`)]);
-			});
-		}
+		this.personService.createPerson(this.person()).subscribe((createdPerson) => {
+			this.router.navigate(['/person', createdPerson.id, this.slugifyPipe.transform(`${createdPerson.firstName} ${createdPerson.lastName}`)]);
+		});
 	}
 }
