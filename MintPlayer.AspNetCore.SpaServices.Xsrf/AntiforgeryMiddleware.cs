@@ -33,7 +33,11 @@ internal class Antiforgery
 // Extension method used to add the middleware to the HTTP request pipeline.
 public static class AntiforgeryExtensions
 {
-	public static IApplicationBuilder UseAntiforgery(this IApplicationBuilder builder)
+	/// <summary>
+	/// Adds a middleware to the http-request pipeline that generates an XSRF-token for the current user
+	/// and stores it in a cookie named "XSRF-TOKEN".
+	/// </summary>
+	public static IApplicationBuilder UseAntiforgeryGenerator(this IApplicationBuilder builder)
 	{
 		return builder.UseMiddleware<Antiforgery>();
 	}

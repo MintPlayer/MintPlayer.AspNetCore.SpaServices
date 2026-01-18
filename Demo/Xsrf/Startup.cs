@@ -1,4 +1,6 @@
 using MintPlayer.AspNetCore.SpaServices.Extensions;
+using MintPlayer.AspNetCore.SpaServices.Xsrf;
+using System.Text.RegularExpressions;
 
 namespace MintPlayer.AspNetCore.XsrfForSpas.Demo;
 
@@ -38,7 +40,7 @@ public class Startup
 		}
 
 		app.UseHttpsRedirection();
-		app.UseAntiforgery();
+		app.UseAntiforgeryGenerator();
 
 		if (!env.IsDevelopment())
 		{
@@ -64,7 +66,7 @@ public class Startup
 
 			if (env.IsDevelopment())
 			{
-				spa.UseAngularCliServer(npmScript: "start");
+				spa.UseAngularCliServer(npmScript: "start", cliRegexes: [new Regex(@"Local\:\s+(?<openbrowser>https?\:\/\/(.+))")]);
 			}
 		});
 	}
