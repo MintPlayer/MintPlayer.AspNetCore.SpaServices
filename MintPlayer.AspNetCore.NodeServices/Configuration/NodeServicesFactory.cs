@@ -15,10 +15,7 @@ public static class NodeServicesFactory
 	/// <returns>An <see cref="INodeServices"/> instance.</returns>
 	public static INodeServices CreateNodeServices(NodeServicesOptions options)
 	{
-		if (options == null)
-		{
-			throw new ArgumentNullException(nameof(options));
-		}
+		ArgumentNullException.ThrowIfNull(options);
 
 		return new NodeServicesImpl(options.NodeInstanceFactory);
 	}

@@ -22,10 +22,7 @@ public class NodeServicesOptions
 	/// <param name="serviceProvider">The <see cref="IServiceProvider"/>.</param>
 	public NodeServicesOptions(IServiceProvider serviceProvider)
 	{
-		if (serviceProvider == null)
-		{
-			throw new ArgumentNullException(nameof(serviceProvider));
-		}
+		ArgumentNullException.ThrowIfNull(serviceProvider);
 
 		EnvironmentVariables = new Dictionary<string, string>();
 		InvocationTimeoutMilliseconds = DefaultInvocationTimeoutMilliseconds;

@@ -2,33 +2,29 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using MintPlayer.AspNetCore.NodeServices.HostingModels;
+using MintPlayer.SourceGenerators.Attributes;
 
 namespace MintPlayer.AspNetCore.NodeServices;
 
 /// <summary>
 /// Default implementation of INodeServices. This is the primary API surface through which developers
-/// make use of this package. It provides simple "InvokeAsync" methods that dispatch calls to the
+/// make use of this package. It provides simple 'InvokeAsync' methods that dispatch calls to the
 /// correct Node instance, creating and destroying those instances as needed.
 ///
 /// If a Node instance dies (or none was yet created), this class takes care of creating a new one.
 /// If a Node instance signals that it needs to be restarted (e.g., because a file changed), then this
 /// class will create a new instance and dispatch future calls to it, while keeping the old instance
 /// alive for a defined period so that any in-flight RPC calls can complete. This latter feature is
-/// analogous to the "connection draining" feature implemented by HTTP load balancers.
+/// analogous to the 'connection draining' feature implemented by HTTP load balancers.
 /// </summary>
 /// <seealso cref="MintPlayer.AspNetCore.NodeServices.INodeServices" />
-internal class NodeServicesImpl : INodeServices
+internal partial class NodeServicesImpl : INodeServices
 {
-	private static TimeSpan ConnectionDrainingTimespan = TimeSpan.FromSeconds(15);
-	private Func<INodeInstance> _nodeInstanceFactory;
+	private static readonly TimeSpan ConnectionDrainingTimespan = TimeSpan.FromSeconds(15);
+	[Inject] private readonly Func<INodeInstance> _nodeInstanceFactory;
 	private INodeInstance _currentNodeInstance;
-	private object _currentNodeInstanceAccessLock = new object();
+	private readonly Lock _currentNodeInstanceAccessLock = new();
 	private Exception _instanceDelayedDisposalException;
-
-	internal NodeServicesImpl(Func<INodeInstance> nodeInstanceFactory)
-	{
-		_nodeInstanceFactory = nodeInstanceFactory;
-	}
 
 	public Task<T> InvokeAsync<T>(string moduleName, params object[] args)
 	{
@@ -147,14 +143,9 @@ internal class NodeServicesImpl : INodeServices
 		{
 			lock (_currentNodeInstanceAccessLock)
 			{
-				instance = _currentNodeInstance;
-				if (instance == null)
-				{
-					instance = _currentNodeInstance = CreateNewNodeInstance();
-				}
+				instance = _currentNodeInstance ??= CreateNewNodeInstance();
 			}
 		}
-
 		return instance;
 	}
 

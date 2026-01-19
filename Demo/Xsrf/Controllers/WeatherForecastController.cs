@@ -1,21 +1,18 @@
 using Microsoft.AspNetCore.Mvc;
+using MintPlayer.SourceGenerators.Attributes;
 
 namespace MintPlayer.AspNetCore.XsrfForSpas.Demo.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class WeatherForecastController : ControllerBase
+public partial class WeatherForecastController : ControllerBase
 {
 	private static readonly string[] Summaries = new[]
 	{
 		"Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
 	};
 
-	private readonly ILogger<WeatherForecastController> _logger;
-	public WeatherForecastController(ILogger<WeatherForecastController> logger)
-	{
-		_logger = logger;
-	}
+	[Inject] private readonly ILogger<WeatherForecastController> _logger;
 
 	[HttpGet]
 	public IEnumerable<WeatherForecast> Get()

@@ -82,6 +82,7 @@ public interface ISpaRouteService
 	Task<string> GenerateUrl<T>(string routeName, T parameters, string protocol, string host, string fragment);
 }
 
+[Register(typeof(ISpaRouteService), ServiceLifetime.Singleton, "AddSpaRouteServices")]
 internal partial class SpaRouteService : ISpaRouteService
 {
 	private readonly Regex rgx_keys = new Regex(@"\{(?<key>[^\{]+)\}");

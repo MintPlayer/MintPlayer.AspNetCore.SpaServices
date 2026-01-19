@@ -1,14 +1,15 @@
-using MintPlayer.AspNetCore.SpaServices.Prerendering;
+using System.Diagnostics.CodeAnalysis;
 
 namespace MintPlayer.AspNetCore.SpaServices.Routing;
 
 public static class SpaRouteExtensions
 {
-	public static IServiceCollection AddSpaPrerenderingService<TService>(this IServiceCollection services) where TService : class, Prerendering.Services.ISpaPrerenderingService
+	public static IServiceCollection AddSpaPrerenderingService<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TService>(this IServiceCollection services)
+		where TService : class, Prerendering.Services.ISpaPrerenderingService
 	{
 		return services
 			.AddHttpContextAccessor()
-			.AddSingleton<ISpaRouteService, SpaRouteService>()
+			.AddSpaRouteServices()
 			.AddScoped<Prerendering.Services.ISpaPrerenderingService, TService>();
 	}
 }
