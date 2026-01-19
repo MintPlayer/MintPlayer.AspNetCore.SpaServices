@@ -26,7 +26,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 	private readonly TaskCompletionSource<object> _connectionIsReadySource = new TaskCompletionSource<object>();
 	private bool _disposed;
 	private readonly StringAsTempFile _entryPointScript;
-	private FileSystemWatcher _fileSystemWatcher;
+	private FileSystemWatcher? _fileSystemWatcher;
 	private int _invocationTimeoutMilliseconds;
 	private bool _launchWithDebugging;
 	private readonly Process _nodeProcess;
@@ -60,10 +60,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		int debuggingPort,
 		string nodePath)
 	{
-		if (nodeOutputLogger == null)
-		{
-			throw new ArgumentNullException(nameof(nodeOutputLogger));
-		}
+		ArgumentNullException.ThrowIfNull(nodeOutputLogger);
 
 		OutputLogger = nodeOutputLogger;
 		_entryPointScript = new StringAsTempFile(entryPointScript, applicationStoppingToken);
@@ -402,7 +399,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 			message.Contains("chrome-devtools:");
 	}
 
-	private FileSystemWatcher BeginFileWatcher(string rootDir)
+	private FileSystemWatcher? BeginFileWatcher(string rootDir)
 	{
 		if (_watchFileExtensions == null || _watchFileExtensions.Length == 0)
 		{

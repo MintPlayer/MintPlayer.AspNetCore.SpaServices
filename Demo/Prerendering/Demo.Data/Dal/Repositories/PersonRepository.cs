@@ -1,5 +1,6 @@
 using Demo.Dtos.Dtos;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using MintPlayer.Pagination;
 using MintPlayer.Pagination.Extensions;
 using MintPlayer.SourceGenerators.Attributes;
@@ -17,6 +18,7 @@ internal interface IPersonRepository
 	Task SaveChangesAsync();
 }
 
+[Register(typeof(IPersonRepository), ServiceLifetime.Scoped, "AddDemoServices")]
 internal partial class PersonRepository : IPersonRepository
 {
 	[Inject] private readonly DemoContext demoContext;
@@ -105,7 +107,7 @@ internal partial class PersonRepository : IPersonRepository
 	}
 
 	#region Conversion methods
-	internal static Person ToDto(Entities.Person person)
+	internal static Person? ToDto(Entities.Person? person)
 	{
 		if (person == null)
 		{
@@ -121,7 +123,7 @@ internal partial class PersonRepository : IPersonRepository
 			};
 		}
 	}
-	internal static Entities.Person ToEntity(Person person, DemoContext demoContext)
+	internal static Entities.Person? ToEntity(Person? person, DemoContext demoContext)
 	{
 		if (person == null)
 		{

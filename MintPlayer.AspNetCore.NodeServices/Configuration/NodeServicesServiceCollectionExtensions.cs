@@ -24,10 +24,7 @@ public static class NodeServicesServiceCollectionExtensions
 	/// <param name="setupAction">A callback that will be invoked to populate the <see cref="NodeServicesOptions"/>.</param>
 	public static void AddNodeServices(this IServiceCollection serviceCollection, Action<NodeServicesOptions> setupAction)
 	{
-		if (setupAction == null)
-		{
-			throw new ArgumentNullException(nameof(setupAction));
-		}
+		ArgumentNullException.ThrowIfNull(setupAction);
 
 		serviceCollection.AddSingleton(typeof(INodeServices), serviceProvider =>
 		{

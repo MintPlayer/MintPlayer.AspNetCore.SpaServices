@@ -1,5 +1,6 @@
 using Demo.Data.Dal.Repositories;
 using Demo.Dtos.Dtos;
+using Microsoft.Extensions.DependencyInjection;
 using MintPlayer.Pagination;
 using MintPlayer.SourceGenerators.Attributes;
 
@@ -15,6 +16,7 @@ public interface IPersonService
 	Task DeletePerson(int personId);
 }
 
+[Register(typeof(IPersonService), ServiceLifetime.Scoped, "AddDemoServices")]
 internal partial class PersonService : IPersonService
 {
 	[Inject] private readonly IPersonRepository personRepository;

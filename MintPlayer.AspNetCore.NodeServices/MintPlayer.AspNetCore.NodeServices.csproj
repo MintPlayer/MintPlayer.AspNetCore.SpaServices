@@ -10,7 +10,7 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.NodeServices</PackageId>
-		<Version>10.2.0</Version>
+		<Version>10.2.1</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
@@ -53,8 +53,8 @@
 	<ItemGroup>
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
 		<PackageReference Include="Yarn.MSBuild" Version="*" />
-		<PackageReference Include="MintPlayer.SourceGenerators" Version="10.11.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
-		<PackageReference Include="MintPlayer.SourceGenerators.Attributes" Version="10.11.0" GeneratePathProperty="true" />
+		<PackageReference Include="MintPlayer.SourceGenerators" Version="10.13.0" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+		<PackageReference Include="MintPlayer.SourceGenerators.Attributes" Version="10.13.0" GeneratePathProperty="true" />
 	</ItemGroup>
 
 	<!-- Version of this SDK is set in global.json -->

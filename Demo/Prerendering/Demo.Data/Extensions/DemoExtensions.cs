@@ -1,7 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Demo.Data.Dal.Repositories;
-using Demo.Data.Dal.Services;
 using Demo.Data.Options;
 
 namespace Demo.Data.Extensions;
@@ -18,7 +16,6 @@ public static class DemoExtensions
 			{
 				db_options.UseSqlServer(opt.ConnectionString, b => b.MigrationsAssembly("Demo.Data"));
 			})
-			.AddScoped<IPersonRepository, PersonRepository>()
-			.AddScoped<IPersonService, PersonService>();
+			.AddDemoServices();
 	}
 }
