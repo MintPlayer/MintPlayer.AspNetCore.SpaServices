@@ -13,12 +13,31 @@
 
 	<!-- Default patterns to exclude from SPA folder hash (used when creating default .hasherignore) -->
 	<ItemGroup Condition=" '$(EnableSpaBuilder)' == 'true' And '$(EnableSpaBuildCaching)' == 'true' ">
+		<!-- Dependencies -->
 		<SpaHashDefaultIgnorePattern Include="node_modules/" />
-		<SpaHashDefaultIgnorePattern Include=".angular/" />
+		<!-- Build outputs -->
 		<SpaHashDefaultIgnorePattern Include="dist/" />
 		<SpaHashDefaultIgnorePattern Include="dist-server/" />
+		<SpaHashDefaultIgnorePattern Include="build/" />
+		<SpaHashDefaultIgnorePattern Include="out/" />
+		<!-- Framework caches -->
+		<SpaHashDefaultIgnorePattern Include=".angular/" />
 		<SpaHashDefaultIgnorePattern Include=".cache/" />
+		<SpaHashDefaultIgnorePattern Include=".npm/" />
+		<!-- Test outputs -->
 		<SpaHashDefaultIgnorePattern Include="coverage/" />
+		<SpaHashDefaultIgnorePattern Include="test-results/" />
+		<SpaHashDefaultIgnorePattern Include=".nyc_output/" />
+		<!-- IDE files -->
+		<SpaHashDefaultIgnorePattern Include=".idea/" />
+		<SpaHashDefaultIgnorePattern Include=".vscode/" />
+		<!-- Editor temp files -->
+		<SpaHashDefaultIgnorePattern Include="*.swp" />
+		<SpaHashDefaultIgnorePattern Include="*.swo" />
+		<SpaHashDefaultIgnorePattern Include="*~" />
+		<!-- OS files -->
+		<SpaHashDefaultIgnorePattern Include=".DS_Store" />
+		<SpaHashDefaultIgnorePattern Include="Thumbs.db" />
 	</ItemGroup>
 
 	<ItemGroup Condition=" '$(EnableSpaBuilder)' == 'true' ">

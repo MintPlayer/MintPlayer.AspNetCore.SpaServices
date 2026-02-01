@@ -111,14 +111,17 @@ The build command is selected based on the `BuildServerSideRenderer` property:
 
 By default, a `.hasherignore` file is automatically created in your `ClientApp` folder (if it doesn't exist) with these patterns:
 
-- `node_modules/` - Dependencies (changes detected via package.json/package-lock.json)
-- `.angular/` - Angular build cache
-- `dist/` - Build output
-- `dist-server/` - SSR build output
-- `.cache/` - Various cache directories
-- `coverage/` - Test coverage reports
+| Category | Patterns |
+|----------|----------|
+| Dependencies | `node_modules/` |
+| Build outputs | `dist/`, `dist-server/`, `build/`, `out/` |
+| Framework caches | `.angular/`, `.cache/`, `.npm/` |
+| Test outputs | `coverage/`, `test-results/`, `.nyc_output/` |
+| IDE files | `.idea/`, `.vscode/` |
+| Editor temp files | `*.swp`, `*.swo`, `*~` |
+| OS files | `.DS_Store`, `Thumbs.db` |
 
-This ensures that large folders like `node_modules` don't slow down hash computation.
+This ensures that large folders like `node_modules` and transient files don't slow down hash computation or cause unnecessary rebuilds.
 
 ### Customizing .hasherignore
 
