@@ -8,7 +8,18 @@
 		<EnableSpaBuildCaching Condition=" '$(EnableSpaBuildCaching)' == '' ">true</EnableSpaBuildCaching>
 		<SpaHashFilePath Condition=" '$(SpaHashFilePath)' == '' ">$(IntermediateOutputPath)spa-folder.hash</SpaHashFilePath>
 		<ForceSpaBuild Condition=" '$(ForceSpaBuild)' == '' ">false</ForceSpaBuild>
+		<CreateDefaultHasherIgnore Condition=" '$(CreateDefaultHasherIgnore)' == '' ">true</CreateDefaultHasherIgnore>
 	</PropertyGroup>
+
+	<!-- Default patterns to exclude from SPA folder hash (used when creating default .hasherignore) -->
+	<ItemGroup Condition=" '$(EnableSpaBuilder)' == 'true' And '$(EnableSpaBuildCaching)' == 'true' ">
+		<SpaHashDefaultIgnorePattern Include="node_modules/" />
+		<SpaHashDefaultIgnorePattern Include=".angular/" />
+		<SpaHashDefaultIgnorePattern Include="dist/" />
+		<SpaHashDefaultIgnorePattern Include="dist-server/" />
+		<SpaHashDefaultIgnorePattern Include=".cache/" />
+		<SpaHashDefaultIgnorePattern Include="coverage/" />
+	</ItemGroup>
 
 	<ItemGroup Condition=" '$(EnableSpaBuilder)' == 'true' ">
 		<!-- Don't publish the SPA source files, but do show them in the project files list -->

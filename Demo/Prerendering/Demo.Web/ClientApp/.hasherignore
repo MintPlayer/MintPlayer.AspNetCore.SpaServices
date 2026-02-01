@@ -1,0 +1,22 @@
+# Ignore patterns for SPA build caching hash computation
+# These folders/files will be excluded when computing the folder hash
+
+# Dependencies (tracked via package.json and package-lock.json)
+node_modules/
+
+# Angular build cache
+.angular/
+
+# Build outputs (these are results, not sources)
+dist/
+dist-server/
+
+# Cache directories
+.cache/
+
+# Test coverage
+coverage/
+
+# IDE files (optional - uncomment if you don't want IDE config changes to trigger rebuilds)
+# .idea/
+# .vscode/

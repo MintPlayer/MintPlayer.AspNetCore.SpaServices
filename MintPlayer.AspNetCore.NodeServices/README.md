@@ -34,11 +34,13 @@ The following MSBuild properties are automatically configured (can be overridden
 | `EnableSpaBuildCaching` | `true` | Enable/disable SPA build caching based on folder hash |
 | `SpaHashFilePath` | `$(IntermediateOutputPath)spa-folder.hash` | Location to store the hash file |
 | `ForceSpaBuild` | `false` | Force rebuild even if hash unchanged |
+| `CreateDefaultHasherIgnore` | `true` | Auto-create `.hasherignore` with default patterns if missing |
 
 ### Build Targets
 
 | Target | Runs | Description |
 |--------|------|-------------|
+| `EnsureHasherIgnoreFile` | Before ComputeSpaFolderHash | Creates default `.hasherignore` if missing |
 | `ComputeSpaFolderHash` | Before DebugEnsureNodeEnv, PublishRunWebpack | Computes folder hash and determines if rebuild is needed |
 | `DebugEnsureNodeEnv` | Before Build (Debug only) | Ensures Node.js is installed and runs `npm install` if `node_modules` doesn't exist |
 | `PublishRunWebpack` | After ComputeFilesToPublish | Builds the SPA (if needed) and includes output in publish folder |
@@ -105,9 +107,22 @@ The build command is selected based on the `BuildServerSideRenderer` property:
 | `true` (default) | `npm run build:ssr:production` |
 | `false` | `npm run build -- --configuration production` |
 
-### Using .hasherignore
+### Default Ignore Patterns
 
-Create a `.hasherignore` file in your `ClientApp` folder to exclude files from the hash calculation. The syntax is similar to `.gitignore`:
+By default, a `.hasherignore` file is automatically created in your `ClientApp` folder (if it doesn't exist) with these patterns:
+
+- `node_modules/` - Dependencies (changes detected via package.json/package-lock.json)
+- `.angular/` - Angular build cache
+- `dist/` - Build output
+- `dist-server/` - SSR build output
+- `.cache/` - Various cache directories
+- `coverage/` - Test coverage reports
+
+This ensures that large folders like `node_modules` don't slow down hash computation.
+
+### Customizing .hasherignore
+
+You can customize the `.hasherignore` file to add or remove patterns. The syntax is similar to `.gitignore`:
 
 ```
 # Build outputs (don't trigger rebuild when these change)
@@ -124,6 +139,22 @@ node_modules/
 
 # Test artifacts
 coverage/
+```
+
+To prevent automatic creation of `.hasherignore`:
+
+```xml
+<PropertyGroup>
+  <CreateDefaultHasherIgnore>false</CreateDefaultHasherIgnore>
+</PropertyGroup>
+```
+
+To customize the default patterns (before the file is created):
+
+```xml
+<ItemGroup>
+  <SpaHashDefaultIgnorePattern Include="my-custom-folder/" />
+</ItemGroup>
 ```
 
 ### Disabling Build Caching
