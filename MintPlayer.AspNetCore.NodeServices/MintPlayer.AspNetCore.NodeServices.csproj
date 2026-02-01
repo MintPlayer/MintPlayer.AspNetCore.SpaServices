@@ -10,7 +10,7 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.NodeServices</PackageId>
-		<Version>10.2.1</Version>
+		<Version>10.3.0</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
@@ -48,6 +48,11 @@
 		-->
 		<None Include="Targets\nodeservices.props" Pack="true" PackagePath="buildTransitive/$(PackageId).props" />
 		<None Include="Targets\nodeservices.targets" Pack="true" PackagePath="buildTransitive/$(PackageId).targets" />
+		<!-- FolderHasher DLLs for SPA build caching -->
+		<None Include="$(PkgMintPlayer_FolderHasher_Targets)\build\MintPlayer.FolderHasher.MSBuild.dll" Pack="true" PackagePath="buildTransitive/" />
+		<None Include="$(PkgMintPlayer_FolderHasher_Targets)\build\MintPlayer.FolderHasher.dll" Pack="true" PackagePath="buildTransitive/" />
+		<None Include="$(PkgMintPlayer_FolderHasher_Targets)\build\MintPlayer.FolderHasher.Abstractions.dll" Pack="true" PackagePath="buildTransitive/" />
+		<None Include="$(PkgMintPlayer_FolderHasher_Targets)\build\Microsoft.Extensions.FileSystemGlobbing.dll" Pack="true" PackagePath="buildTransitive/" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -55,6 +60,8 @@
 		<PackageReference Include="Yarn.MSBuild" Version="*" />
 		<PackageReference Include="MintPlayer.SourceGenerators" Version="10.13.0" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
 		<PackageReference Include="MintPlayer.SourceGenerators.Attributes" Version="10.13.0" GeneratePathProperty="true" />
+		<!-- FolderHasher for SPA build caching -->
+		<PackageReference Include="MintPlayer.FolderHasher.Targets" Version="10.1.0" GeneratePathProperty="true" PrivateAssets="all" />
 	</ItemGroup>
 
 	<!-- Version of this SDK is set in global.json -->
