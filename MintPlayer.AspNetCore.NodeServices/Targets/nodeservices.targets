@@ -76,9 +76,9 @@
 		<!-- As part of publishing, ensure the JS resources are freshly built in production mode -->
 		<Exec WorkingDirectory="$(SpaRoot)" Command="npm install" Condition=" '$(_RunNpmBuild)' == 'true' " />
 
-		<!-- Build command selection based on BuildServerSideRenderer -->
-		<!-- If BuildServerSideRenderer == true  => npm run build:ssr:production -->
-		<!-- If BuildServerSideRenderer == false => npm run build -- --configuration production -->
+		<!-- Build command selection based on BuildServerSideRenderer:
+		     If true:  npm run build:ssr:production
+		     If false: npm run build (with production configuration) -->
 		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build -- --configuration production" Condition=" '$(_RunNpmBuild)' == 'true' And '$(BuildServerSideRenderer)' != 'true' " />
 		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:ssr:production" Condition=" '$(_RunNpmBuild)' == 'true' And '$(BuildServerSideRenderer)' == 'true' " />
 
