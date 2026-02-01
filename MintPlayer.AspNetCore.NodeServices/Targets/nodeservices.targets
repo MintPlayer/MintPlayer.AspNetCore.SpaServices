@@ -62,16 +62,20 @@
 	        DependsOnTargets="ComputeSpaFolderHash"
 	        Condition=" '$(EnableSpaBuilder)' == 'true' ">
 
-		<!-- Determine if we need to run npm build -->
-		<!-- Build is needed when: caching disabled, OR source changed, OR dist folder doesn't exist -->
+		<!-- Warn if SpaRoot doesn't exist -->
+		<Warning Text="SPA root folder '$(SpaRoot)' does not exist. SPA build will be skipped."
+		         Condition=" !Exists('$(SpaRoot)') " />
+
+		<!-- Determine if we need to run npm build (default: true for fail-safe behavior) -->
 		<PropertyGroup>
-			<_RunNpmBuild Condition=" '$(EnableSpaBuildCaching)' != 'true' ">true</_RunNpmBuild>
-			<_RunNpmBuild Condition=" '$(EnableSpaBuildCaching)' == 'true' And '$(SpaSourceChanged)' == 'true' ">true</_RunNpmBuild>
-			<_RunNpmBuild Condition=" '$(EnableSpaBuildCaching)' == 'true' And !Exists('$(SpaRoot)dist') ">true</_RunNpmBuild>
+			<_RunNpmBuild>true</_RunNpmBuild>
+			<!-- Skip build only when: caching enabled AND source unchanged AND dist exists AND SpaRoot exists -->
 			<_RunNpmBuild Condition=" '$(EnableSpaBuildCaching)' == 'true' And '$(SpaSourceChanged)' == 'false' And Exists('$(SpaRoot)dist') ">false</_RunNpmBuild>
+			<!-- Never run build if SpaRoot doesn't exist -->
+			<_RunNpmBuild Condition=" !Exists('$(SpaRoot)') ">false</_RunNpmBuild>
 		</PropertyGroup>
 
-		<Message Importance="high" Text="Using cached SPA build output from $(SpaRoot)dist" Condition=" '$(_RunNpmBuild)' != 'true' " />
+		<Message Importance="high" Text="Using cached SPA build output from $(SpaRoot)dist" Condition=" '$(_RunNpmBuild)' != 'true' And Exists('$(SpaRoot)') " />
 
 		<!-- As part of publishing, ensure the JS resources are freshly built in production mode -->
 		<Exec WorkingDirectory="$(SpaRoot)" Command="npm install" Condition=" '$(_RunNpmBuild)' == 'true' " />
@@ -82,13 +86,13 @@
 		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build -- --configuration production" Condition=" '$(_RunNpmBuild)' == 'true' And '$(BuildServerSideRenderer)' != 'true' " />
 		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:ssr:production" Condition=" '$(_RunNpmBuild)' == 'true' And '$(BuildServerSideRenderer)' == 'true' " />
 
-		<!-- Save hash after successful build -->
-		<MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(SpaHashFilePath)'))" Condition=" '$(EnableSpaBuildCaching)' == 'true' And '$(_RunNpmBuild)' == 'true' " />
+		<!-- Save hash after successful build (only if hash is not empty) -->
+		<MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(SpaHashFilePath)'))" Condition=" '$(EnableSpaBuildCaching)' == 'true' And '$(_RunNpmBuild)' == 'true' And '$(CurrentSpaHash)' != '' " />
 		<WriteLinesToFile File="$(SpaHashFilePath)"
 		                  Lines="$(CurrentSpaHash)"
 		                  Overwrite="true"
-		                  Condition=" '$(EnableSpaBuildCaching)' == 'true' And '$(_RunNpmBuild)' == 'true' " />
-		<Message Importance="normal" Text="Saved SPA hash to $(SpaHashFilePath)" Condition=" '$(EnableSpaBuildCaching)' == 'true' And '$(_RunNpmBuild)' == 'true' " />
+		                  Condition=" '$(EnableSpaBuildCaching)' == 'true' And '$(_RunNpmBuild)' == 'true' And '$(CurrentSpaHash)' != '' " />
+		<Message Importance="normal" Text="Saved SPA hash to $(SpaHashFilePath)" Condition=" '$(EnableSpaBuildCaching)' == 'true' And '$(_RunNpmBuild)' == 'true' And '$(CurrentSpaHash)' != '' " />
 
 		<!-- Always include the built files in the publish output -->
 		<ItemGroup>
