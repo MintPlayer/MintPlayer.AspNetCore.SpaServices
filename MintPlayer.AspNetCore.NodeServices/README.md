@@ -41,8 +41,7 @@ The following MSBuild properties are automatically configured (can be overridden
 |--------|------|-------------|
 | `ComputeSpaFolderHash` | Before DebugEnsureNodeEnv, PublishRunWebpack | Computes folder hash and determines if rebuild is needed |
 | `DebugEnsureNodeEnv` | Before Build (Debug only) | Ensures Node.js is installed and runs `npm install` if `node_modules` doesn't exist |
-| `PublishRunWebpack` | After ComputeFilesToPublish | Builds the SPA and includes output in publish folder (skipped if hash unchanged) |
-| `IncludeDistFilesWhenCached` | After ComputeFilesToPublish | Includes existing dist files when build is skipped due to caching |
+| `PublishRunWebpack` | After ComputeFilesToPublish | Builds the SPA (if needed) and includes output in publish folder |
 
 ### File Exclusions
 

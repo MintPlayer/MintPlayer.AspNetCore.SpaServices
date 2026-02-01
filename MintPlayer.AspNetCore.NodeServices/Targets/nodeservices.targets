@@ -60,45 +60,37 @@
 	<Target Name="PublishRunWebpack"
 	        AfterTargets="ComputeFilesToPublish"
 	        DependsOnTargets="ComputeSpaFolderHash"
-	        Condition=" '$(EnableSpaBuilder)' == 'true' And ('$(EnableSpaBuildCaching)' != 'true' Or '$(SpaSourceChanged)' == 'true' Or !Exists('$(SpaRoot)dist')) ">
+	        Condition=" '$(EnableSpaBuilder)' == 'true' ">
+
+		<!-- Determine if we need to run npm build -->
+		<!-- Build is needed when: caching disabled, OR source changed, OR dist folder doesn't exist -->
+		<PropertyGroup>
+			<_RunNpmBuild Condition=" '$(EnableSpaBuildCaching)' != 'true' ">true</_RunNpmBuild>
+			<_RunNpmBuild Condition=" '$(EnableSpaBuildCaching)' == 'true' And '$(SpaSourceChanged)' == 'true' ">true</_RunNpmBuild>
+			<_RunNpmBuild Condition=" '$(EnableSpaBuildCaching)' == 'true' And !Exists('$(SpaRoot)dist') ">true</_RunNpmBuild>
+			<_RunNpmBuild Condition=" '$(EnableSpaBuildCaching)' == 'true' And '$(SpaSourceChanged)' == 'false' And Exists('$(SpaRoot)dist') ">false</_RunNpmBuild>
+		</PropertyGroup>
+
+		<Message Importance="high" Text="Using cached SPA build output from $(SpaRoot)dist" Condition=" '$(_RunNpmBuild)' != 'true' " />
 
 		<!-- As part of publishing, ensure the JS resources are freshly built in production mode -->
-		<Exec WorkingDirectory="$(SpaRoot)" Command="npm install" />
+		<Exec WorkingDirectory="$(SpaRoot)" Command="npm install" Condition=" '$(_RunNpmBuild)' == 'true' " />
 
 		<!-- Build command selection based on BuildServerSideRenderer -->
 		<!-- If BuildServerSideRenderer == true  => npm run build:ssr:production -->
 		<!-- If BuildServerSideRenderer == false => npm run build -- --configuration production -->
-		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build -- --configuration production" Condition=" '$(BuildServerSideRenderer)' != 'true' " />
-		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:ssr:production" Condition=" '$(BuildServerSideRenderer)' == 'true' " />
-
-		<!-- Include the newly-built files in the publish output -->
-		<ItemGroup>
-			<DistFiles Include="$(SpaRoot)dist\**; $(SpaRoot)dist-server\**" />
-			<DistFiles Include="$(SpaRoot)node_modules\**" Condition="'$(BuildServerSideRenderer)' == 'true'" />
-			<ResolvedFileToPublish Include="@(DistFiles->'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
-				<RelativePath>%(DistFiles.Identity)</RelativePath>
-				<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-				<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-			</ResolvedFileToPublish>
-		</ItemGroup>
+		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build -- --configuration production" Condition=" '$(_RunNpmBuild)' == 'true' And '$(BuildServerSideRenderer)' != 'true' " />
+		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:ssr:production" Condition=" '$(_RunNpmBuild)' == 'true' And '$(BuildServerSideRenderer)' == 'true' " />
 
 		<!-- Save hash after successful build -->
-		<MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(SpaHashFilePath)'))" Condition=" '$(EnableSpaBuildCaching)' == 'true' " />
+		<MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(SpaHashFilePath)'))" Condition=" '$(EnableSpaBuildCaching)' == 'true' And '$(_RunNpmBuild)' == 'true' " />
 		<WriteLinesToFile File="$(SpaHashFilePath)"
 		                  Lines="$(CurrentSpaHash)"
 		                  Overwrite="true"
-		                  Condition=" '$(EnableSpaBuildCaching)' == 'true' " />
-		<Message Importance="normal" Text="Saved SPA hash to $(SpaHashFilePath)" Condition=" '$(EnableSpaBuildCaching)' == 'true' " />
-	</Target>
+		                  Condition=" '$(EnableSpaBuildCaching)' == 'true' And '$(_RunNpmBuild)' == 'true' " />
+		<Message Importance="normal" Text="Saved SPA hash to $(SpaHashFilePath)" Condition=" '$(EnableSpaBuildCaching)' == 'true' And '$(_RunNpmBuild)' == 'true' " />
 
-	<!-- Include dist files even when build is skipped (caching scenario) -->
-	<Target Name="IncludeDistFilesWhenCached"
-	        AfterTargets="ComputeFilesToPublish"
-	        Condition=" '$(EnableSpaBuilder)' == 'true' And '$(EnableSpaBuildCaching)' == 'true' And '$(SpaSourceChanged)' == 'false' And Exists('$(SpaRoot)dist') ">
-
-		<Message Importance="high" Text="Using cached SPA build output from $(SpaRoot)dist" />
-
-		<!-- Include the existing dist files in the publish output -->
+		<!-- Always include the built files in the publish output -->
 		<ItemGroup>
 			<DistFiles Include="$(SpaRoot)dist\**; $(SpaRoot)dist-server\**" />
 			<DistFiles Include="$(SpaRoot)node_modules\**" Condition="'$(BuildServerSideRenderer)' == 'true'" />
