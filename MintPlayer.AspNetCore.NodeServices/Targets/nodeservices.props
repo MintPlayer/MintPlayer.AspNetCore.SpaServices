@@ -3,6 +3,11 @@
 		<EnableSpaBuilder Condition=" '$(EnableSpaBuilder)' == '' ">true</EnableSpaBuilder>
 		<SpaRoot Condition=" '$(SpaRoot)' == '' ">ClientApp\</SpaRoot>
 		<BuildServerSideRenderer Condition=" '$(BuildServerSideRenderer)' == '' ">true</BuildServerSideRenderer>
+
+		<!-- SPA Build Caching Properties -->
+		<EnableSpaBuildCaching Condition=" '$(EnableSpaBuildCaching)' == '' ">true</EnableSpaBuildCaching>
+		<SpaHashFilePath Condition=" '$(SpaHashFilePath)' == '' ">$(IntermediateOutputPath)spa-folder.hash</SpaHashFilePath>
+		<ForceSpaBuild Condition=" '$(ForceSpaBuild)' == '' ">false</ForceSpaBuild>
 	</PropertyGroup>
 
 	<ItemGroup Condition=" '$(EnableSpaBuilder)' == 'true' ">

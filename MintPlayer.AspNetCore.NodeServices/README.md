@@ -31,13 +31,18 @@ The following MSBuild properties are automatically configured (can be overridden
 | `EnableSpaBuilder` | `true` | Master switch to enable/disable all SPA build automation |
 | `SpaRoot` | `ClientApp\` | Path to your SPA source folder |
 | `BuildServerSideRenderer` | `true` | Whether to build the SSR bundle during publish |
+| `EnableSpaBuildCaching` | `true` | Enable/disable SPA build caching based on folder hash |
+| `SpaHashFilePath` | `$(IntermediateOutputPath)spa-folder.hash` | Location to store the hash file |
+| `ForceSpaBuild` | `false` | Force rebuild even if hash unchanged |
 
 ### Build Targets
 
 | Target | Runs | Description |
 |--------|------|-------------|
+| `ComputeSpaFolderHash` | Before DebugEnsureNodeEnv, PublishRunWebpack | Computes folder hash and determines if rebuild is needed |
 | `DebugEnsureNodeEnv` | Before Build (Debug only) | Ensures Node.js is installed and runs `npm install` if `node_modules` doesn't exist |
-| `PublishRunWebpack` | After ComputeFilesToPublish | Builds the SPA and includes output in publish folder |
+| `PublishRunWebpack` | After ComputeFilesToPublish | Builds the SPA and includes output in publish folder (skipped if hash unchanged) |
+| `IncludeDistFilesWhenCached` | After ComputeFilesToPublish | Includes existing dist files when build is skipped due to caching |
 
 ### File Exclusions
 
@@ -79,6 +84,73 @@ To build only the client bundle (without SSR) during publish:
 <PropertyGroup>
   <BuildServerSideRenderer>false</BuildServerSideRenderer>
 </PropertyGroup>
+```
+
+## SPA Build Caching
+
+By default, this package caches SPA builds to avoid unnecessary rebuilds. It computes a hash of your SPA folder contents and only runs `npm run build` when the hash changes.
+
+### How It Works
+
+1. Before each publish, the package computes a SHA-256 hash of your `ClientApp` folder
+2. The hash is compared against the previously stored hash (in `obj/spa-folder.hash`)
+3. If the hash is unchanged and `dist/` exists, the build is skipped
+4. If the hash changed or it's the first build, `npm run build` is executed
+
+### Build Command Selection
+
+The build command is selected based on the `BuildServerSideRenderer` property:
+
+| BuildServerSideRenderer | Build Command |
+|-------------------------|---------------|
+| `true` (default) | `npm run build:ssr:production` |
+| `false` | `npm run build -- --configuration production` |
+
+### Using .hasherignore
+
+Create a `.hasherignore` file in your `ClientApp` folder to exclude files from the hash calculation. The syntax is similar to `.gitignore`:
+
+```
+# Build outputs (don't trigger rebuild when these change)
+dist/
+dist-server/
+.angular/
+
+# Dependencies
+node_modules/
+
+# IDE files
+.idea/
+.vscode/
+
+# Test artifacts
+coverage/
+```
+
+### Disabling Build Caching
+
+To disable build caching and always rebuild:
+
+```xml
+<PropertyGroup>
+  <EnableSpaBuildCaching>false</EnableSpaBuildCaching>
+</PropertyGroup>
+```
+
+### Forcing a Rebuild
+
+To force a rebuild even when the hash hasn't changed:
+
+```xml
+<PropertyGroup>
+  <ForceSpaBuild>true</ForceSpaBuild>
+</PropertyGroup>
+```
+
+Or use the command line:
+
+```bash
+dotnet publish -p:ForceSpaBuild=true
 ```
 
 ## Related Packages

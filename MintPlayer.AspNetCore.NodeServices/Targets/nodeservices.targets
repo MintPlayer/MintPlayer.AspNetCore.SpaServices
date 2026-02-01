@@ -1,6 +1,52 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
-	<Target Name="DebugEnsureNodeEnv" BeforeTargets="Build" Condition=" '$(EnableSpaBuilder)' == 'true' And '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">
+	<!-- Import the FolderHasher task for SPA build caching -->
+	<UsingTask TaskName="MintPlayer.FolderHasher.MSBuild.ComputeFolderHashTask"
+	           AssemblyFile="$(MSBuildThisFileDirectory)MintPlayer.FolderHasher.MSBuild.dll" />
+
+	<!-- Compute SPA folder hash and determine if rebuild is needed -->
+	<Target Name="ComputeSpaFolderHash"
+	        Condition=" '$(EnableSpaBuilder)' == 'true' And '$(EnableSpaBuildCaching)' == 'true' And Exists('$(SpaRoot)') ">
+
+		<!-- Read previous hash if it exists -->
+		<PropertyGroup>
+			<PreviousSpaHash Condition="Exists('$(SpaHashFilePath)')">$([System.IO.File]::ReadAllText('$(SpaHashFilePath)').Trim())</PreviousSpaHash>
+			<PreviousSpaHash Condition="!Exists('$(SpaHashFilePath)')"></PreviousSpaHash>
+		</PropertyGroup>
+
+		<!-- Compute current hash -->
+		<ComputeFolderHashTask FolderPath="$(SpaRoot)">
+			<Output TaskParameter="Hash" PropertyName="CurrentSpaHash" />
+		</ComputeFolderHashTask>
+
+		<!-- Determine if source changed -->
+		<PropertyGroup>
+			<!-- Force rebuild if explicitly requested -->
+			<SpaSourceChanged Condition=" '$(ForceSpaBuild)' == 'true' ">true</SpaSourceChanged>
+			<!-- First build (no previous hash) -->
+			<SpaSourceChanged Condition=" '$(ForceSpaBuild)' != 'true' And '$(PreviousSpaHash)' == '' ">true</SpaSourceChanged>
+			<!-- Hash changed -->
+			<SpaSourceChanged Condition=" '$(ForceSpaBuild)' != 'true' And '$(PreviousSpaHash)' != '' And '$(PreviousSpaHash)' != '$(CurrentSpaHash)' ">true</SpaSourceChanged>
+			<!-- Hash unchanged -->
+			<SpaSourceChanged Condition=" '$(ForceSpaBuild)' != 'true' And '$(PreviousSpaHash)' != '' And '$(PreviousSpaHash)' == '$(CurrentSpaHash)' ">false</SpaSourceChanged>
+		</PropertyGroup>
+
+		<Message Importance="high"
+		         Text="SPA source unchanged (hash: $(CurrentSpaHash)). Skipping npm build."
+		         Condition=" '$(SpaSourceChanged)' == 'false' " />
+		<Message Importance="high"
+		         Text="SPA source changed. Will rebuild. (Previous: $(PreviousSpaHash), Current: $(CurrentSpaHash))"
+		         Condition=" '$(SpaSourceChanged)' == 'true' And '$(PreviousSpaHash)' != '' " />
+		<Message Importance="high"
+		         Text="First SPA build detected (hash: $(CurrentSpaHash)). Will build."
+		         Condition=" '$(SpaSourceChanged)' == 'true' And '$(PreviousSpaHash)' == '' " />
+	</Target>
+
+	<!-- Debug: Ensure Node environment and install dependencies -->
+	<Target Name="DebugEnsureNodeEnv"
+	        BeforeTargets="Build"
+	        DependsOnTargets="ComputeSpaFolderHash"
+	        Condition=" '$(EnableSpaBuilder)' == 'true' And '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">
 		<!-- Ensure Node.js is installed -->
 		<Exec Command="node --version" ContinueOnError="true">
 			<Output TaskParameter="ExitCode" PropertyName="ErrorCode" />
@@ -10,9 +56,18 @@
 		<Exec WorkingDirectory="$(SpaRoot)" Command="npm install" />
 	</Target>
 
-	<Target Name="PublishRunWebpack" AfterTargets="ComputeFilesToPublish" Condition=" '$(EnableSpaBuilder)' == 'true' ">
+	<!-- Publish: Build the SPA (with caching support) -->
+	<Target Name="PublishRunWebpack"
+	        AfterTargets="ComputeFilesToPublish"
+	        DependsOnTargets="ComputeSpaFolderHash"
+	        Condition=" '$(EnableSpaBuilder)' == 'true' And ('$(EnableSpaBuildCaching)' != 'true' Or '$(SpaSourceChanged)' == 'true' Or !Exists('$(SpaRoot)dist')) ">
+
 		<!-- As part of publishing, ensure the JS resources are freshly built in production mode -->
 		<Exec WorkingDirectory="$(SpaRoot)" Command="npm install" />
+
+		<!-- Build command selection based on BuildServerSideRenderer -->
+		<!-- If BuildServerSideRenderer == true  => npm run build:ssr:production -->
+		<!-- If BuildServerSideRenderer == false => npm run build -- --configuration production -->
 		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build -- --configuration production" Condition=" '$(BuildServerSideRenderer)' != 'true' " />
 		<Exec WorkingDirectory="$(SpaRoot)" Command="npm run build:ssr:production" Condition=" '$(BuildServerSideRenderer)' == 'true' " />
 
@@ -26,6 +81,33 @@
 				<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
 			</ResolvedFileToPublish>
 		</ItemGroup>
+
+		<!-- Save hash after successful build -->
+		<MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(SpaHashFilePath)'))" Condition=" '$(EnableSpaBuildCaching)' == 'true' " />
+		<WriteLinesToFile File="$(SpaHashFilePath)"
+		                  Lines="$(CurrentSpaHash)"
+		                  Overwrite="true"
+		                  Condition=" '$(EnableSpaBuildCaching)' == 'true' " />
+		<Message Importance="normal" Text="Saved SPA hash to $(SpaHashFilePath)" Condition=" '$(EnableSpaBuildCaching)' == 'true' " />
 	</Target>
-	
+
+	<!-- Include dist files even when build is skipped (caching scenario) -->
+	<Target Name="IncludeDistFilesWhenCached"
+	        AfterTargets="ComputeFilesToPublish"
+	        Condition=" '$(EnableSpaBuilder)' == 'true' And '$(EnableSpaBuildCaching)' == 'true' And '$(SpaSourceChanged)' == 'false' And Exists('$(SpaRoot)dist') ">
+
+		<Message Importance="high" Text="Using cached SPA build output from $(SpaRoot)dist" />
+
+		<!-- Include the existing dist files in the publish output -->
+		<ItemGroup>
+			<DistFiles Include="$(SpaRoot)dist\**; $(SpaRoot)dist-server\**" />
+			<DistFiles Include="$(SpaRoot)node_modules\**" Condition="'$(BuildServerSideRenderer)' == 'true'" />
+			<ResolvedFileToPublish Include="@(DistFiles->'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
+				<RelativePath>%(DistFiles.Identity)</RelativePath>
+				<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+				<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			</ResolvedFileToPublish>
+		</ItemGroup>
+	</Target>
+
 </Project>
