@@ -62,14 +62,18 @@
 	<Target Name="DebugEnsureNodeEnv"
 	        BeforeTargets="Build"
 	        DependsOnTargets="ComputeSpaFolderHash"
-	        Condition=" '$(EnableSpaBuilder)' == 'true' And '$(Configuration)' == 'Debug' And !Exists('$(SpaRoot)node_modules') ">
+	        Condition=" '$(EnableSpaBuilder)' == 'true' And '$(Configuration)' == 'Debug' And !Exists('$(NodeModulesCheckPath)node_modules') ">
 		<!-- Ensure Node.js is installed -->
 		<Exec Command="node --version" ContinueOnError="true">
 			<Output TaskParameter="ExitCode" PropertyName="ErrorCode" />
 		</Exec>
 		<Error Condition="'$(ErrorCode)' != '0'" Text="Node.js is required to build and run this project. To continue, please install Node.js from https://nodejs.org/, and then restart your command prompt or IDE." />
-		<Message Importance="high" Text="Restoring dependencies using 'npm'. This may take several minutes..." />
-		<Exec WorkingDirectory="$(SpaRoot)" Command="npm install" />
+
+		<!-- Delegate to npm-install.proj. MSBuild deduplicates: when multiple projects
+		     in a parallel solution build call this with the same properties, it runs only once. -->
+		<MSBuild Projects="$(MSBuildThisFileDirectory)npm-install.proj"
+		         Targets="NpmInstall"
+		         Properties="NpmInstallWorkingDirectory=$(NpmInstallWorkingDirectory);NodeModulesCheckPath=$(NodeModulesCheckPath)" />
 	</Target>
 
 	<!-- Publish: Build the SPA (with caching support) -->
@@ -94,7 +98,10 @@
 		<Message Importance="high" Text="Using cached SPA build output from $(SpaRoot)dist" Condition=" '$(_RunNpmBuild)' != 'true' And Exists('$(SpaRoot)') " />
 
 		<!-- As part of publishing, ensure the JS resources are freshly built in production mode -->
-		<Exec WorkingDirectory="$(SpaRoot)" Command="npm install" Condition=" '$(_RunNpmBuild)' == 'true' " />
+		<MSBuild Projects="$(MSBuildThisFileDirectory)npm-install.proj"
+		         Targets="NpmInstall"
+		         Properties="NpmInstallWorkingDirectory=$(NpmInstallWorkingDirectory);NodeModulesCheckPath=$(NodeModulesCheckPath)"
+		         Condition=" '$(_RunNpmBuild)' == 'true' " />
 
 		<!-- Build command selection based on BuildServerSideRenderer:
 		     If true:  npm run build:ssr:production
