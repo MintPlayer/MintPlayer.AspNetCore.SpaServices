@@ -35,6 +35,8 @@ The following MSBuild properties are automatically configured (can be overridden
 | `SpaHashFilePath` | `$(IntermediateOutputPath)spa-folder.hash` | Location to store the hash file |
 | `ForceSpaBuild` | `false` | Force rebuild even if hash unchanged |
 | `CreateDefaultHasherIgnore` | `true` | Auto-create `.hasherignore` with default patterns if missing |
+| `NpmInstallWorkingDirectory` | `$(SpaRoot)` | Working directory for `npm install`. Override for npm workspaces (see below) |
+| `NodeModulesCheckPath` | `$(NpmInstallWorkingDirectory)` | Path to check for `node_modules` existence |
 
 ### Build Targets
 
@@ -185,6 +187,26 @@ Or use the command line:
 ```bash
 dotnet publish -p:ForceSpaBuild=true
 ```
+
+## npm Workspaces Support
+
+When using [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces), all dependencies are hoisted to a single root `node_modules/` directory. The individual SPA project folders (e.g. `ClientApp/`) no longer contain their own `node_modules/`.
+
+To support this, override `NpmInstallWorkingDirectory` to point to your workspace root. The recommended approach is to set this in a `Directory.Build.props` file at your repository root:
+
+```xml
+<Project>
+  <PropertyGroup>
+    <NpmInstallWorkingDirectory>$(MSBuildThisFileDirectory)</NpmInstallWorkingDirectory>
+  </PropertyGroup>
+</Project>
+```
+
+`$(MSBuildThisFileDirectory)` resolves to the directory containing `Directory.Build.props` (typically the repo root). This ensures:
+
+- `npm install` runs from the workspace root where the `workspaces` field is defined in `package.json`
+- The `node_modules` existence check looks at the root, so once installed, all projects skip the target
+- In parallel solution builds, `npm install` runs exactly once (MSBuild deduplicates calls to the shared `npm-install.proj`)
 
 ## Related Packages
 
