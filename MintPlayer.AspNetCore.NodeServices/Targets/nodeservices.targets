@@ -68,12 +68,24 @@
 			<Output TaskParameter="ExitCode" PropertyName="ErrorCode" />
 		</Exec>
 		<Error Condition="'$(ErrorCode)' != '0'" Text="Node.js is required to build and run this project. To continue, please install Node.js from https://nodejs.org/, and then restart your command prompt or IDE." />
-		<!-- Re-check node_modules inside the target body: in parallel solution builds another project may have completed npm install between target condition evaluation and execution -->
-		<!-- Create node_modules directory immediately to signal other parallel builds that install is in progress -->
+		<!-- Create node_modules directory immediately to block other parallel builds from entering this target -->
 		<MakeDir Directories="$(NodeModulesCheckPath)node_modules"
 		         Condition=" !Exists('$(NodeModulesCheckPath)node_modules') " />
-		<Message Importance="high" Text="Restoring dependencies using 'npm'. This may take several minutes..." />
-		<Exec WorkingDirectory="$(NpmInstallWorkingDirectory)" Command="npm install" />
+
+		<!-- Use a lock file to ensure only one project runs npm install.
+		     Multiple projects may have entered this target before MakeDir executed. -->
+		<PropertyGroup>
+			<_NpmInstallLock>$(NodeModulesCheckPath)node_modules\.npm-install-lock</_NpmInstallLock>
+			<_RunNpmInstall Condition=" !Exists('$(_NpmInstallLock)') ">true</_RunNpmInstall>
+		</PropertyGroup>
+
+		<WriteLinesToFile File="$(_NpmInstallLock)" Lines="$(MSBuildProjectName)"
+		                  Overwrite="true" Condition=" '$(_RunNpmInstall)' == 'true' " />
+		<Message Importance="high" Text="Restoring dependencies using 'npm'. This may take several minutes..."
+		         Condition=" '$(_RunNpmInstall)' == 'true' " />
+		<Exec WorkingDirectory="$(NpmInstallWorkingDirectory)" Command="npm install"
+		      Condition=" '$(_RunNpmInstall)' == 'true' " />
+		<Delete Files="$(_NpmInstallLock)" Condition=" Exists('$(_NpmInstallLock)') " />
 	</Target>
 
 	<!-- Publish: Build the SPA (with caching support) -->
