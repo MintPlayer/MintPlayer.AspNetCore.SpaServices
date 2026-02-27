@@ -1,0 +1,14 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+	<!-- This project is invoked via <MSBuild> from nodeservices.targets.
+	     MSBuild deduplicates calls: when multiple projects call this with the
+	     same Properties, the target runs only once per build. -->
+
+	<Target Name="NpmInstall" Condition=" !Exists('$(NodeModulesCheckPath)node_modules') ">
+		<MakeDir Directories="$(NodeModulesCheckPath)node_modules"
+		         Condition=" !Exists('$(NodeModulesCheckPath)node_modules') " />
+		<Message Importance="high" Text="Restoring dependencies using 'npm'. This may take several minutes..." />
+		<Exec WorkingDirectory="$(NpmInstallWorkingDirectory)" Command="npm install" />
+	</Target>
+
+</Project>

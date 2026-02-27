@@ -48,6 +48,7 @@
 		-->
 		<None Include="Targets\nodeservices.props" Pack="true" PackagePath="buildTransitive/$(PackageId).props" />
 		<None Include="Targets\nodeservices.targets" Pack="true" PackagePath="buildTransitive/$(PackageId).targets" />
+		<None Include="Targets\npm-install.proj" Pack="true" PackagePath="buildTransitive/" />
 		<!-- FolderHasher DLLs for SPA build caching -->
 		<None Include="$(PkgMintPlayer_FolderHasher_Targets)\build\MintPlayer.FolderHasher.MSBuild.dll" Pack="true" PackagePath="buildTransitive/" />
 		<None Include="$(PkgMintPlayer_FolderHasher_Targets)\build\MintPlayer.FolderHasher.dll" Pack="true" PackagePath="buildTransitive/" />
