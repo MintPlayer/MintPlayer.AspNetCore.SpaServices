@@ -9,6 +9,12 @@
 		<SpaHashFilePath Condition=" '$(SpaHashFilePath)' == '' ">$(IntermediateOutputPath)spa-folder.hash</SpaHashFilePath>
 		<ForceSpaBuild Condition=" '$(ForceSpaBuild)' == '' ">false</ForceSpaBuild>
 		<CreateDefaultHasherIgnore Condition=" '$(CreateDefaultHasherIgnore)' == '' ">true</CreateDefaultHasherIgnore>
+
+		<!-- npm Workspace Support -->
+		<!-- Override NpmInstallWorkingDirectory to run 'npm install' from a different directory (e.g. repo root for npm workspaces) -->
+		<NpmInstallWorkingDirectory Condition=" '$(NpmInstallWorkingDirectory)' == '' ">$(SpaRoot)</NpmInstallWorkingDirectory>
+		<!-- Path to check for node_modules existence. Defaults to NpmInstallWorkingDirectory. -->
+		<NodeModulesCheckPath Condition=" '$(NodeModulesCheckPath)' == '' ">$(NpmInstallWorkingDirectory)</NodeModulesCheckPath>
 	</PropertyGroup>
 
 	<!-- Default patterns to exclude from SPA folder hash (used when creating default .hasherignore) -->
