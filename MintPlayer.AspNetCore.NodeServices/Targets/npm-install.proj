@@ -5,8 +5,6 @@
 	     same Properties, the target runs only once per build. -->
 
 	<Target Name="NpmInstall" Condition=" !Exists('$(NodeModulesCheckPath)node_modules') ">
-		<MakeDir Directories="$(NodeModulesCheckPath)node_modules"
-		         Condition=" !Exists('$(NodeModulesCheckPath)node_modules') " />
 		<Message Importance="high" Text="Restoring dependencies using 'npm'. This may take several minutes..." />
 		<Exec WorkingDirectory="$(NpmInstallWorkingDirectory)" Command="npm install" />
 	</Target>
