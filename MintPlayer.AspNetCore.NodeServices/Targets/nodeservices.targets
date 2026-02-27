@@ -69,7 +69,9 @@
 		</Exec>
 		<Error Condition="'$(ErrorCode)' != '0'" Text="Node.js is required to build and run this project. To continue, please install Node.js from https://nodejs.org/, and then restart your command prompt or IDE." />
 		<Message Importance="high" Text="Restoring dependencies using 'npm'. This may take several minutes..." />
-		<Exec WorkingDirectory="$(NpmInstallWorkingDirectory)" Command="npm install" />
+		<!-- Re-check node_modules inside the target body: in parallel solution builds another project may have completed npm install between target condition evaluation and execution -->
+		<Exec WorkingDirectory="$(NpmInstallWorkingDirectory)" Command="npm install"
+		      Condition=" !Exists('$(NodeModulesCheckPath)node_modules') " />
 	</Target>
 
 	<!-- Publish: Build the SPA (with caching support) -->
