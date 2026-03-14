@@ -127,6 +127,8 @@ internal sealed class NodeScriptRunner : IDisposable
 			// See equivalent comment in OutOfProcessNodeInstance.cs for why
 			process.EnableRaisingEvents = true;
 
+			ProcessTracker.AddProcess(process);
+
 			return process;
 		}
 		catch (Exception ex)
