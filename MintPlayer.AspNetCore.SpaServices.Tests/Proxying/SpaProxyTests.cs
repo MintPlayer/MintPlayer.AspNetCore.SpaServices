@@ -174,19 +174,19 @@ public class PerformProxyRequestTests
     }
 
     [Fact]
-    public async Task Drops_content_headers_on_a_bodiless_request()
+    public async Task Forwards_content_headers_on_a_bodiless_request()
     {
-        // Current behaviour, and arguably a bug: a content header such as Content-Type is rejected by
-        // the request header collection, and the fallback only reaches for Content when there is a
-        // body. On a GET the header is therefore dropped with no trace.
+        // A content header such as Content-Type is rejected by the request header collection and
+        // belongs on the content instead. The fallback used to reach for Content only when there
+        // was a body, so on a GET the header was dropped with no trace. An empty content now
+        // carries it through.
         var handler = new StubHandler();
         var context = CreateContext(method: "GET");
         context.Request.Headers["Content-Type"] = "application/json";
 
         await Proxy(context, handler, "http://localhost:4200/");
 
-        Assert.Null(handler.LastRequest!.Content);
-        Assert.False(handler.LastRequest.Headers.NonValidated.Contains("Content-Type"));
+        Assert.Equal("application/json", handler.LastRequest!.Content!.Headers.ContentType!.ToString());
     }
 
     [Fact]

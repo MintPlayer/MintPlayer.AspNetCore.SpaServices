@@ -87,20 +87,20 @@ public class IsHtmlContentTypeTests
     [InlineData("TEXT/HTML")]
     [InlineData("Text/Html; charset=utf-8")]
     [InlineData(" text/html")]
-    public void Rejects_content_types_that_differ_only_in_case_or_whitespace(string contentType)
+    public void Accepts_content_types_that_differ_only_in_case_or_whitespace(string contentType)
     {
-        // Pins current behaviour: both comparisons are Ordinal, so a perfectly valid but
-        // differently-cased media type (media types are case-insensitive per RFC 9110) skips
-        // prerendering and is passed through unrendered. Suspicious, but pinned as-is.
-        Assert.False(SpaPrerenderingReflection.IsHtmlContentType(contentType));
+        // Media types are case-insensitive (RFC 9110 8.3.1). These used to be compared Ordinal
+        // against a lowercase literal, so a validly-cased-differently response silently skipped
+        // prerendering and was passed through unrendered.
+        Assert.True(SpaPrerenderingReflection.IsHtmlContentType(contentType));
     }
 
     [Fact]
-    public void Rejects_a_bare_text_html_with_a_trailing_space_before_the_separator()
+    public void Accepts_optional_whitespace_before_the_parameter_separator()
     {
-        // "text/html ; charset=utf-8" is legal per the grammar but matches neither the exact
-        // string nor the "text/html;" prefix.
-        Assert.False(SpaPrerenderingReflection.IsHtmlContentType("text/html ; charset=utf-8"));
+        // "text/html ; charset=utf-8" is legal per the grammar (OWS is allowed before the ';'), but
+        // used to match neither the exact string nor the "text/html;" prefix.
+        Assert.True(SpaPrerenderingReflection.IsHtmlContentType("text/html ; charset=utf-8"));
     }
 }
 
@@ -282,22 +282,34 @@ public class ServePrerenderResultTests
     }
 
     [Fact]
-    public async Task Treats_other_redirect_status_codes_as_temporary()
+    public async Task Treats_308_as_a_permanent_redirect()
     {
-        // Pins current behaviour: only 301 is honoured. A 308 from the prerenderer is downgraded
-        // to a 302, which loses both the permanence and the method-preserving semantics.
+        // 308 is the permanent counterpart of 307. Only 301 used to be honoured, so a 308 from the
+        // prerenderer was downgraded to a 302, losing both the permanence and the method-preserving
+        // semantics the prerenderer asked for.
         var context = PrerenderingTestContext.Create();
 
         await SpaPrerenderingReflection.ServePrerenderResult(context, new RenderToStringResult { RedirectUrl = "/moved", StatusCode = 308 });
+
+        Assert.Equal(StatusCodes.Status301MovedPermanently, context.Response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Treats_an_unspecified_redirect_status_code_as_temporary()
+    {
+        var context = PrerenderingTestContext.Create();
+
+        await SpaPrerenderingReflection.ServePrerenderResult(context, new RenderToStringResult { RedirectUrl = "/moved" });
 
         Assert.Equal(StatusCodes.Status302Found, context.Response.StatusCode);
     }
 
     [Fact]
-    public async Task Ignores_globals_when_the_result_is_a_redirect()
+    public async Task Reports_unsupported_globals_even_when_the_result_is_a_redirect()
     {
-        // Pins current behaviour: the Globals guard lives in the else-branch only, so an
-        // unsupported Globals payload is accepted silently as long as a RedirectUrl is present.
+        // The Globals guard used to live in the else-branch only, so an unsupported Globals payload
+        // was silently dropped whenever a RedirectUrl was present - while the very same payload on a
+        // rendered page threw. Now both paths report it.
         var context = PrerenderingTestContext.Create();
         var result = new RenderToStringResult
         {
@@ -305,9 +317,8 @@ public class ServePrerenderResultTests
             Globals = Newtonsoft.Json.Linq.JObject.Parse("""{ "answer": 42 }"""),
         };
 
-        await SpaPrerenderingReflection.ServePrerenderResult(context, result);
-
-        Assert.Equal(StatusCodes.Status302Found, context.Response.StatusCode);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => SpaPrerenderingReflection.ServePrerenderResult(context, result));
     }
 
     [Fact]
@@ -366,15 +377,16 @@ public class ServePrerenderResultTests
     }
 
     [Fact]
-    public async Task Fails_when_the_render_result_carries_no_html()
+    public async Task Explains_that_prerendering_returned_no_html()
     {
-        // Pins current behaviour: a result with neither RedirectUrl nor Html reaches WriteAsync(null)
-        // and surfaces as an ArgumentNullException about the "text" parameter, which tells the
-        // developer nothing about the prerenderer having returned an empty payload.
+        // A result with neither RedirectUrl nor Html used to reach WriteAsync(null) and surface as
+        // "ArgumentNullException (Parameter 'text')", which says nothing about prerendering.
         var context = PrerenderingTestContext.Create(responseBody: new MemoryStream());
 
-        await Assert.ThrowsAsync<ArgumentNullException>(
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => SpaPrerenderingReflection.ServePrerenderResult(context, new RenderToStringResult()));
+
+        Assert.Contains("no HTML", ex.Message);
     }
 }
 

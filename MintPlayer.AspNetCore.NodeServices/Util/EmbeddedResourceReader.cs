@@ -1,4 +1,4 @@
-// Copyright (c) .NET Foundation. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Reflection;
@@ -22,9 +22,22 @@ public static class EmbeddedResourceReader
 		var embeddedResourceName = asm.GetName().Name + path.Replace("/", ".");
 
 		using (var stream = asm.GetManifestResourceStream(embeddedResourceName))
-		using (var sr = new StreamReader(stream))
 		{
-			return sr.ReadToEnd();
+			// Without this the null stream reaches StreamReader and surfaces as
+			// "ArgumentNullException (Parameter 'stream')", which never names the resource that
+			// was missing or the assembly it was looked for in.
+			if (stream == null)
+			{
+				throw new InvalidOperationException(
+					$"Embedded resource '{embeddedResourceName}' was not found in assembly " +
+					$"'{asm.GetName().Name}'. Note the resource name is built from the supplied " +
+					$"path, which is expected to start with '/'.");
+			}
+
+			using (var sr = new StreamReader(stream))
+			{
+				return sr.ReadToEnd();
+			}
 		}
 	}
 }

@@ -1,6 +1,5 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using System.Diagnostics;
-using System.Net;
 using MintPlayer.SourceGenerators.Attributes;
 
 namespace MintPlayer.AspNetCore.SpaServices.Routing;
@@ -108,24 +107,26 @@ internal partial class SpaRouteService : ISpaRouteService
 
 	public async Task Redirect(HttpContext context, string routeName, Dictionary<string, object> parameters)
 	{
-		context.Response.StatusCode = (int)HttpStatusCode.Moved;
 		var url = await GenerateUrl(routeName, parameters);
 
 		context.Response.OnStarting(() =>
 		{
-			context.Response.Redirect(url);
+			// permanent: true, because Response.Redirect defaults to 302 and would otherwise
+			// overwrite a status code assigned before this callback runs.
+			context.Response.Redirect(url, permanent: true);
 			return Task.CompletedTask;
 		});
 	}
 
 	public async Task Redirect<T>(HttpContext context, string routeName, T parameters)
 	{
-		context.Response.StatusCode = (int)HttpStatusCode.Moved;
 		var url = await GenerateUrl(routeName, parameters);
 
 		context.Response.OnStarting(() =>
 		{
-			context.Response.Redirect(url);
+			// permanent: true, because Response.Redirect defaults to 302 and would otherwise
+			// overwrite a status code assigned before this callback runs.
+			context.Response.Redirect(url, permanent: true);
 			return Task.CompletedTask;
 		});
 	}
@@ -286,29 +287,48 @@ internal partial class SpaRouteService : ISpaRouteService
 					(index) => parameter_keys[index],
 					(index) => parameter_values[index]
 				),
-				QueryParameters = query == null
-					? new Dictionary<string, string>()
-					: query.Split('&').Select(t =>
-					{
-						var split = t.Split('=', 2);
-						return new
-						{
-							Key = split[0],
-							Value = split.Length > 1 ? split[1] : null
-						};
-					}).ToDictionary(t => t.Key, t => t.Value)
+				QueryParameters = ParseQuery(query)
 			};
 		}
 		else
 		{
+			// The route matched on an empty path (the root route). It has no parameters to extract,
+			// but it still has a query string - reading it here keeps /?a=b consistent with every
+			// other route rather than silently discarding the query.
+			GetCurrentPath(httpContext, out _, out var rootQuery);
+
 			return new SpaRoute
 			{
 				Name = match.FullName,
 				Path = match.FullPath,
 				Parameters = new Dictionary<string, string>(),
-				QueryParameters = new Dictionary<string, string>()
+				QueryParameters = ParseQuery(rootQuery)
 			};
 		}
+	}
+
+	/// <summary>Parses a raw query string into its key/value pairs.</summary>
+	/// <param name="query">The query string without its leading '?', or <c>null</c> when absent.</param>
+	/// <returns>The query parameters. A key with no '=' maps to <c>null</c>.</returns>
+	private static Dictionary<string, string> ParseQuery(string query)
+	{
+		var result = new Dictionary<string, string>();
+
+		if (string.IsNullOrEmpty(query))
+		{
+			return result;
+		}
+
+		foreach (var pair in query.Split('&'))
+		{
+			var split = pair.Split('=', 2);
+
+			// A repeated key is legal in a URL, so last-one-wins rather than throwing. An indexer
+			// assignment is what makes this differ from ToDictionary.
+			result[split[0]] = split.Length > 1 ? split[1] : null;
+		}
+
+		return result;
 	}
 
 	/// <summary>Tests if an url [/manage/person/3/edit] matches a placeholder-url [/manage/person/{person_id}/edit].</summary>

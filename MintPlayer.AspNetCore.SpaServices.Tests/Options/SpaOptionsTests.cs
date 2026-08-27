@@ -51,13 +51,12 @@ public class SpaOptionsTests
     }
 
     [Fact]
-    public void Copy_constructor_drops_StartupTimeout_and_CliRegexes()
+    public void Copy_constructor_carries_every_property()
     {
-        // Current behaviour, and a real bug worth knowing about: the copy constructor carries every
-        // property EXCEPT StartupTimeout and CliRegexes, which silently revert to their defaults.
-        // UseSpaImproved clones the options so that multiple UseSpa calls do not interfere, so a
-        // caller-configured startup timeout is lost exactly where it matters. Pinned so that fixing
-        // it is a deliberate change with a failing test to point at.
+        // UseSpaImproved clones the options so that multiple UseSpa calls do not interfere. Before
+        // this was fixed, StartupTimeout and CliRegexes were the two properties the copy left
+        // behind, so a caller-configured startup timeout was silently lost exactly where it mattered.
+        var regexes = new[] { new Regex("ready") };
         var source = new SpaOptions
         {
             DefaultPage = "/app.html",
@@ -65,7 +64,7 @@ public class SpaOptionsTests
             DevServerPort = 4200,
             PackageManagerCommand = "yarn",
             StartupTimeout = TimeSpan.FromSeconds(5),
-            CliRegexes = [new Regex("ready")],
+            CliRegexes = regexes,
         };
 
         var copy = Clone(source);
@@ -74,10 +73,8 @@ public class SpaOptionsTests
         Assert.Equal("ClientApp", copy.SourcePath);
         Assert.Equal(4200, copy.DevServerPort);
         Assert.Equal("yarn", copy.PackageManagerCommand);
-
-        Assert.NotEqual(source.StartupTimeout, copy.StartupTimeout);
-        Assert.Equal(TimeSpan.FromSeconds(120), copy.StartupTimeout);
-        Assert.Null(copy.CliRegexes);
+        Assert.Equal(TimeSpan.FromSeconds(5), copy.StartupTimeout);
+        Assert.Same(regexes, copy.CliRegexes);
     }
 
     [Fact]

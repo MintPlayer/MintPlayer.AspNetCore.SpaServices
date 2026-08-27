@@ -204,3 +204,66 @@ fixed, because each is a consumer-visible behavioural change deserving its own c
 14. **`UseProxyToSpaDevelopmentServer` has no argument guards** — a null builder would be a bare
     `NullReferenceException`; a missing `IHostApplicationLifetime` yields a DI error that says
     nothing about SPA proxying.
+
+---
+
+## M6 — Fixing the bugs the tests found
+
+The pins did their job: they held the behaviour still long enough to be looked at, and each fix
+turned a red test into a green one. Ten of the fourteen are now **fixed**; the remaining four are
+left pinned deliberately (below).
+
+Coverage after the fixes: **48.6% lines, 45.5% branches, 291 tests.**
+
+### Fixed
+
+| # | Fix | Package |
+|---|---|---|
+| 1 | `SpaOptions` copy constructor now carries `StartupTimeout` and `CliRegexes` | SpaServices |
+| 2 | `Redirect` sends a real **301** — it passed `permanent: true` instead of assigning a status code that `Response.Redirect` then overwrote with 302 | Routing |
+| 3 | The empty (`home`) route now parses its query string like every other route | Routing |
+| 6 | A duplicated query key takes last-one-wins instead of throwing `ArgumentException` | Routing |
+| 7 | `IsHtmlContentType` compares the media type case-insensitively and tolerates OWS before `;` | Prerendering |
+| 8 | `SpaProxy` forwards content headers on bodiless requests by attaching an empty content | SpaServices |
+| 9 | `ServePrerenderResult` treats **308** as permanent alongside 301 | Prerendering |
+| 10 | The `Globals` guard runs before the redirect branch, so it is no longer silently skipped | Prerendering |
+| 11 | A null `Html` reports "prerendering returned no HTML" instead of `ArgumentNullException (text)` | Prerendering |
+| 13 | `EmbeddedResourceReader` names the resource and assembly it could not find | NodeServices |
+| 14 | `UseProxyToSpaDevelopmentServer` validates its arguments on all three overloads | SpaServices |
+
+### Still pinned, deliberately
+
+| # | Behaviour | Why not fixed here |
+|---|---|---|
+| 4 | Route paths are not regex-escaped, so a route `a.b` matches `/axb` | Escaping changes which URLs match. Any app that (knowingly or not) relies on a metacharacter in a route path would silently start 404ing. Wants its own change with a migration note. |
+| 5 | No URL encoding on generate, no decoding on parse | The genuinely invasive one. Encoding on generate would double-encode values that callers already encode themselves, and decoding on parse changes every extracted parameter. A correct fix needs a decision about who owns encoding, not a one-line change. |
+| 12 | An empty `RootPath` throws `InvalidOperationException` from one entry point and `ArgumentException` from another | Unifying means changing an exception type that a consumer may be catching, for a purely cosmetic gain. |
+| — | Query is split at the **last** `?`, so `/a?b=c?d` puts `?b=c` inside a route parameter | Same class of change as #5 and best decided together with it. |
+
+### Version bumps
+
+`build-master` pushes with `--skip-duplicate`, so **without a version bump these fixes would never
+reach NuGet** — the push would silently skip every package as a duplicate. Bumped accordingly:
+
+| Package | Version | Why |
+|---|---|---|
+| `…NodeServices` | 10.4.0 → **10.4.1** | Diagnostics only, no behavioural change |
+| `…SpaServices` | 10.5.0 → **10.6.0** | Proxy header forwarding and options-clone behaviour change |
+| `…SpaServices.Routing` | 10.4.0 → **10.5.0** | Redirects change from 302 to 301; query parsing changes |
+| `…SpaServices.Prerendering` | 10.5.0 → **10.6.0** | Content-type matching, 308 handling, and a new guard |
+
+`…SpaServices.Xsrf` and `…SpaServices.Abstractions` are unchanged and keep their versions.
+
+### Upgrade notes for consumers
+
+Three of these are visible behavioural changes rather than pure fixes:
+
+1. **`ISpaRouteService.Redirect` now returns 301, not 302.** Browsers and CDNs cache permanent
+   redirects, so a wrong redirect is much stickier than before. This is what the code always read as
+   intending, but it is a real change in what gets sent.
+2. **A `RenderToStringResult` carrying both `RedirectUrl` and `Globals` now throws.** Previously the
+   `Globals` were silently dropped on the redirect path. An app relying on that silence will start
+   seeing an exception — which is the point, but it will surface at runtime.
+3. **Responses whose content type differs in case (`TEXT/HTML`) are now prerendered.** They were
+   being passed through unrendered; anything downstream that assumed those responses skipped
+   prerendering will now see rendered HTML.

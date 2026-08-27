@@ -31,26 +31,31 @@ public class RedirectTests
     }
 
     [Fact]
-    public async Task Sends_302_even_though_301_was_assigned()
+    public async Task Sends_a_permanent_redirect()
     {
-        // Current behaviour, and a real bug. The method assigns StatusCode = 301 (Moved Permanently)
-        // and then registers an OnStarting callback that calls Response.Redirect(url) - which sets
-        // 302 (Found) itself, overwriting the 301. So the permanent redirect the code reads as
-        // intending is never actually sent.
-        //
-        // Pinned rather than fixed: changing a redirect's permanence is a behavioural change for
-        // consumers and belongs in its own commit, with its own reasoning. When that happens, this
-        // test should fail and be updated to assert 301.
+        // This used to assign StatusCode = 301 up front and then let Response.Redirect(url) - which
+        // defaults to 302 - overwrite it from the OnStarting callback, so the permanent redirect the
+        // code read as intending was never actually sent.
         var (context, features) = CreateContext();
         var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
 
         await service.Redirect(context, "person-show", new Dictionary<string, object> { ["personid"] = 5 });
-
-        Assert.Equal(301, context.Response.StatusCode);
-
         await features.ResponseFeature.FireOnStartingAsync();
 
-        Assert.Equal(302, context.Response.StatusCode);
+        Assert.Equal(301, context.Response.StatusCode);
+        Assert.Equal("/person/5", context.Response.Headers.Location);
+    }
+
+    [Fact]
+    public async Task Sends_a_permanent_redirect_for_the_generic_overload_too()
+    {
+        var (context, features) = CreateContext();
+        var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
+
+        await service.Redirect(context, "person-show", new { personid = 5 });
+        await features.ResponseFeature.FireOnStartingAsync();
+
+        Assert.Equal(301, context.Response.StatusCode);
     }
 
     [Fact]

@@ -91,28 +91,38 @@ public class GetCurrentRouteTests
     }
 
     [Fact]
-    public async Task Discards_the_query_string_on_the_empty_route()
+    public async Task Parses_the_query_string_on_the_empty_route_too()
     {
-        // Current behaviour, and almost certainly a bug: the branch handling a route whose path is
-        // empty returns before the query is parsed, so /?a=b loses its query while every other
-        // route keeps it. Pinned so a fix is deliberate.
+        // The branch handling a route whose path is empty used to return before parsing the query,
+        // so /?a=b lost its query while every other route kept it.
         var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
 
         var route = await service.GetCurrentRoute(HttpContextFactory.WithRawTarget("/?a=b"));
 
         Assert.Equal("home", route!.Name);
-        Assert.Empty(route.QueryParameters);
+        Assert.Equal("b", route.QueryParameters["a"]);
     }
 
     [Fact]
-    public async Task Throws_on_a_duplicated_query_key()
+    public async Task Returns_no_query_parameters_for_the_empty_route_without_a_query()
     {
-        // Current behaviour: query parameters land in a ToDictionary with no duplicate handling, so
-        // a repeated key - which is legal in a URL - throws rather than taking first or last.
         var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
 
-        await Assert.ThrowsAsync<ArgumentException>(
-            () => service.GetCurrentRoute(HttpContextFactory.WithRawTarget("/person/5?a=1&a=2")));
+        var route = await service.GetCurrentRoute(HttpContextFactory.WithRawTarget("/"));
+
+        Assert.Empty(route!.QueryParameters);
+    }
+
+    [Fact]
+    public async Task Takes_the_last_value_of_a_duplicated_query_key()
+    {
+        // A repeated key is legal in a URL. It used to reach a ToDictionary with no duplicate
+        // handling and throw, taking the whole request down rather than picking a value.
+        var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
+
+        var route = await service.GetCurrentRoute(HttpContextFactory.WithRawTarget("/person/5?a=1&a=2"));
+
+        Assert.Equal("2", route!.QueryParameters["a"]);
     }
 
     [Theory]

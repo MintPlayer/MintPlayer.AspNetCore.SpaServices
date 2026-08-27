@@ -1,4 +1,4 @@
-// Licensed to the .NET Foundation under one or more agreements.
+﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using MintPlayer.AspNetCore.SpaServices.Proxying;
@@ -20,6 +20,9 @@ public static class SpaProxyingExtensions
 	/// <param name="baseUri">The target base URI to which requests should be proxied.</param>
 	public static void UseProxyToSpaDevelopmentServer(this Abstractions.ISpaBuilder spaBuilder, string baseUri)
 	{
+		ArgumentNullException.ThrowIfNull(spaBuilder);
+		ArgumentException.ThrowIfNullOrEmpty(baseUri);
+
 		UseProxyToSpaDevelopmentServer(spaBuilder, new Uri(baseUri));
 	}
 
@@ -32,6 +35,9 @@ public static class SpaProxyingExtensions
 	/// <param name="baseUri">The target base URI to which requests should be proxied.</param>
 	public static void UseProxyToSpaDevelopmentServer(this Abstractions.ISpaBuilder spaBuilder, Uri baseUri)
 	{
+		ArgumentNullException.ThrowIfNull(spaBuilder);
+		ArgumentNullException.ThrowIfNull(baseUri);
+
 		spaBuilder.UseProxyToSpaDevelopmentServer(() => Task.FromResult(baseUri));
 	}
 
@@ -44,6 +50,9 @@ public static class SpaProxyingExtensions
 	/// <param name="baseUriTaskFactory">A callback that will be invoked on each request to supply a <see cref="Task"/> that resolves with the target base URI to which requests should be proxied.</param>
 	public static void UseProxyToSpaDevelopmentServer(this Abstractions.ISpaBuilder spaBuilder, Func<Task<Uri>> baseUriTaskFactory)
 	{
+		ArgumentNullException.ThrowIfNull(spaBuilder);
+		ArgumentNullException.ThrowIfNull(baseUriTaskFactory);
+
 		var applicationBuilder = spaBuilder.ApplicationBuilder;
 		var applicationStoppingToken = GetStoppingToken(applicationBuilder);
 

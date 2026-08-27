@@ -372,12 +372,15 @@ public class NodeServicesUtilTests
     }
 
     [Fact]
-    public void An_unknown_resource_surfaces_as_a_null_stream_rather_than_a_helpful_error()
+    public void An_unknown_resource_names_what_was_not_found()
     {
-        // Current behaviour, and worth knowing: a missing resource yields a null stream that the
-        // StreamReader constructor rejects, so the failure names "stream" instead of the resource.
-        Assert.Throws<ArgumentNullException>(
+        // A missing resource used to yield a null stream that the StreamReader constructor rejected,
+        // so the failure named "stream" and never the resource or the assembly searched.
+        var ex = Assert.Throws<InvalidOperationException>(
             () => EmbeddedResourceReader.Read(typeof(NodeServicesOptions), "/Content/Node/does-not-exist.js"));
+
+        Assert.Contains("does-not-exist.js", ex.Message);
+        Assert.Contains("MintPlayer.AspNetCore.NodeServices", ex.Message);
     }
 
     #endregion
