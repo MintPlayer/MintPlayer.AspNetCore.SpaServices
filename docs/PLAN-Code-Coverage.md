@@ -75,7 +75,15 @@ Test areas, in descending value:
 
 ### M4 — Verify and open the PR ✅
 
-Run the exact CI command locally, inspect the Cobertura output for Spike 3, then open the PR.
+Ran the exact CI command locally from a clean state, inspected the Cobertura output for Spike 3, and
+opened [PR #76](https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices/pull/76).
+
+CI result on the PR: `build-any` and `pull-request` both pass in 40s. The upload was **accepted on
+the first attempt** — no manual secret provisioning was needed after all — and the service published
+`coverage/project` (neutral, 20.8%, no baseline yet) and `coverage/patch` (neutral, no coverable added
+lines). The server''s 20.8% against 21.0% locally is the server dropping paths it cannot resolve
+against `git ls-files`, which is exactly what the pinned `UseSourceLink=false` and `*.g.cs` exclusion
+are there to minimise.
 
 ## Behaviours pinned deliberately
 
@@ -109,7 +117,6 @@ whoever consolidates it.
 
 | Risk | Mitigation |
 |---|---|
-| `COVERAGE_TOKEN` not yet provisioned | Upload warns, build stays green (FR-4.5). Manual step, documented in the PR. |
-| GitHub App not installed on the repo → 404 | Same. Fails soft, visible in the log. |
+| ~~`COVERAGE_TOKEN` not yet provisioned~~ | **Did not materialise.** The secret already existed and the GitHub App was already installed; the first PR upload was accepted and the service published its check runs. The fail-soft guards (FR-4.5 through FR-4.8) remain, so a future outage still cannot fail a build. |
 | The first upload's number looks embarrassingly low | Intended. NFR-3: true before high. |
 | A pinned "current behaviour" test looks like an endorsement of a bug | Each is commented in-source and listed in the PR body. |
