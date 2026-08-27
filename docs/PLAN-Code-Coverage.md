@@ -231,14 +231,26 @@ Coverage after the fixes: **48.6% lines, 45.5% branches, 291 tests.**
 | 13 | `EmbeddedResourceReader` names the resource and assembly it could not find | NodeServices |
 | 14 | `UseProxyToSpaDevelopmentServer` validates its arguments on all three overloads | SpaServices |
 
-### Still pinned, deliberately
+### Also fixed (the four that were initially held back)
 
-| # | Behaviour | Why not fixed here |
+These were first left pinned because each changes which URLs match or which exception a consumer
+catches. They are now fixed too, which means this PR carries the whole set rather than leaving a
+second round of breaking changes for later — one upgrade for consumers, not two.
+
+| # | Fix | Package |
 |---|---|---|
-| 4 | Route paths are not regex-escaped, so a route `a.b` matches `/axb` | Escaping changes which URLs match. Any app that (knowingly or not) relies on a metacharacter in a route path would silently start 404ing. Wants its own change with a migration note. |
-| 5 | No URL encoding on generate, no decoding on parse | The genuinely invasive one. Encoding on generate would double-encode values that callers already encode themselves, and decoding on parse changes every extracted parameter. A correct fix needs a decision about who owns encoding, not a one-line change. |
-| 12 | An empty `RootPath` throws `InvalidOperationException` from one entry point and `ArgumentException` from another | Unifying means changing an exception type that a consumer may be catching, for a purely cosmetic gain. |
-| — | Query is split at the **last** `?`, so `/a?b=c?d` puts `?b=c` inside a route parameter | Same class of change as #5 and best decided together with it. |
+| 4 | Route paths are regex-escaped. Only `{placeholders}` become capture groups; literal text is escaped, so a route `a.b` no longer matches `/axb`, and a path containing `(` no longer throws at match time. | Routing |
+| 5 | Parameter values are percent-encoded on generate and decoded on parse, so a generate/parse round-trip is lossless for values containing `/`, `&`, `?`, `%` or a space. Query keys and values are encoded too. | Routing |
+| 12 | An empty `RootPath` throws `InvalidOperationException` from both entry points. | SpaServices |
+| — | The query is split at the **first** `?` (RFC 3986 3.4), not the last, so a later `?` stays in the query instead of being captured into a route parameter. | Routing |
+
+Two deliberate choices inside #5:
+
+- **`+` is not read as a space when decoding.** `GenerateUrl` encodes a space as `%20`, so the
+  round-trip is symmetric without it, and treating `+` as a space would corrupt a value that
+  legitimately contains one.
+- **A null parameter value now encodes to an empty string** rather than throwing
+  `NullReferenceException` from `ToString()`.
 
 ### Version bumps
 
@@ -267,3 +279,22 @@ Three of these are visible behavioural changes rather than pure fixes:
 3. **Responses whose content type differs in case (`TEXT/HTML`) are now prerendered.** They were
    being passed through unrendered; anything downstream that assumed those responses skipped
    prerendering will now see rendered HTML.
+
+### Upgrade notes, second set
+
+The four fixes above are the most consumer-visible in the PR. In addition to the three already
+listed:
+
+4. **Generated URLs are now percent-encoded.** A caller that was encoding values *itself* before
+   passing them to `GenerateUrl` will now get double-encoded output and must stop doing so. This is
+   the single most likely thing to need a change on upgrade.
+5. **Extracted route and query values are now decoded.** Code that was decoding
+   `SpaRoute.Parameters` values itself must stop.
+6. **A route path containing a regex metacharacter now matches literally.** Any route that was
+   (knowingly or not) relying on `.` or `[]` behaving as a pattern will stop matching the URLs it
+   used to. Route paths were never documented as patterns, so this is expected to affect nobody —
+   but it is the change with the quietest failure mode, since the symptom is a 404 rather than an
+   error.
+
+Final state: **48.8% lines, 45.9% branches, 302 tests.** No behaviour is left pinned as
+known-wrong-but-unfixed.

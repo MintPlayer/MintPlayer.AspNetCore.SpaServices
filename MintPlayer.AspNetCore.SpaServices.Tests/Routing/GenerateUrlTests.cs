@@ -153,16 +153,47 @@ public class GenerateUrlTests
     }
 
     [Fact]
-    public async Task Does_not_url_encode_parameter_values()
+    public async Task Percent_encodes_parameter_values()
     {
-        // Current behaviour: values are interpolated verbatim, so a value containing a separator
-        // silently changes the shape of the URL. System.Net is imported by the service but never
-        // used. Pinned as documentation of a real escaping gap, not as an endorsement.
+        // Values used to be interpolated verbatim, so a value containing a separator silently
+        // changed the shape of the URL - "a b&c" produced a path with a space in it and an
+        // accidental query separator.
         var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
 
         var url = await service.GenerateUrl("person-show", Params(("personid", "a b&c")));
 
-        Assert.Equal("/person/a b&c", url);
+        Assert.Equal("/person/a%20b%26c", url);
+    }
+
+    [Fact]
+    public async Task Percent_encodes_a_value_containing_a_path_separator()
+    {
+        // The sharpest case: an unencoded '/' would add a segment and change which route the URL
+        // resolves back to.
+        var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
+
+        var url = await service.GenerateUrl("person-show", Params(("personid", "a/b")));
+
+        Assert.Equal("/person/a%2Fb", url);
+    }
+
+    [Fact]
+    public async Task Percent_encodes_query_keys_and_values()
+    {
+        var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
+
+        var url = await service.GenerateUrl("person-list", Params(("a b", "c&d")));
+
+        Assert.Equal("/person?a%20b=c%26d", url);
+    }
+
+    [Fact]
+    public async Task Encodes_a_null_parameter_value_as_empty()
+    {
+        // Previously a null value reached ToString() and threw NullReferenceException.
+        var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
+
+        Assert.Equal("/person/", await service.GenerateUrl("person-show", Params(("personid", null!))));
     }
 
     [Fact]

@@ -108,11 +108,12 @@ public class SpaStaticFilesTests
     [InlineData("")]
     public void Rejects_an_empty_root_path_on_construction(string? rootPath)
     {
-        // Note the inconsistency with AddSpaStaticFilesImproved, which throws InvalidOperationException
-        // for the same condition. Pinned as current behaviour.
+        // Same exception type as AddSpaStaticFilesImproved. The same misconfiguration used to
+        // surface as ArgumentException here and InvalidOperationException there, depending only on
+        // which entry point reached it first.
         using var root = new TempDirectory();
 
-        Assert.Throws<ArgumentException>(() => new DefaultSpaStaticFileProvider(
+        Assert.Throws<InvalidOperationException>(() => new DefaultSpaStaticFileProvider(
             serviceProvider: ServicesWithEnvironment(root.Path),
             options: new SpaStaticFilesOptions { RootPath = rootPath! }));
     }

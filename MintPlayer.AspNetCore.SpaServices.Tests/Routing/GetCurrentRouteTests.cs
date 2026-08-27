@@ -139,43 +139,91 @@ public class GetCurrentRouteTests
     }
 
     [Fact]
-    public async Task Splits_the_query_at_the_last_question_mark()
+    public async Task Splits_the_query_at_the_first_question_mark()
     {
-        // The split is LastIndexOf('?'), not IndexOf, so "/person/5?a=b?c" becomes path
-        // "/person/5?a=b" and query "c". A route segment is matched with [^/]+, which happily
-        // accepts '?', so the leftover query lands *inside* the route parameter instead of being
-        // parsed as one. Pinned as documentation of the current, surprising behaviour.
+        // The query starts at the first '?' (RFC 3986 3.4); any later one is part of the query. The
+        // split used to be LastIndexOf, which left "?a=b" inside the path where it was captured as
+        // part of the route parameter.
         var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
 
         var route = await service.GetCurrentRoute(HttpContextFactory.WithRawTarget("/person/5?a=b?c"));
 
         Assert.Equal("person-show", route!.Name);
-        Assert.Equal("5?a=b", route.Parameters["personid"]);
-        Assert.True(route.QueryParameters.ContainsKey("c"));
+        Assert.Equal("5", route.Parameters["personid"]);
+        Assert.Equal("b?c", route.QueryParameters["a"]);
     }
 
     [Fact]
-    public async Task Does_not_escape_regex_metacharacters_in_a_route_path()
+    public async Task Treats_a_dot_in_a_route_path_as_a_literal()
     {
-        // Current behaviour: a route path is interpolated straight into a Regex, so '.' is a
-        // wildcard rather than a literal dot. Pinned as documentation of a real gap.
+        // A route path used to be interpolated straight into a Regex, so '.' matched any character
+        // and the route "a.b" also answered "/axb".
         var service = SpaRouteTestHost.Create(routes => routes.Route("a.b", "dotted"));
 
-        var route = await service.GetCurrentRoute(HttpContextFactory.WithRawTarget("/axb"));
-
-        Assert.Equal("dotted", route!.Name);
+        Assert.Null(await service.GetCurrentRoute(HttpContextFactory.WithRawTarget("/axb")));
+        Assert.Equal("dotted", (await service.GetCurrentRoute(HttpContextFactory.WithRawTarget("/a.b")))!.Name);
     }
 
     [Fact]
-    public async Task Does_not_decode_percent_escapes()
+    public async Task Matches_a_route_path_containing_regex_metacharacters()
     {
-        // The raw target is read verbatim and never decoded, so a percent-escaped space stays
-        // escaped in the extracted parameter. Combined with GenerateUrl not encoding, a
-        // generate/parse round-trip is lossy in both directions.
+        // An unescaped '(' is an unterminated group and used to throw at match time rather than
+        // simply not matching.
+        var service = SpaRouteTestHost.Create(routes => routes.Route("report(2026)", "report"));
+
+        var route = await service.GetCurrentRoute(HttpContextFactory.WithRawTarget("/report(2026)"));
+
+        Assert.Equal("report", route!.Name);
+    }
+
+    [Fact]
+    public async Task Decodes_percent_escapes_in_route_parameters()
+    {
         var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
 
         var route = await service.GetCurrentRoute(HttpContextFactory.WithRawTarget("/person/a%20b"));
 
-        Assert.Equal("a%20b", route!.Parameters["personid"]);
+        Assert.Equal("a b", route!.Parameters["personid"]);
+    }
+
+    [Fact]
+    public async Task Decodes_percent_escapes_in_query_parameters()
+    {
+        var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
+
+        var route = await service.GetCurrentRoute(HttpContextFactory.WithRawTarget("/person/5?a%20b=c%26d"));
+
+        Assert.Equal("c&d", route!.QueryParameters["a b"]);
+    }
+
+    [Fact]
+    public async Task Leaves_a_plus_sign_alone_when_decoding()
+    {
+        // GenerateUrl encodes a space as %20, so the round-trip is symmetric without reading '+' as
+        // a space - and doing so would corrupt a value that legitimately contains one.
+        var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
+
+        var route = await service.GetCurrentRoute(HttpContextFactory.WithRawTarget("/person/a+b"));
+
+        Assert.Equal("a+b", route!.Parameters["personid"]);
+    }
+
+    [Theory]
+    [InlineData("a b")]
+    [InlineData("a/b")]
+    [InlineData("a&b")]
+    [InlineData("a?b")]
+    [InlineData("a%b")]
+    public async Task Round_trips_a_value_through_generate_and_parse(string value)
+    {
+        // The point of encoding on the way out and decoding on the way back: whatever a caller puts
+        // in comes back out unchanged, whichever separators it happens to contain.
+        var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
+
+        var url = await service.GenerateUrl("person-show", new Dictionary<string, object> { ["personid"] = value });
+        var route = await service.GetCurrentRoute(HttpContextFactory.WithRawTarget(url));
+
+        Assert.Equal("person-show", route!.Name);
+        Assert.Equal(value, route.Parameters["personid"]);
     }
 }

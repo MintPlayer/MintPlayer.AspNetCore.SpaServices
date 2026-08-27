@@ -22,9 +22,12 @@ internal sealed partial class DefaultSpaStaticFileProvider : ISpaStaticFileProvi
 	{
 		ArgumentNullException.ThrowIfNull(options);
 
+		// InvalidOperationException, matching AddSpaStaticFilesImproved. The same misconfiguration
+		// used to surface as two different exception types depending on which entry point reached
+		// it first, which made it needlessly awkward to catch.
 		if (string.IsNullOrEmpty(options.RootPath))
 		{
-			throw new ArgumentException($"The {nameof(options.RootPath)} property of {nameof(options)} cannot be null or empty.");
+			throw new InvalidOperationException($"The {nameof(options.RootPath)} property of {nameof(options)} cannot be null or empty.");
 		}
 
 		var env = serviceProvider.GetRequiredService<IWebHostEnvironment>();
