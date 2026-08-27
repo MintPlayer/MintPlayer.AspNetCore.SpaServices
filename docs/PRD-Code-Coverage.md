@@ -155,7 +155,10 @@ Three independent pieces, delivered together:
 
 ### NFR-1: Build Time
 
-- **NFR-1.1**: Adding `--no-build` SHALL *reduce* CI time by removing a full second compile.
+- **NFR-1.1**: Adding `--no-build` SHALL *reduce* CI time by removing a full second compile. Measured
+  in the reference repo: ~90 seconds saved per workflow run (and separately 88s → 32s on the test
+  step itself, for the same 679 tests). The saving here should be comparable or better, because the
+  removed Debug rebuild was additionally running `npm install` in two Angular ClientApps.
 - **NFR-1.2**: The test suite SHALL run in well under a minute; no test may sleep for a fixed delay.
 
 ### NFR-2: Safety
