@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
@@ -26,6 +26,11 @@
 		<Company>MintPlayer</Company>
 		<Product>MintPlayer.AspNetCore.SpaServices.Prerendering</Product>
 	</PropertyGroup>
+
+	<!-- Lets the test project exercise internal types without widening them to public. -->
+	<ItemGroup>
+		<InternalsVisibleTo Include="MintPlayer.AspNetCore.SpaServices.Tests" />
+	</ItemGroup>
 
 	<!-- Include XML markups in the nupkg -->
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">

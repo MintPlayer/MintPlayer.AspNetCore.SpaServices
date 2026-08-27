@@ -270,12 +270,25 @@ list is finalised from the testability survey and recorded in the plan document.
 
 ### Tier 1 — pure logic, no fakes
 
-- **Routing**: route template parsing, parameter substitution, URL generation, route matching
-  including trailing slashes, casing, optional and catch-all parameters, and null/empty inputs.
-- **NodeServices**: npm workspace `node_modules` resolution — the directory walk, `package.json`
-  `workspaces` parsing, and the fallback when no workspace root exists. This is recent, intricate,
-  and entirely deterministic.
-- **Options/defaults**: any options class with defaulting or validation.
+- **Routing**: route tree construction, parameter substitution, URL generation, route matching
+  including trailing slashes, casing, and null/empty inputs. Reachable entirely through the public
+  `ISpaRouteService` — the richest pure logic in the repo.
+- **Stream reading**: `EventedStreamReader` line-splitting across chunk boundaries and ANSI-escape
+  stripping. Fed from a `MemoryStream`, so no process is involved.
+- **NodeServices retry**: the `NodeServicesImpl` retry / connection-draining state machine, driven
+  by a fake `INodeInstance`. The highest-behavioural-value target in the repo.
+- **Options/defaults**: `SpaOptions`, `NodeServicesOptions`, `SpaPrerenderingOptions` — validation,
+  defaulting, and the `SpaOptions` copy-constructor.
+
+> **Correction to an earlier assumption.** The npm workspace support (`a133f99`) and the SPA build
+> caching (`7e84d90`) were initially assumed to be C# and were named as prime test targets. They are
+> **not**: both are implemented entirely in MSBuild (`Targets/nodeservices.props` / `.targets` /
+> `npm-install.proj`), and the folder hashing is delegated to the external
+> `MintPlayer.FolderHasher.Targets` package via a `UsingTask`. There is no C# in this repo to unit-test
+> for either. Covering them would need MSBuild-level integration tests, which are out of scope here
+> (see below). The `ProcessTracker` from `d6b39c9` is real C#, but its static constructor creates a
+> Windows Job Object and subscribes to `ProcessExit` on first touch of the type — merely loading it
+> mutates the test host process, so it is deliberately left untested.
 
 ### Tier 2 — with fakes
 
@@ -284,8 +297,24 @@ list is finalised from the testability survey and recorded in the plan document.
 
 ### Explicitly out of scope
 
-Process spawning, real proxying to a dev server, and prerendering against a live node process.
-These need integration infrastructure that this PR does not build.
+- Process spawning, real proxying to a dev server, and prerendering against a live node process.
+- `ProcessTracker` — loading the type has process-wide side effects (see the correction above).
+- `AngularCliMiddleware.WaitForAngularCliServerToAcceptRequests` — a `while(true)` HTTP retry loop
+  with no cancellation and no attempt cap. A test that reached it would hang the run forever.
+- MSBuild-level tests for the props/targets. Worth having, but they need a different harness
+  (`dotnet msbuild` against scratch projects) than a `dotnet test` unit suite.
+
+### A deliberate non-refactor
+
+Several of the best pure targets (`SpaProxy.ToWebSocketScheme`, `IsDebuggerMessage`,
+`IsFilenameBeingWatched`, `IsHtmlContentType`, the `cmd /c` command-line construction in
+`NodeScriptRunner`) are `private`, and some are inlined into constructors that start processes.
+Widening them to `internal` would be the single highest-leverage testability change.
+
+This PR does **not** do it. Adding coverage should not change the shipped code's shape in the same
+diff; that is a separate, deliberate refactor to be judged on its own merits. What this PR does add
+is `InternalsVisibleTo`, which changes no behaviour and unlocks the `internal` (as opposed to
+`private`) surface.
 
 ## Success Metrics
 

@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<LangVersion>14</LangVersion>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+
+		<IsPackable>false</IsPackable>
+		<IsTestProject>true</IsTestProject>
+
+		<!--
+		The libraries under test are Microsoft.NET.Sdk.Web class libraries. This project is a plain
+		Microsoft.NET.Sdk one and pulls the ASP.NET Core surface it needs (DefaultHttpContext,
+		ApplicationBuilder, IAntiforgery) via FrameworkReference instead, so the test host does not
+		get a web SDK's publish/static-web-assets machinery.
+		-->
+		<NoWarn>$(NoWarn);CS1591</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="coverlet.collector" Version="10.0.1">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+		<PackageReference Include="xunit" Version="2.9.3" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="4.0.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\MintPlayer.AspNetCore.NodeServices\MintPlayer.AspNetCore.NodeServices.csproj" />
+		<ProjectReference Include="..\MintPlayer.AspNetCore.SpaServices\MintPlayer.AspNetCore.SpaServices.csproj" />
+		<ProjectReference Include="..\MintPlayer.AspNetCore.SpaServices.Abstractions\MintPlayer.AspNetCore.SpaServices.Abstractions.csproj" />
+		<ProjectReference Include="..\MintPlayer.AspNetCore.SpaServices.Prerendering\MintPlayer.AspNetCore.SpaServices.Prerendering.csproj" />
+		<ProjectReference Include="..\MintPlayer.AspNetCore.SpaServices.Routing\MintPlayer.AspNetCore.SpaServices.Routing.csproj" />
+		<ProjectReference Include="..\MintPlayer.AspNetCore.SpaServices.Xsrf\MintPlayer.AspNetCore.SpaServices.Xsrf.csproj" />
+	</ItemGroup>
+
+</Project>
