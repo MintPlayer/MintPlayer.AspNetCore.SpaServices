@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Text.RegularExpressions;
 using MintPlayer.AspNetCore.SpaServices.Prerendering;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -15,16 +17,37 @@ public class AngularPrerendererBuilderTests
     }
 
     [Fact]
-    public void Accepts_an_npm_script_name()
+    public void Defaults_to_waiting_for_the_second_angular_build_marker()
     {
-        Assert.NotNull(new AngularPrerendererBuilder("build:ssr"));
+        // The one-argument constructor is the documented entry point, and the values it picks are
+        // what decide when prerendering considers the SSR build finished. Waiting for the SECOND
+        // occurrence is deliberate: Angular prints the marker once for the browser bundle and again
+        // for the server bundle, and prerendering needs the latter.
+        var builder = new AngularPrerendererBuilder("build:ssr");
+
+        Assert.Equal(@"Build at\:", Field<Regex>(builder, "finishedRegex").ToString());
+        Assert.Equal(2, Field<int>(builder, "finishedRegexIndex"));
+        Assert.Equal("build:ssr", Field<string>(builder, "npmScript"));
     }
 
     [Fact]
-    public void Accepts_an_explicit_finished_regex_and_occurrence()
+    public void Keeps_an_explicit_finished_regex_and_occurrence()
     {
-        Assert.NotNull(new AngularPrerendererBuilder("build:ssr", "Entrypoint main", 1));
+        var builder = new AngularPrerendererBuilder("build:ssr", "Entrypoint main", 1);
+
+        Assert.Equal("Entrypoint main", Field<Regex>(builder, "finishedRegex").ToString());
+        Assert.Equal(1, Field<int>(builder, "finishedRegexIndex"));
     }
+
+    /// <summary>
+    /// The builder exposes none of its configuration, and the only public member that reads it -
+    /// <c>Build</c> - spawns a real npm process. Reflection is the only way to assert the defaulting
+    /// without launching node.
+    /// </summary>
+    private static T Field<T>(AngularPrerendererBuilder builder, string name)
+        => (T)typeof(AngularPrerendererBuilder)
+            .GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(builder)!;
 
     [Fact]
     public void Validates_the_npm_script_before_the_finished_regex()

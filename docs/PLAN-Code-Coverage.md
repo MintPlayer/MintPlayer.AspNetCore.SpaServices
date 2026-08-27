@@ -120,3 +120,87 @@ whoever consolidates it.
 | ~~`COVERAGE_TOKEN` not yet provisioned~~ | **Did not materialise.** The secret already existed and the GitHub App was already installed; the first PR upload was accepted and the service published its check runs. The fail-soft guards (FR-4.5 through FR-4.8) remain, so a future outage still cannot fail a build. |
 | The first upload's number looks embarrassingly low | Intended. NFR-3: true before high. |
 | A pinned "current behaviour" test looks like an endorsement of a bug | Each is commented in-source and listed in the PR body. |
+
+---
+
+## M5 — Raising coverage (second pass)
+
+The first pass proved the pipeline and gave it an honest number. 20.8% was too low to be useful, so
+this pass targeted the largest blocks of uncovered lines, chosen by parsing the actual Cobertura
+report rather than by guessing.
+
+**20.8% → 47.9% lines, 16.2% → 43.8% branches. 106 → 288 tests**, still running in under a second.
+
+| Package | Before | After |
+|---|---|---|
+| `…SpaServices.Abstractions` | 100.0% | 100.0% |
+| `…SpaServices.Xsrf` | 100.0% | 100.0% |
+| `…SpaServices.Routing` | 86.9% | 86.9% |
+| `…SpaServices` | 16.8% | **55.8%** |
+| `…NodeServices` | 15.2% | **36.5%** |
+| `…SpaServices.Prerendering` | 4.3% | **32.1%** |
+
+### What was added
+
+| Area | Tests |
+|---|---|
+| `SpaProxy`, `ConditionalProxyMiddleware`, `SpaProxyingExtensions` | 45 |
+| `SpaPrerenderingExtensions` helpers + guards | 32 |
+| Static files, default-page middleware, `UseSpaImproved` | 30 |
+| `NodeServicesOptions`, `StringAsTempFile`, `TaskExtensions`, `EmbeddedResourceReader` | 32 |
+| Prerendering's duplicate `EventedStreamReader` / `TaskTimeoutExtensions` copies | 16 |
+
+The duplicate-copies item is worth calling out: `SpaServices.Prerendering` ships byte-identical
+copies of three files from `SpaServices`. They are distinct types in a distinct assembly, so the
+existing tests over the originals did not cover a single line of them. Testing the copies was the
+cheapest coverage in the repo, and it now also guards against the two copies drifting apart.
+
+### Reflection over widening
+
+Many of the best remaining targets are `private static`. They are reached with reflection helpers
+rather than by widening them to `internal`, keeping the deliberate non-refactor from the first pass
+intact: **no shipped code changed in this pass.** If reviewers prefer widening, that is a clean
+standalone follow-up — it should not ride along with test additions.
+
+### Deliberately still uncovered
+
+- **WebSocket proxying** — needs an `IHttpUpgradeFeature` plus a real `ClientWebSocket.ConnectAsync`
+  to a live endpoint, and `PumpWebSocket` polls on a 100 ms delay. Neither deterministic nor fast.
+- **`ConditionalProxyMiddleware`'s post-proxy branch** and the terminal `Run` delegate — both build
+  their own `HttpClient` in the constructor with no seam to inject a handler, so completing them
+  needs a real server. The routing decisions around them are fully covered. **An `HttpMessageHandler`
+  constructor overload would close this gap** if it is judged worth a production change.
+- **`Prerenderer`** — every path funnels through a process-wide `static StringAsTempFile` that is
+  never reset, so touching it leaks state across the whole run. Its URL-composition logic is
+  duplicated in `GetUnencodedUrlAndPathQuery`, which *is* covered.
+- **`OutOfProcessNodeInstance` / `HttpNodeInstance` construction, `NodeScriptRunner`,
+  `AngularCliMiddleware`** — all launch node. Raising these needs an injectable process seam, which
+  is a design change, not a test-writing exercise.
+- **`ProcessTracker`** — loading the type creates a Windows Job Object and subscribes to
+  `ProcessExit` for the life of the test host.
+
+## Further bugs found and pinned in M5
+
+Added to the six from the first pass. All pinned as current behaviour with an in-source comment; none
+fixed, because each is a consumer-visible behavioural change deserving its own commit.
+
+7. **`IsHtmlContentType` compares Ordinal**, so `TEXT/HTML` and `Text/Html; charset=utf-8` return
+   false and prerendering is silently skipped. Media types are case-insensitive per RFC 9110. This
+   is the most likely of the set to be biting someone in production.
+8. **Content headers are silently dropped on bodiless requests** in `SpaProxy`. The fallback that
+   adds a rejected header is only reached when `Content != null`, so a GET/HEAD/DELETE/TRACE
+   carrying `Content-Type` loses it with no trace.
+9. **Only 301 is treated as permanent** in `ServePrerenderResult` — a 308 is downgraded to 302,
+   losing both permanence and method preservation.
+10. **The `Globals` guard is only in the else-branch** — a result with both `RedirectUrl` and
+    `Globals` is silently accepted, while the same `Globals` on a rendered page throws.
+11. **`Html == null` reaches `Response.WriteAsync(null)`** and surfaces as
+    `ArgumentNullException (text)` — useless diagnostics for "the prerenderer returned nothing".
+12. **An empty `RootPath` throws two different exception types** depending on entry point:
+    `InvalidOperationException` from `AddSpaStaticFilesImproved`, `ArgumentException` from
+    `DefaultSpaStaticFileProvider.Initialize`.
+13. **`EmbeddedResourceReader.Read` never names the resource it failed to find** — a missing
+    resource surfaces as `ArgumentNullException (Parameter 'stream')`.
+14. **`UseProxyToSpaDevelopmentServer` has no argument guards** — a null builder would be a bare
+    `NullReferenceException`; a missing `IHostApplicationLifetime` yields a DI error that says
+    nothing about SPA proxying.
