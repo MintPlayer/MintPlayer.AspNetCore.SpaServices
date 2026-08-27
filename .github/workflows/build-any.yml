@@ -38,4 +38,12 @@ jobs:
       run: dotnet build --configuration Release --no-restore
       
     - name: Test
-      run: dotnet test --no-restore --verbosity normal
+      # --no-build --configuration Release: `--no-restore` alone does NOT imply --no-build, so this
+      # step used to rebuild the whole solution in Debug and test THAT, while the Build step above
+      # produced Release. In this repo a Debug rebuild is especially costly: it satisfies the
+      # `'$(Configuration)' == 'Debug'` condition on DebugEnsureNodeEnv in nodeservices.targets,
+      # which runs `npm install` in both demo ClientApps.
+      #
+      # No coverage collection here on purpose: build-master and pull-request already upload, and a
+      # feature-branch push would report a third build for the same commit.
+      run: dotnet test --no-restore --no-build --configuration Release --verbosity normal

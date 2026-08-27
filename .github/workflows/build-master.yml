@@ -32,8 +32,37 @@ jobs:
       run: dotnet build --configuration Release --no-restore
       
     - name: Test
-      run: dotnet test --no-restore --verbosity normal
-      
+      # --no-build --configuration Release: `--no-restore` alone does NOT imply --no-build, so
+      # without this the solution gets built a second time in Debug and coverage is measured on that
+      # build while `dotnet pack` below ships the Release one. The Debug rebuild also triggers
+      # DebugEnsureNodeEnv in nodeservices.targets, which runs `npm install` in both demo ClientApps.
+      #
+      # --collect writes coverage.cobertura.xml into a GUID-named subdirectory of
+      # --results-directory, one per test project, hence the ** in the upload glob below.
+      run: >
+        dotnet test --no-restore --no-build --configuration Release --verbosity normal
+        --settings coverlet.runsettings
+        --collect:"XPlat Code Coverage" --results-directory coverage
+
+    - name: Upload coverage
+      # always(): coverage from a failing test run is still worth recording.
+      # hashFiles guard: a run that produced no report is a no-op rather than an upload of nothing.
+      if: always() && hashFiles('coverage/**/coverage.cobertura.xml') != ''
+      uses: MintPlayer/CodeCoverage/action@master
+      with:
+        url: https://coverage.mintplayer.com
+        token: ${{ secrets.COVERAGE_TOKEN }}
+        files: |
+          coverage/**/coverage.cobertura.xml
+        # With search on, a glob that matches nothing silently falls back to auto-detection and
+        # would upload stray unparsable reports.
+        disable-search: true
+        # Closes the build now instead of waiting out the server's ~2-minute debounce.
+        finish: true
+        # A coverage-service outage, or a missing COVERAGE_TOKEN, must not fail this workflow before
+        # `dotnet pack` and block a NuGet release.
+        fail-ci-if-error: false
+
     - name: Pack
       run: dotnet pack --no-build --configuration Release
      

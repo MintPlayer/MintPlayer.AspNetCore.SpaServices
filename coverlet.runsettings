@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+
+          <!--
+          Source-generator output under obj/ has no git-tracked counterpart, so the coverage server
+          cannot resolve it against `git ls-files` and drops it silently. Excluding it here makes
+          the raw report and the server agree instead of disagreeing invisibly.
+
+          Forward slashes only: coverlet normalizes separators, so a Windows-style pattern would
+          fail to match. No git-tracked file in this repo is named *.g.cs, so the bare pattern
+          cannot hide real source.
+          -->
+          <ExcludeByFile>**/*.g.cs,**/*.Designer.cs</ExcludeByFile>
+
+          <!--
+          UseSourceLink=true rewrites `filename` to raw.githubusercontent.com URLs. The coverage
+          server suffix-matches report paths against `git ls-files`, and a URL tail makes every
+          duplicated basename ambiguous - which the server drops silently. Pinned rather than left
+          to the default.
+          -->
+          <UseSourceLink>false</UseSourceLink>
+
+          <!--
+          Not needed today, because the Test step does not set ContinuousIntegrationBuild - but the
+          Pack step in build-master.yml does. If that property ever moves into a Directory.Build.props
+          it would apply to the test build too, paths would become /_/MintPlayer.AspNetCore.../... ,
+          and this must flip to true. Pinned so the coupling is visible rather than discovered.
+          -->
+          <DeterministicReport>false</DeterministicReport>
+
+          <!--
+          Leaving auto-properties in. Skipping them moves the number by a fraction of a point and
+          drops whole files from the server's file tree, which is a worse trade than the tiny
+          denominator reduction is worth.
+          -->
+          <SkipAutoProps>false</SkipAutoProps>
+
+          <!--
+          ExcludeByAttribute is deliberately NOT set. The usual snippet is actively harmful:
+
+            CompilerGeneratedAttribute - removes every async state machine, i.e. the bodies of all
+                                         async methods. This repo is almost entirely async.
+            Obsolete                   - Roslyn puts a synthetic [Obsolete] on `readonly ref struct`,
+                                         so those types would vanish from the report.
+            GeneratedCodeAttribute     - nothing instrumented here carries it.
+
+          There is also NO assembly Exclude list. Excluding assemblies to raise the percentage makes
+          the number a decoration rather than a measurement.
+          -->
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

@@ -139,6 +139,12 @@ _TeamCity*
 *.coverage
 *.coveragexml
 
+# Coverlet / coverage.mintplayer.com report output
+coverage*.json
+coverage*.xml
+coverage*.info
+/coverage/
+
 # NCrunch
 _NCrunch_*
 .*crunch*.local.xml

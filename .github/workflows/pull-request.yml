@@ -32,4 +32,38 @@ jobs:
       run: dotnet build --configuration Release --no-restore
       
     - name: Test
-      run: dotnet test --no-restore --verbosity normal
+      # --no-build --configuration Release: `--no-restore` alone does NOT imply --no-build, so
+      # without this the solution gets built a second time in Debug and coverage is measured on that
+      # build rather than the Release one just built above. The Debug rebuild also triggers
+      # DebugEnsureNodeEnv in nodeservices.targets, which runs `npm install` in both demo ClientApps.
+      #
+      # --collect writes coverage.cobertura.xml into a GUID-named subdirectory of
+      # --results-directory, one per test project, hence the ** in the upload glob below.
+      run: >
+        dotnet test --no-restore --no-build --configuration Release --verbosity normal
+        --settings coverlet.runsettings
+        --collect:"XPlat Code Coverage" --results-directory coverage
+
+    # Nothing here gates the merge. The coverage service publishes the `coverage/project` and
+    # `coverage/patch` check runs itself, and those are what branch protection would require.
+    - name: Upload coverage
+      # Fork PRs get no secrets, so the upload cannot work there. Skip rather than fail - a
+      # contributor's PR must not go red over a missing token.
+      # hashFiles guard: a run that produced no report is a no-op.
+      if: >
+        github.event.pull_request.head.repo.full_name == github.repository
+        && hashFiles('coverage/**/coverage.cobertura.xml') != ''
+      continue-on-error: true
+      uses: MintPlayer/CodeCoverage/action@master
+      with:
+        url: https://coverage.mintplayer.com
+        token: ${{ secrets.COVERAGE_TOKEN }}
+        files: |
+          coverage/**/coverage.cobertura.xml
+        disable-search: true
+        base-sha: ${{ github.event.pull_request.base.sha }}
+        # Closes the build now instead of waiting out the ~2-minute debounce, so the check runs
+        # appear while the PR is still being looked at.
+        finish: true
+        # A coverage-service outage must never be the reason a PR cannot merge.
+        fail-ci-if-error: false
