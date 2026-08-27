@@ -1,0 +1,16 @@
+﻿v 10.6.0
+BREAKING CHANGES
+- SpaProxy now forwards content headers on bodiless requests (GET/HEAD/DELETE/TRACE). A content
+  header such as Content-Type is rejected by the request header collection and belongs on the
+  content instead; the fallback only ran when there was a body, so the header was dropped with no
+  trace. Such a request now carries an empty content in order to keep the header.
+
+FIXES
+- The SpaOptions copy constructor now carries StartupTimeout and CliRegexes. UseSpaImproved clones
+  the options so that multiple UseSpa calls do not interfere, so a caller-configured startup timeout
+  was previously lost exactly where it mattered.
+- UseProxyToSpaDevelopmentServer now validates its arguments on all three overloads instead of
+  surfacing a bare NullReferenceException.
+- An empty SpaStaticFilesOptions.RootPath now throws InvalidOperationException from both entry
+  points. It previously threw ArgumentException from one and InvalidOperationException from the
+  other, depending only on which was reached first.

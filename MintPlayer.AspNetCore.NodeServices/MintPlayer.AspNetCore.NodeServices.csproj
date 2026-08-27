@@ -27,6 +27,15 @@
 		<Product>MintPlayer.AspNetCore.NodeServices</Product>
 	</PropertyGroup>
 
+	<Target Name="PreparePackageReleaseNotesFromFile" BeforeTargets="GenerateNuspec">
+		<ReadLinesFromFile File="./RELEASE-NOTES.txt">
+			<Output TaskParameter="Lines" ItemName="ReleaseNoteLines" />
+		</ReadLinesFromFile>
+		<PropertyGroup>
+			<PackageReleaseNotes>@(ReleaseNoteLines, '%0a')</PackageReleaseNotes>
+		</PropertyGroup>
+	</Target>
+
 	<!-- Lets the test project exercise internal types without widening them to public. -->
 	<ItemGroup>
 		<InternalsVisibleTo Include="MintPlayer.AspNetCore.SpaServices.Tests" />

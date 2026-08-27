@@ -1,0 +1,7 @@
+﻿v 10.2.2
+DOCUMENTATION
+- The README told you to call app.UseSpaXsrf(), which does not exist. The method is
+  app.UseAntiforgeryGenerator().
+- The README claimed support for custom header and cookie names. The cookie name is XSRF-TOKEN and
+  is not configurable; the header name is set through the standard services.AddAntiforgery(...)
+  options, not by this package.

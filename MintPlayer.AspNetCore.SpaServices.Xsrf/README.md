@@ -23,7 +23,7 @@ dotnet add package MintPlayer.AspNetCore.SpaServices.Xsrf
 - Automatic XSRF token generation and validation
 - Cookie-based token storage compatible with SPA frameworks
 - Seamless integration with Angular's built-in XSRF handling
-- Support for custom header and cookie names
+- Works with Angular's default `XSRF-TOKEN` cookie and `X-XSRF-TOKEN` header
 
 ## Usage
 
@@ -44,7 +44,7 @@ public void ConfigureServices(IServiceCollection services)
 ```csharp
 public void Configure(IApplicationBuilder app)
 {
-    app.UseSpaXsrf();
+    app.UseAntiforgeryGenerator();
 
     // ... other middleware
 }

@@ -123,6 +123,22 @@ var url = spaRouteService.GenerateUrl("person-edit", parms);
 var url = spaRouteService.GenerateUrl("person-edit", new { id = 5 });
 ```
 
+Parameter values are percent-encoded, and any parameter the route template does not declare is
+appended as a query-string entry:
+
+```csharp
+var parms = new Dictionary<string, object> { ["id"] = 5, ["tab"] = "a b" };
+var url = spaRouteService.GenerateUrl("person-edit", parms);
+// "/person/5/edit?tab=a%20b"
+```
+
+`GetCurrentRoute` decodes the values again, so a value containing `/`, `&`, `?`, `%` or a space
+survives a generate/parse round-trip unchanged. Do not encode values yourself before passing them
+in, or they will be encoded twice.
+
+Route paths are matched literally apart from `{placeholders}` - a route path is not a regular
+expression, so a `.` matches only a dot.
+
 ## Related Packages
 
 - [MintPlayer.AspNetCore.NodeServices](https://www.nuget.org/packages/MintPlayer.AspNetCore.NodeServices) - Node.js integration

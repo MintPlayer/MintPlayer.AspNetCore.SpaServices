@@ -1,0 +1,5 @@
+﻿v 10.4.1
+FIXES
+- EmbeddedResourceReader now names the resource and the assembly it could not find. A missing
+  resource previously surfaced as ArgumentNullException (Parameter 'stream'), which identified
+  neither.
