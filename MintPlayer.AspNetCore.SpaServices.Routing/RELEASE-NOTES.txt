@@ -1,2 +1,26 @@
-﻿v 3.1.0
+v 10.5.0
+BREAKING CHANGES
+- GenerateUrl now percent-encodes parameter values, and GetCurrentRoute now decodes them.
+  A generate/parse round-trip is lossless for values containing '/', '&', '?', '%' or a space.
+  If you were encoding values yourself before calling GenerateUrl, stop - you will now get
+  double-encoded output. Likewise stop decoding SpaRoute.Parameters yourself.
+  A '+' is NOT read as a space when decoding: a space is written as %20, so the round-trip is
+  symmetric without it, and doing so would corrupt a value that legitimately contains a '+'.
+- Route paths are now regex-escaped. Only {placeholders} are patterns; literal text is matched
+  literally, so a route "a.b" no longer also matches "/axb". Route paths were never documented
+  as regular expressions, but a route relying on that will now return 404 instead of matching.
+- Redirect now sends 301 (Moved Permanently) instead of 302. It set 301 and then let
+  Response.Redirect overwrite it with 302, so the permanent redirect the API always implied was
+  never actually sent. Browsers and CDNs cache permanent redirects.
+
+FIXES
+- The empty (root) route now parses its query string. Previously "/?a=b" lost its query while
+  every other route kept it.
+- A repeated query key is now last-one-wins instead of throwing ArgumentException. Repeated keys
+  are legal in a URL.
+- The query is now split at the first '?' (RFC 3986 3.4) rather than the last, so a later '?' stays
+  in the query instead of being captured into a route parameter.
+- A null parameter value now encodes to an empty string instead of throwing NullReferenceException.
+
+v 3.1.0
 - Moved the route builder to the SpaPrerenderingService

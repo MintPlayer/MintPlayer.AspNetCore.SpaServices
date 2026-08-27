@@ -1,0 +1,14 @@
+﻿v 10.6.0
+BREAKING CHANGES
+- Content types are now matched case-insensitively, with optional whitespace allowed before the ';'
+  (media types are case-insensitive per RFC 9110 8.3.1). A response typed "TEXT/HTML" or
+  "Text/Html; charset=utf-8" was previously passed through unrendered; it is now prerendered.
+- A RenderToStringResult carrying both RedirectUrl and Globals now throws. The Globals guard lived
+  in the else-branch only, so the payload was silently dropped on the redirect path while the same
+  payload on a rendered page threw.
+- HTTP 308 is now treated as a permanent redirect alongside 301. It was previously downgraded to
+  302, losing both the permanence and the method preservation.
+
+FIXES
+- A render result with no Html now reports that prerendering returned no HTML, instead of surfacing
+  as ArgumentNullException (Parameter 'text').

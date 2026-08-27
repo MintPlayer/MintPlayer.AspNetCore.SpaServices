@@ -146,9 +146,14 @@ internal static class SpaProxy
 				continue;
 			}
 
-			if (!requestMessage.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()) && requestMessage.Content != null)
+			// A content header (Content-Type, Content-Language, ...) is rejected by the request
+			// header collection and belongs on the content instead. Bodiless methods have no
+			// content to put it on, so give them an empty one rather than dropping the header
+			// silently - a GET carrying Content-Type used to lose it with no trace.
+			if (!requestMessage.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()))
 			{
-				requestMessage.Content?.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
+				requestMessage.Content ??= new StreamContent(Stream.Null);
+				requestMessage.Content.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
 			}
 		}
 

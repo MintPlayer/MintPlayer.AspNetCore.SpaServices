@@ -184,13 +184,18 @@ public static class SpaPrerenderingExtensions
 
 	private static bool IsHtmlContentType(string contentType)
 	{
-		if (string.Equals(contentType, "text/html", StringComparison.Ordinal))
+		// Media types are case-insensitive (RFC 9110 8.3.1), and optional whitespace is allowed
+		// before the ';' that starts the parameters. Comparing Ordinal against a lowercase literal
+		// meant "TEXT/HTML" and "text/html ; charset=utf-8" silently skipped prerendering.
+		if (contentType == null)
 		{
-			return true;
+			return false;
 		}
 
-		return contentType != null
-			&& contentType.StartsWith("text/html;", StringComparison.Ordinal);
+		var separator = contentType.IndexOf(';');
+		var mediaType = separator < 0 ? contentType : contentType[..separator];
+
+		return string.Equals(mediaType.Trim(), "text/html", StringComparison.OrdinalIgnoreCase);
 	}
 
 	private static bool IsSuccessStatusCode(int statusCode)
@@ -237,21 +242,36 @@ public static class SpaPrerenderingExtensions
 	{
 		context.Response.Clear();
 
+		// The Globals property exists for back-compatibility but is meaningless for prerendering
+		// that returns complete HTML pages. Checked before the redirect branch too, so that a result
+		// carrying both a RedirectUrl and Globals reports the problem instead of silently dropping
+		// the Globals.
+		if (renderResult.Globals != null)
+		{
+			throw new InvalidOperationException($"{nameof(renderResult.Globals)} is not " +
+				$"supported when prerendering via {nameof(UseSpaPrerendering)}(). Instead, " +
+				$"your prerendering logic should return a complete HTML page, in which you " +
+				$"embed any information you wish to return to the client.");
+		}
+
 		if (!string.IsNullOrEmpty(renderResult.RedirectUrl))
 		{
-			var permanentRedirect = renderResult.StatusCode.GetValueOrDefault() == 301;
+			// 308 is the permanent counterpart of 307 and, like 301, must survive as a permanent
+			// redirect. Treating only 301 as permanent quietly downgraded a 308 to 302, losing both
+			// the permanence and the method preservation the prerenderer asked for.
+			var statusCode = renderResult.StatusCode.GetValueOrDefault();
+			var permanentRedirect = statusCode is 301 or 308;
 			context.Response.Redirect(renderResult.RedirectUrl, permanentRedirect);
 		}
 		else
 		{
-			// The Globals property exists for back-compatibility but is meaningless
-			// for prerendering that returns complete HTML pages
-			if (renderResult.Globals != null)
+			// Without this the null reaches Response.WriteAsync and surfaces as
+			// "ArgumentNullException (Parameter 'text')", which says nothing about prerendering.
+			if (renderResult.Html == null)
 			{
-				throw new InvalidOperationException($"{nameof(renderResult.Globals)} is not " +
-					$"supported when prerendering via {nameof(UseSpaPrerendering)}(). Instead, " +
-					$"your prerendering logic should return a complete HTML page, in which you " +
-					$"embed any information you wish to return to the client.");
+				throw new InvalidOperationException($"Prerendering returned no HTML. Your " +
+					$"prerendering logic should set {nameof(renderResult.Html)} to a complete HTML " +
+					$"page, or set {nameof(renderResult.RedirectUrl)} to redirect instead.");
 			}
 
 			if (renderResult.StatusCode.HasValue)

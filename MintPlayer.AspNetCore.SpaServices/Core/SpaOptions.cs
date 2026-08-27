@@ -31,6 +31,8 @@ public class SpaOptions : Abstractions.ISpaOptions
 		DefaultPageStaticFileOptions = copyFromOptions.DefaultPageStaticFileOptions;
 		SourcePath = copyFromOptions.SourcePath;
 		DevServerPort = copyFromOptions.DevServerPort;
+		StartupTimeout = copyFromOptions.StartupTimeout;
+		CliRegexes = copyFromOptions.CliRegexes;
 	}
 
 	/// <summary>
