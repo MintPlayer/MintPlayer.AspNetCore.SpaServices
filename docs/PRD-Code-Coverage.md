@@ -7,8 +7,9 @@ Introduce code-coverage measurement to this repository and publish the results t
 `MintPlayer/MintPlayer.Dotnet.Tools` in commit `f69b852` and corrected in PR #170 (`827a945`).
 
 Coverage is collected by coverlet's VSTest collector during `dotnet test`, emitted as Cobertura
-XML, and uploaded by the `MintPlayer/CodeCoverage/action@master` GitHub Action. The coverage
-service — not the workflow — publishes the `coverage/project` and `coverage/patch` check runs.
+XML, and uploaded by the `MintPlayer/MintPlayer.Spark/apps/CodeCoverage/action@coverage-upload-v1`
+GitHub Action. The coverage service — not the workflow — publishes the `coverage/project` and
+`coverage/patch` check runs.
 
 ## Problem Statement
 
@@ -55,7 +56,8 @@ Three independent pieces, delivered together:
 │        --results-directory coverage                                   │
 │     └── writes coverage/<guid>/coverage.cobertura.xml (one per proj)  │
 │                                                                       │
-│  4. MintPlayer/CodeCoverage/action@master                             │
+│  4. MintPlayer/MintPlayer.Spark/apps/CodeCoverage/action              │
+│       @coverage-upload-v1                                             │
 │     ├── gzip each report + `git ls-files` as fileList                 │
 │     ├── POST /api/uploads        (multipart, Bearer covt_ token)      │
 │     └── POST /api/uploads/finish (skip the ~2 min debounce)           │
@@ -117,7 +119,8 @@ Three independent pieces, delivered together:
 - **FR-4.1**: `build-master` and `pull-request` SHALL upload; `build-any` SHALL NOT (master and PR
   already cover every commit that matters; a feature-branch push would report a third build for
   the same commit).
-- **FR-4.2**: The upload SHALL use `MintPlayer/CodeCoverage/action@master` with
+- **FR-4.2**: The upload SHALL use
+  `MintPlayer/MintPlayer.Spark/apps/CodeCoverage/action@coverage-upload-v1` with
   `url: https://coverage.mintplayer.com` and `token: ${{ secrets.COVERAGE_TOKEN }}`.
 - **FR-4.3**: `disable-search: true` SHALL be set. With search on, a glob matching nothing silently
   falls back to auto-detection and uploads stray unparsable reports.

@@ -48,7 +48,7 @@ jobs:
       # always(): coverage from a failing test run is still worth recording.
       # hashFiles guard: a run that produced no report is a no-op rather than an upload of nothing.
       if: always() && hashFiles('coverage/**/coverage.cobertura.xml') != ''
-      uses: MintPlayer/CodeCoverage/action@master
+      uses: MintPlayer/MintPlayer.Spark/apps/CodeCoverage/action@coverage-upload-v1
       with:
         url: https://coverage.mintplayer.com
         token: ${{ secrets.COVERAGE_TOKEN }}

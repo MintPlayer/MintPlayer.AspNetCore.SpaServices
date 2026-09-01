@@ -54,7 +54,7 @@ jobs:
         github.event.pull_request.head.repo.full_name == github.repository
         && hashFiles('coverage/**/coverage.cobertura.xml') != ''
       continue-on-error: true
-      uses: MintPlayer/CodeCoverage/action@master
+      uses: MintPlayer/MintPlayer.Spark/apps/CodeCoverage/action@coverage-upload-v1
       with:
         url: https://coverage.mintplayer.com
         token: ${{ secrets.COVERAGE_TOKEN }}
