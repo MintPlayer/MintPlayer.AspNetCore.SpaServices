@@ -146,7 +146,7 @@ public static class SpaPrerenderingExtensions
 				// a template from which the fully prerendered page can be generated.
 				var customData = new Dictionary<string, object>
 				{
-					{ "originalHtml", Encoding.UTF8.GetString(outputBuffer.GetBuffer()) }
+					{ "originalHtml", Encoding.UTF8.GetString(outputBuffer.GetBuffer(), 0, (int)outputBuffer.Length) }
 				};
 
 				// If the developer wants to use custom logic to pass arbitrary data to the
