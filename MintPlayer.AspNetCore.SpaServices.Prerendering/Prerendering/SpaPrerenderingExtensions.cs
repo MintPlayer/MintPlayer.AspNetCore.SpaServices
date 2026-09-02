@@ -125,6 +125,13 @@ public static class SpaPrerenderingExtensions
 					}
 				}
 
+				// If the request has been aborted, there's no point in continuing with prerendering.
+				// outputBuffer might also be empty or in an incomplete state.
+				if (context.RequestAborted.IsCancellationRequested)
+				{
+					return;
+				}
+
 				// If it isn't an HTML page that we can use as the template for prerendering,
 				//  - ... because it's not text/html
 				//  - ... or because it's an error
