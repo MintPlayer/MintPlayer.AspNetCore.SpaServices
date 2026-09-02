@@ -189,7 +189,7 @@ public static class SpaPrerenderingExtensions
 		return applicationBuilder;
 	}
 
-	private static bool IsHtmlContentType(string contentType)
+	private static bool IsHtmlContentType(string? contentType)
 	{
 		// Media types are case-insensitive (RFC 9110 8.3.1), and optional whitespace is allowed
 		// before the ';' that starts the parameters. Comparing Ordinal against a lowercase literal
