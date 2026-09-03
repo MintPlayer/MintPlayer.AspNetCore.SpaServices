@@ -134,7 +134,7 @@ public class PrerenderingEventedStreamReaderTests
     /// any data flows. The reader starts consuming inside its own constructor, so without this the
     /// tests would race it.
     /// </summary>
-    private sealed class GatedStream(string content) : Stream
+    internal sealed class GatedStream(string content) : Stream
     {
         private readonly MemoryStream inner = new(Encoding.UTF8.GetBytes(content));
         private readonly SemaphoreSlim gate = new(0, 1);
