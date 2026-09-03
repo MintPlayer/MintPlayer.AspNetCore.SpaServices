@@ -55,10 +55,14 @@ internal static class SpaProxy
 		CancellationToken applicationStoppingToken,
 		bool proxy404s)
 	{
-		// Stop proxying if either the server or client wants to disconnect
-		var proxyCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(
+		// Stop proxying if either the server or client wants to disconnect.
+		// The source is disposed rather than discarded: keeping only its Token left a registration
+		// on applicationStoppingToken - which lives as long as the process - for every proxied
+		// request.
+		using var proxyCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
 			context.RequestAborted,
-			applicationStoppingToken).Token;
+			applicationStoppingToken);
+		var proxyCancellationToken = proxyCancellationTokenSource.Token;
 
 		// We allow for the case where the target isn't known ahead of time, and want to
 		// delay proxied requests until the target becomes known. This is useful, for example,

@@ -1,5 +1,12 @@
-# MintPlayer.AspNetCore.SpaServices.Routing
-This project facilitates server-side prerendering in ASP.NET Core.
+# MintPlayer.AspNetCore.SpaServices
+
+Server-side rendering for an Angular (or similar) single-page application hosted by ASP.NET Core.
+
+These packages replace Microsoft's discontinued `Microsoft.AspNetCore.SpaServices` and
+`Microsoft.AspNetCore.NodeServices`. ASP.NET Core hosts the SPA, starts the Angular CLI dev server
+for you in development, and renders each page in Node.js on the way out — so crawlers and first
+paint get a populated page instead of an empty shell. Your server code can push request-scoped data
+(the current user, an entity from the database) straight into that render.
 
 ## Version info
 
@@ -13,6 +20,131 @@ This project facilitates server-side prerendering in ASP.NET Core.
 | MintPlayer.AspNetCore.SpaServices              | [![NuGet Version](https://img.shields.io/nuget/v/MintPlayer.AspNetCore.SpaServices.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices)                           | [![NuGet Version](https://img.shields.io/nuget/vpre/MintPlayer.AspNetCore.SpaServices.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices)                           | [![NuGet](https://img.shields.io/nuget/dt/MintPlayer.AspNetCore.SpaServices.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices)                           |
 | MintPlayer.AspNetCore.SpaServices.Prerendering | [![NuGet Version](https://img.shields.io/nuget/v/MintPlayer.AspNetCore.SpaServices.Prerendering.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Prerendering) | [![NuGet Version](https://img.shields.io/nuget/vpre/MintPlayer.AspNetCore.SpaServices.Prerendering.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Prerendering) | [![NuGet](https://img.shields.io/nuget/dt/MintPlayer.AspNetCore.SpaServices.Prerendering.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Prerendering) |
 | MintPlayer.AspNetCore.SpaServices.Routing      | [![NuGet Version](https://img.shields.io/nuget/v/MintPlayer.AspNetCore.SpaServices.Routing.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing)           | [![NuGet Version](https://img.shields.io/nuget/vpre/MintPlayer.AspNetCore.SpaServices.Routing.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing)           |[![NuGet](https://img.shields.io/nuget/dt/MintPlayer.AspNetCore.SpaServices.Routing.svg?style=flat)](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing)            |
+
+
+## Which package do I install?
+
+**Install [`MintPlayer.AspNetCore.SpaServices.Routing`](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing).**
+It pulls in the rest, and it is the only one that gives you route matching — knowing *which* page
+is being rendered is what lets you supply the right data for it.
+
+```
+dotnet add package MintPlayer.AspNetCore.SpaServices.Routing
+```
+
+Each package has its own detailed documentation. Start with Routing; the others are reference.
+
+| Package | What it is for | Documentation |
+|---|---|---|
+| [`…SpaServices.Routing`](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Routing) | **Start here.** Declares your SPA's client-side routes on the server, matches incoming URLs against them, generates URLs, and redirects. | [README](./MintPlayer.AspNetCore.SpaServices.Routing/README.md) |
+| [`…SpaServices.Prerendering`](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Prerendering) | The prerendering middleware: captures the page your pipeline would have served, renders it in Node, supplies data to the render. | [README](./MintPlayer.AspNetCore.SpaServices.Prerendering/README.md) |
+| [`…SpaServices`](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices) | Hosting the SPA: static files, the Angular CLI dev server, the dev-server proxy, the default page. | [README](./MintPlayer.AspNetCore.SpaServices/README.md) |
+| [`…NodeServices`](https://www.nuget.org/packages/MintPlayer.AspNetCore.NodeServices) | Invoking Node.js from .NET, and the MSBuild integration that all of these inherit. | [README](./MintPlayer.AspNetCore.NodeServices/README.md) |
+| [`…SpaServices.Xsrf`](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Xsrf) | CSRF tokens for a SPA — independent of the rest; install it only if you want it. | [README](./MintPlayer.AspNetCore.SpaServices.Xsrf/README.md) |
+| [`…SpaServices.Abstractions`](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Abstractions) | Interfaces only, for libraries that integrate without depending on the implementation. | [README](./MintPlayer.AspNetCore.SpaServices.Abstractions/README.md) |
+
+## A minimal setup
+
+```csharp
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddSpaStaticFilesImproved(configuration =>
+    {
+        // Angular 17+ puts the browser build in dist/browser, not dist.
+        configuration.RootPath = "ClientApp/dist/browser";
+    });
+
+    services.AddSpaPrerenderingService<MySpaPrerenderingService>();
+}
+
+public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+{
+    if (!env.IsDevelopment())
+    {
+        app.UseSpaStaticFilesImproved();
+    }
+
+    app.UseRouting();
+    app.UseEndpoints(endpoints => endpoints.MapControllers());
+
+    app.UseSpaImproved(spa =>
+    {
+        spa.Options.SourcePath = "ClientApp";
+
+        spa.UseSpaPrerendering(options =>
+        {
+            options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.js";
+            options.BootModuleBuilder = env.IsDevelopment()
+                ? new AngularPrerendererBuilder("build:ssr:development")
+                : null;
+            options.ExcludeUrls = ["/sockjs-node"];
+        });
+
+        if (env.IsDevelopment())
+        {
+            spa.UseAngularCliServer(npmScript: "start");
+        }
+    });
+}
+```
+
+Your routes and per-page data live in one class:
+
+```csharp
+public class MySpaPrerenderingService : ISpaPrerenderingService
+{
+    private readonly ISpaRouteService spaRouteService;
+    public MySpaPrerenderingService(ISpaRouteService spaRouteService)
+        => this.spaRouteService = spaRouteService;
+
+    public Task BuildRoutes(ISpaRouteBuilder routeBuilder)
+    {
+        routeBuilder
+            .Route("", "home")
+            .Group("person", "person", person => person
+                .Route("", "list")
+                .Route("{id}", "show"));
+
+        return Task.CompletedTask;
+    }
+
+    public async Task OnSupplyData(HttpContext httpContext, IDictionary<string, object> data)
+    {
+        var route = await spaRouteService.GetCurrentRoute(httpContext);
+        var people = httpContext.RequestServices.GetRequiredService<IPersonRepository>();
+
+        switch (route?.Name)
+        {
+            case "person-list":
+                data["people"] = await people.GetPeople();
+                break;
+            case "person-show":
+                data["person"] = await people.GetPerson(Convert.ToInt32(route.Parameters["id"]));
+                break;
+        }
+    }
+}
+```
+
+`dotnet run` is all you need in development — the SPA middleware starts the Angular CLI dev server
+itself. Do not run `ng serve` separately.
+
+See the [Routing README](./MintPlayer.AspNetCore.SpaServices.Routing/README.md) for the Angular side
+(how these `data` keys reach `main.server.ts`, and the matching client-side providers), and the
+[Prerendering README](./MintPlayer.AspNetCore.SpaServices.Prerendering/README.md) for every option,
+the logging categories, and troubleshooting.
+
+## Running the demos
+
+Two runnable samples live in [`Demo/`](./Demo):
+
+| Demo | What it shows |
+|---|---|
+| [`Demo/Prerendering`](./Demo/Prerendering) | The full SSR setup — routes, per-route data, redirects, HTML minification. `dotnet run --project Demo/Prerendering/Demo.Web` |
+| [`Demo/Xsrf`](./Demo/Xsrf) | CSRF token handling between ASP.NET Core and Angular. |
+
+The first run builds the SPA and the SSR bundle, so give it a minute.
+
 
 ## MSBuild Integration
 
@@ -63,162 +195,22 @@ To skip SSR bundle during publish:
 </PropertyGroup>
 ```
 
-## Server-side rendering
-If you haven't setup SSR yet, please consult [this manual](https://medium.com/@pieterjandeclippel/server-side-rendering-in-asp-net-core-angular-6df7adacbdaa).
+## Server-side rendering background
 
-## Installation
-### NuGet package manager
-Open the NuGet package manager and install `MintPlayer.AspNetCore.SpaServices.Routing` in your project
-### Package manager console
-Install-Package MintPlayer.AspNetCore.SpaServices.Routing
+If you have not set up SSR before, [this walkthrough](https://medium.com/@pieterjandeclippel/server-side-rendering-in-asp-net-core-angular-6df7adacbdaa)
+covers the Angular side of the picture.
 
-## Usage
-### Register SPA routes
-The ASP.NET Core application needs to be aware of your angular/react SPA routes.
-Therefor you need to provide these with the SpaRouteBuilder. For example:
+## Contributing
 
-    public void ConfigureServices(IServiceCollection services)
-    {
-        // Define the SPA-routes for our helper
-        services.AddSpaRoutes(routes => routes
-            .Route("", "home")
-            .Group("person", "person", person_routes => person_routes
-                .Route("", "list")
-                .Route("create", "create")
-                .Route("{id}", "show")
-                .Route("{id}/edit", "edit")
-            )
-        );
-    }
-    
-You can define routing parameters in your paths as well.
+Build and test the whole solution with:
 
-### Adding SPA prerendering middleware
-To enable SPA prerendering you'd normally use the following middleware registration code:
+```
+dotnet build MintPlayer.AspNetCore.SpaServices.sln
+dotnet test MintPlayer.AspNetCore.SpaServices.Tests
+```
 
-    app.UseSpa(spa =>
-    {
-        ...
+Design notes and troubleshooting records for larger changes are kept in [`docs/`](./docs).
 
-        spa.UseSpaPrerendering(options =>
-        {
-            options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.js";
-            options.BootModuleBuilder = env.IsDevelopment()
-                ? new AngularCliBuilder(npmScript: "build:ssr")
-                : null;
-            options.ExcludeUrls = new[] { "/sockjs-node" };
-        });
+## License
 
-        ...
-    });
-    
-### Supplying data
-You probably want to pass data based on which url the visitor opens the first time.
-With this package you can easily determine which angular component is to be rendered and what data needs to be provided to the angular app.
-
-    public void Configure(IApplicationBuilder app, IHostingEnvironment env, ISpaRouteService spaRouteService)
-    {
-        ...
-
-        app.UseSpa(spa =>
-        {
-            ...
-            
-            spa.UseSpaPrerendering(options =>
-            {
-                ...
-
-                options.SupplyData = (context, data) =>
-                {
-                    var route = spaRouteService.GetCurrentRoute(context);
-                    var personRepository = context.RequestServices.GetRequiredService<IPersonRepository>();
-
-                    switch (route?.Name)
-                    {
-                        case "person-list":
-                            {
-                                var people = personRepository.GetPeople();
-                                data["people"] = people;
-                            }
-                            break;
-                        case "person-show":
-                        case "person-edit":
-                            {
-                                var id = System.Convert.ToInt32(route.Parameters["id"]);
-                                var person = personRepository.GetPerson(id);
-                                data["person"] = person;
-                            }
-                            break;
-                    }
-                };
-            });
-        }
-    }
-
-You can't perform dependecy injection here since the SupplyData is a delegate.
-You can however retrieve an instance from the service-container through `context.RequestServices` or `context.ApplicationServices`.
-
-### main.server.ts
-The data you passed in the SupplyData delegate is made available on the params.data object in the `main.server.ts`.
-The refactored code can look like this:
-
-    const providers: StaticProvider[] = [
-      provideModuleMap(LAZY_MODULE_MAP),
-      { provide: APP_BASE_HREF, useValue: params.baseUrl },
-      { provide: 'BASE_URL', useValue: params.origin + params.baseUrl },
-      { provide: 'MESSAGE', useValue: params.data.message }
-    ];
-
-    if ('people' in params.data) {
-      providers.push({ provide: 'PEOPLE', useValue: params.data.people })
-    }
-    if ('person' in params.data) {
-      providers.push({ provide: 'PERSON', useValue: params.data.person })
-    }
-
-    const options = {
-      document: params.data.originalHtml,
-      url: params.url,
-      extraProviders: providers
-    };
-
-### main.ts
-Each key you pass in the main.server.ts must also be provided in the main.ts:
-
-    const providers = [
-      { provide: 'BASE_URL', useFactory: getBaseUrl, deps: [] },
-      { provide: 'MESSAGE', useValue: 'Message from the client' },
-      { provide: 'PEOPLE', useValue: null },
-      { provide: 'PERSON', useValue: null }
-    ];
-
-### Use in components
-You can then use this value by using dependency injection in your components:
-
-    constructor(private personService: PersonService, @Inject('PERSON') private personInj: Person, private route: ActivatedRoute) {
-      if (personInj === null) {
-        var id = parseInt(this.route.snapshot.paramMap.get("id"));
-        this.personService.getPerson(id, true).subscribe(person => {
-          this.setPerson(person);
-        });
-      } else {
-        this.setPerson(personInj);
-      }
-    }
-
-### Generate SPA routes
-If necessary, you can generate an application URL on the server-side through c# code. Examples  for this use are when using a redirect from OpenSearch straight to your ShowComponent, or when generating an XML sitemap.
-
-To do so, there are 2 approaches:
-
-#### Using a dictionary
-
-    var parms = new Dictionary<string, object>();
-    parms["id"] = 5;
-    var route = spaRouteService.GenerateUrl("person-edit", parms);
-
-#### Using an anonymous type
-
-    var route = spaRouteService.GenerateUrl("person-edit", new {
-        id = 5
-    });
+Licensed under the [Apache License 2.0](https://opensource.org/licenses/Apache-2.0).

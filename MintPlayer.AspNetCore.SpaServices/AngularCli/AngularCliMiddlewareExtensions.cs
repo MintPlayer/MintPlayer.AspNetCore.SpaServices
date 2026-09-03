@@ -35,6 +35,12 @@ public static class AngularCliMiddlewareExtensions
 			throw new InvalidOperationException($"To use {nameof(UseAngularCliServer)}, you must supply a non-empty value for the {nameof(Core.SpaOptions.SourcePath)} property of {nameof(Core.SpaOptions)} when calling {nameof(MintPlayer.AspNetCore.SpaServices.Extensions.SpaApplicationBuilderExtensions.UseSpaImproved)}.");
 		}
 
-        AngularCli.AngularCliMiddleware.Attach(spaBuilder, npmScript, cliRegexes);
+		// Fall back to the option when no regexes are passed here. Without this,
+		// SpaOptions.CliRegexes was never read by anything - assigning it did nothing at all,
+		// even though the "none of the regexes contains an openbrowser group" error names it.
+		// The property is not on ISpaOptions, so it is only reachable on the concrete type.
+		var regexes = cliRegexes ?? (spaOptions as Core.SpaOptions)?.CliRegexes;
+
+		AngularCli.AngularCliMiddleware.Attach(spaBuilder, npmScript, regexes);
 	}
 }

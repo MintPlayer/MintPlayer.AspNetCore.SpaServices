@@ -10,12 +10,12 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices</PackageId>
-		<Version>10.6.0</Version>
+		<Version>10.7.0</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 
-		<Description>This package contains the ASP.NET Core prerenderer.</Description>
+		<Description>Hosts a single-page application from ASP.NET Core: serves its static files, starts and proxies to the Angular CLI dev server in development, and serves the default page in production. The prerendering middleware itself lives in MintPlayer.AspNetCore.SpaServices.Prerendering.</Description>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices</PackageProjectUrl>
 		<PackageTags>ASP.NET Core, SPA prerendering</PackageTags>

@@ -45,11 +45,13 @@ public class TaskTimeoutExtensionsTests
     {
         var faulted = Task.FromException(new InvalidOperationException("inner failure"));
 
-        // The non-generic overload propagates via Task.Wait, which wraps in an AggregateException.
-        var ex = await Assert.ThrowsAsync<AggregateException>(
+        // Unwrapped: the helper awaits the task rather than calling Task.Wait(), which used to
+        // wrap the fault in an AggregateException and reduce the Angular CLI's own diagnostics to
+        // "One or more errors occurred." by the time anything could report them.
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => faulted.WithTimeout(Generous, "unused"));
 
-        Assert.IsType<InvalidOperationException>(ex.InnerException);
+        Assert.Equal("inner failure", ex.Message);
     }
 
     [Fact]
@@ -57,9 +59,9 @@ public class TaskTimeoutExtensionsTests
     {
         var faulted = Task.FromException<int>(new InvalidOperationException("inner failure"));
 
-        var ex = await Assert.ThrowsAsync<AggregateException>(
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => faulted.WithTimeout(Generous, "unused"));
 
-        Assert.IsType<InvalidOperationException>(ex.InnerException);
+        Assert.Equal("inner failure", ex.Message);
     }
 }

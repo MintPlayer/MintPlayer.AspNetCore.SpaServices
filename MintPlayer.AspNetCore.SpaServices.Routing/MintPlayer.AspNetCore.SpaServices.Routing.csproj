@@ -10,15 +10,15 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices.Routing</PackageId>
-		<Version>10.5.0</Version>
+		<Version>10.7.0</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 
-		<Description>This package simplifies the SPA prerendering. Define your SPA routes in your service registration and check which SPA route is activated in the SupplyData callback.</Description>
+		<Description>This package simplifies SPA prerendering. Declare your SPA routes in ISpaPrerenderingService.BuildRoutes, then look up which route the incoming URL matched in OnSupplyData and hand the prerenderer exactly the data that page needs.</Description>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices</PackageProjectUrl>
-		<PackageTags>ASP.NET Core, SPA prerendering, SupplyData</PackageTags>
+		<PackageTags>ASP.NET Core, SPA prerendering, SPA routing, Angular, server-side rendering</PackageTags>
 		<RepositoryType>Git</RepositoryType>
 		<RepositoryUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices</RepositoryUrl>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>

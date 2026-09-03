@@ -115,6 +115,11 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 				timeoutSource.CancelAfter(_invocationTimeoutMilliseconds);
 			}
 
+			// Kept so the catch below can tell a genuine timeout apart from the caller cancelling.
+			// Both cancel the combined token, so timeoutSource.IsCancellationRequested alone would
+			// report a client disconnect as "the Node invocation timed out".
+			var callerCancellationToken = cancellationToken;
+
 			// By overwriting the supplied cancellation token, we ensure that it isn't accidentally used
 			// below. We only want to pass through the token that respects timeouts.
 			cancellationToken = combinedCancellationTokenSource.Token;
@@ -137,7 +142,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 			}
 			catch (TaskCanceledException)
 			{
-				if (timeoutSource.IsCancellationRequested)
+				if (timeoutSource.IsCancellationRequested && !callerCancellationToken.IsCancellationRequested)
 				{
 					// It was very common for developers to report 'TaskCanceledException' when encountering almost any
 					// trouble when using NodeServices. Now we have a default invocation timeout, and attempt to give

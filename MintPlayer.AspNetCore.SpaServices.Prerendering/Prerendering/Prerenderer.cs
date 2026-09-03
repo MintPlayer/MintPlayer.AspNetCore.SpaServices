@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using Microsoft.AspNetCore.Http.Features;
 using MintPlayer.AspNetCore.NodeServices;
 
 namespace MintPlayer.AspNetCore.SpaServices.Prerendering;
@@ -15,40 +14,6 @@ internal static class Prerenderer
 
 	private static StringAsTempFile NodeScript;
 
-	internal static Task<RenderToStringResult> RenderToString(
-		string applicationBasePath,
-		INodeServices nodeServices,
-		CancellationToken applicationStoppingToken,
-		JavaScriptModuleExport bootModule,
-		HttpContext httpContext,
-		object customDataParameter,
-		int timeoutMilliseconds)
-	{
-		// We want to pass the original, unencoded incoming URL data through to Node, so that
-		// server-side code has the same view of the URL as client-side code (on the client,
-		// location.pathname returns an unencoded string).
-		// The following logic handles special characters in URL paths in the same way that
-		// Node and client-side JS does. For example, the path "/a=b%20c" gets passed through
-		// unchanged (whereas other .NET APIs do change it - Path.Value will return it as
-		// "/a=b c" and Path.ToString() will return it as "/a%3db%20c")
-		var requestFeature = httpContext.Features.Get<IHttpRequestFeature>();
-		var unencodedPathAndQuery = requestFeature.RawTarget;
-
-		var request = httpContext.Request;
-		var unencodedAbsoluteUrl = $"{request.Scheme}://{request.Host}{unencodedPathAndQuery}";
-
-		return RenderToString(
-			applicationBasePath,
-			nodeServices,
-			applicationStoppingToken,
-			bootModule,
-			unencodedAbsoluteUrl,
-			unencodedPathAndQuery,
-			customDataParameter,
-			timeoutMilliseconds,
-			request.PathBase.ToString());
-	}
-
 	/// <summary>
 	/// Performs server-side prerendering by invoking code in Node.js.
 	/// </summary>
@@ -61,6 +26,14 @@ internal static class Prerenderer
 	/// <param name="customDataParameter">An optional JSON-serializable parameter to be supplied to the prerendering code.</param>
 	/// <param name="timeoutMilliseconds">The maximum duration to wait for prerendering to complete.</param>
 	/// <param name="requestPathBase">The PathBase for the currently-executing HTTP request.</param>
+	/// <param name="requestCancellationToken">
+	/// A token that cancels this single render - typically the request's abort token linked with
+	/// <paramref name="applicationStoppingToken"/>. Kept separate from
+	/// <paramref name="applicationStoppingToken"/> on purpose: that one governs the lifetime of the
+	/// process-wide temp file created by <see cref="GetNodeScriptFilename"/>, so a request-scoped
+	/// token passed there would delete the shared prerenderer script as soon as the first request
+	/// finished, breaking every render afterwards.
+	/// </param>
 	/// <returns></returns>
 	public static Task<RenderToStringResult> RenderToString(
 		string applicationBasePath,
@@ -71,9 +44,13 @@ internal static class Prerenderer
 		string requestPathAndQuery,
 		object customDataParameter,
 		int timeoutMilliseconds,
-		string requestPathBase)
+		string requestPathBase,
+		CancellationToken requestCancellationToken)
 	{
+		// Note the leading-token overload: the one without it invokes with CancellationToken.None,
+		// and because both end in "params object[] args" picking the wrong one compiles silently.
 		return nodeServices.InvokeExportAsync<RenderToStringResult>(
+			requestCancellationToken,
 			GetNodeScriptFilename(applicationStoppingToken),
 			"renderToString",
 			applicationBasePath,

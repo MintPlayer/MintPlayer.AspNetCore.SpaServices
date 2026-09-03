@@ -9,7 +9,10 @@ internal static class TaskTimeoutExtensions
     {
         if (task == await Task.WhenAny(task, Task.Delay(timeoutDelay)))
         {
-            task.Wait(); // Allow any errors to propagate
+            // await, not Wait(): Wait() wraps the fault in an AggregateException, which turned the
+            // Angular CLI's own diagnostics ("Ensure that 'npm' is installed... Current PATH is...")
+            // into "One or more errors occurred." by the time a caller or the error page saw it.
+            await task;
         }
         else
         {
@@ -21,7 +24,8 @@ internal static class TaskTimeoutExtensions
     {
         if (task == await Task.WhenAny(task, Task.Delay(timeoutDelay)))
         {
-            return task.Result;
+            // await, not .Result, for the same reason as the non-generic overload above.
+            return await task;
         }
         else
         {

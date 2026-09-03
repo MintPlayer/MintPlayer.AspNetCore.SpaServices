@@ -89,7 +89,11 @@ internal static class AngularCliMiddleware
 
 				if (openBrowserUrl == null)
 				{
-					throw new Exception("You assigned a custom value to SpaOptions.CliRegexes, but none of the regexes contains an \"openbrowser\" group.");
+					throw new InvalidOperationException(
+						"A custom set of Angular CLI regexes was supplied (through the cliRegexes " +
+						"parameter of UseAngularCliServer, or SpaOptions.CliRegexes), but none of them " +
+						"contains an \"openbrowser\" group. That group is what tells this middleware " +
+						"which URL the dev server is listening on.");
 				}
 			}
 			catch (EndOfStreamException ex)

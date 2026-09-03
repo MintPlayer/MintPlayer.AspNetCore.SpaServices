@@ -45,9 +45,24 @@ public static class SpaPrerenderingExtensions
 				$"property on the ${nameof(SpaPrerenderingOptions)}.");
 		}
 
-		//// If we're building on demand, start that process in the background now
-		//var buildOnDemandTask = options.BootModuleBuilder?.Build(spaBuilder);
-		var isBuildStarted = false;
+		// The server bundle is built once, on the first request that needs it, and every request
+		// awaits that same build.
+		//
+		// This used to be a bool set to true *before* awaiting the build, which meant a build that
+		// failed or timed out was never observed by anything except the first request: every later
+		// request skipped straight past it and prerendered against a bundle that was missing or
+		// half-written, reporting some downstream symptom instead of the build error. Sharing the
+		// task instead means all requests see the same outcome.
+		//
+		// Note this deliberately differs from AngularCliMiddleware, which gives each request its
+		// own timeout around a shared startup task so a later request can still succeed. A build
+		// that hangs or fails will not fix itself on retry, and retrying would spawn another npm
+		// process, so here a failure is final and is reported with the build's own output.
+		var bootModuleBuildTask = options.BootModuleBuilder == null
+			? null
+			: new Lazy<Task>(
+				() => options.BootModuleBuilder.Build(spaBuilder),
+				LazyThreadSafetyMode.ExecutionAndPublication);
 
 		// Get all the necessary context info that will be used for each prerendering call
 		var applicationBuilder = spaBuilder.ApplicationBuilder;
@@ -59,7 +74,7 @@ public static class SpaPrerenderingExtensions
 		var excludePathStrings = (options.ExcludeUrls ?? Array.Empty<string>())
 			.Select(url => new PathString(url))
 			.ToArray();
-		var buildTimeout = spaBuilder.Options.StartupTimeout;
+		var logger = Internals.LoggerFinder.GetOrCreateLogger(applicationBuilder, nameof(UseSpaPrerendering));
 
 		applicationBuilder.Use(async (context, next) =>
 		{
@@ -84,12 +99,14 @@ public static class SpaPrerenderingExtensions
 				}
 			}
 
-			if ((options.BootModuleBuilder != null) && !isBuildStarted)
+			if (bootModuleBuildTask != null)
 			{
-				isBuildStarted = true;
-				Console.WriteLine("Building server BootModule");
-				await options.BootModuleBuilder.Build(spaBuilder);
-				Console.WriteLine("Finished building server BootModule");
+				if (!bootModuleBuildTask.IsValueCreated)
+				{
+					logger.LogInformation("Building server BootModule");
+				}
+
+				await bootModuleBuildTask.Value;
 			}
 
 			// It's no good if we try to return a 304. We need to capture the actual
@@ -125,6 +142,34 @@ public static class SpaPrerenderingExtensions
 					}
 				}
 
+				// If the client has gone, there's no point prerendering for it. This is not just an
+				// optimisation: the middleware downstream of us swallows the cancellation (see
+				// StaticFileContext.SendAsync, which catches OperationCanceledException and only
+				// logs it), so from here an aborted request is indistinguishable from a successful
+				// one - 200, text/html, ContentLength set - except that the body was never written.
+				// Prerendering that empty template is what surfaces as Angular's NG05104.
+				//
+				// The buffer is copied out rather than dropped because the abort can also land
+				// *after* the body was fully captured, in which case it holds the complete page and
+				// discarding it would be pointless. When the buffer is empty the copy is free:
+				// MemoryStream.CopyToAsync returns immediately when there is nothing to read.
+				//
+				// No cancellation token is passed on purpose. MemoryStream.CopyToAsync checks the
+				// token up front and would return a cancelled task, so passing RequestAborted here
+				// would throw out of the middleware on every aborted request. Kestrel discards
+				// writes on an aborted connection instead of throwing, so the copy is safe as-is.
+				if (context.RequestAborted.IsCancellationRequested)
+				{
+					logger.LogDebug(
+						"Skipping prerendering of {Path}: the request was aborted. Captured {CapturedBytes} of {DeclaredBytes} declared bytes.",
+						context.Request.Path,
+						outputBuffer.Length,
+						context.Response.ContentLength);
+
+					await PassThroughAsync(context, outputBuffer);
+					return;
+				}
+
 				// If it isn't an HTML page that we can use as the template for prerendering,
 				//  - ... because it's not text/html
 				//  - ... or because it's an error
@@ -137,16 +182,33 @@ public static class SpaPrerenderingExtensions
 					//&& IsNotRedirect(context.Response.StatusCode);
 				if (!canPrerender)
 				{
-					await outputBuffer.CopyToAsync(context.Response.Body);
+					await PassThroughAsync(context, outputBuffer);
 					return;
 				}
 
 				// Most prerendering logic will want to know about the original, unprerendered
 				// HTML that the client would be getting otherwise. Typically this is used as
 				// a template from which the fully prerendered page can be generated.
+				var originalHtml = ReadCapturedHtml(outputBuffer);
+
+				// An empty template is never something the prerenderer can work with, and handing
+				// it to Node is what produces an unhelpful NG05104 instead of a diagnosable
+				// message. There is no known benign cause, so this is worth a warning.
+				if (string.IsNullOrWhiteSpace(originalHtml))
+				{
+					logger.LogWarning(
+						"Skipping prerendering of {Path}: the captured response was empty ({CapturedBytes} of {DeclaredBytes} declared bytes), so there is no template to prerender.",
+						context.Request.Path,
+						outputBuffer.Length,
+						context.Response.ContentLength);
+
+					await PassThroughAsync(context, outputBuffer);
+					return;
+				}
+
 				var customData = new Dictionary<string, object>
 				{
-					{ "originalHtml", Encoding.UTF8.GetString(outputBuffer.GetBuffer()) }
+					{ "originalHtml", originalHtml }
 				};
 
 				// If the developer wants to use custom logic to pass arbitrary data to the
@@ -157,12 +219,21 @@ public static class SpaPrerenderingExtensions
 					await spaPrerenderingService.OnSupplyData(context, customData);
 				}
 
-				// Don't do SSR when we have a redirect
-				if (!IsSuccessStatusCode(context.Response.StatusCode))
+				// Don't do SSR when we have a redirect. Note that a status code assigned from
+				// inside a Response.OnStarting callback is not visible yet, which is why
+				// SkipPrerendering() exists - see PrerenderingHttpContextExtensions.
+				if (!IsSuccessStatusCode(context.Response.StatusCode) || context.IsPrerenderingSkipped())
 				{
-					await outputBuffer.CopyToAsync(context.Response.Body);
+					await PassThroughAsync(context, outputBuffer);
 					return;
 				}
+
+				// Stop the render when either the client gives up or the host shuts down. Node is
+				// not told to stop - the RPC protocol has no way to say so - so this releases the
+				// request thread rather than reclaiming the render.
+				using var prerenderCts = CancellationTokenSource.CreateLinkedTokenSource(
+					context.RequestAborted,
+					applicationStoppingToken);
 
 				var (unencodedAbsoluteUrl, unencodedPathAndQuery) = GetUnencodedUrlAndPathQuery(context);
 				var renderResult = await Prerenderer.RenderToString(
@@ -174,7 +245,8 @@ public static class SpaPrerenderingExtensions
 					unencodedPathAndQuery,
 					customDataParameter: customData,
 					timeoutMilliseconds: options.TimeoutMilliseconds,
-					requestPathBase: context.Request.PathBase.ToString());
+					requestPathBase: context.Request.PathBase.ToString(),
+					requestCancellationToken: prerenderCts.Token);
 
 				await ServePrerenderResult(context, renderResult);
 			}
@@ -182,7 +254,72 @@ public static class SpaPrerenderingExtensions
 		return applicationBuilder;
 	}
 
-	private static bool IsHtmlContentType(string contentType)
+	/// <summary>
+	/// Writes the captured response through to the client unchanged, reconciling a declared
+	/// <see cref="HttpResponse.ContentLength"/> with what was actually captured.
+	/// </summary>
+	/// <remarks>
+	/// The reconciliation matters when the request's abort token is cancelled while the connection
+	/// is still alive - an application-level request timeout, or a linked token, rather than a real
+	/// client disconnect. Downstream sets `ContentLength` before writing the body, skips the write
+	/// on its own cancellation check, and Kestrel then fails the response with "Response
+	/// Content-Length mismatch: too few bytes written". On a genuine socket abort that check is
+	/// suppressed and this is unreachable, so it is cheap insurance rather than a hot path.
+	/// A length that is already absent is left absent: adding one to a chunked response would
+	/// change how the response is framed.
+	/// </remarks>
+	private static async Task PassThroughAsync(HttpContext context, MemoryStream outputBuffer)
+	{
+		if (context.Response.ContentLength.HasValue && context.Response.ContentLength != outputBuffer.Length)
+		{
+			context.Response.ContentLength = outputBuffer.Length;
+		}
+
+		await outputBuffer.CopyToAsync(context.Response.Body);
+	}
+
+	/// <summary>
+	/// Decodes the captured response body into the HTML template handed to the prerenderer.
+	/// </summary>
+	/// <remarks>
+	/// Reads through <see cref="MemoryStream.TryGetBuffer"/> rather than
+	/// <see cref="MemoryStream.GetBuffer"/>: the latter returns the whole internal array, whose
+	/// length is the stream's <c>Capacity</c>, so decoding it without bounds appended however many
+	/// bytes the stream had grown but never used - thousands of NUL characters on a response over
+	/// 16 KB. <c>TryGetBuffer</c> hands back offset *and* count, so there is no arithmetic here to
+	/// get wrong, and unlike <c>ToArray()</c> it does not copy the page on every request.
+	/// A UTF-8 byte order mark is skipped, because <see cref="Encoding.UTF8"/> decodes it into a
+	/// leading U+FEFF that would sit in front of the doctype.
+	/// UTF-8 is assumed rather than read from the response's charset: the write side of this
+	/// middleware is unconditionally UTF-8, so honouring a different charset on the read side alone
+	/// would turn visible mojibake into silently wrong bytes on the wire.
+	/// </remarks>
+	private static string ReadCapturedHtml(MemoryStream outputBuffer)
+	{
+		if (!outputBuffer.TryGetBuffer(out var buffer))
+		{
+			// Only reachable for a MemoryStream constructed to hide its buffer, which this
+			// middleware never does. Falling back to a copy is still better than returning
+			// nothing, which would look exactly like the empty-template defect.
+			var copy = outputBuffer.ToArray();
+			return DecodeSkippingBom(copy, 0, copy.Length);
+		}
+
+		return DecodeSkippingBom(buffer.Array!, buffer.Offset, buffer.Count);
+	}
+
+	private static string DecodeSkippingBom(byte[] bytes, int offset, int count)
+	{
+		if (count >= 3 && bytes[offset] == 0xEF && bytes[offset + 1] == 0xBB && bytes[offset + 2] == 0xBF)
+		{
+			offset += 3;
+			count -= 3;
+		}
+
+		return Encoding.UTF8.GetString(bytes, offset, count);
+	}
+
+	private static bool IsHtmlContentType(string? contentType)
 	{
 		// Media types are case-insensitive (RFC 9110 8.3.1), and optional whitespace is allowed
 		// before the ';' that starts the parameters. Comparing Ordinal against a lowercase literal

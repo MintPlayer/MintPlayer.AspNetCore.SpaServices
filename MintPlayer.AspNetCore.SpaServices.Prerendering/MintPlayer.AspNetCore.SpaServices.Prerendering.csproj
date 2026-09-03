@@ -10,12 +10,12 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices.Prerendering</PackageId>
-		<Version>10.6.0</Version>
+		<Version>10.7.0</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 
-		<Description>This package is built as a dependency of MintPlayer.AspNetCore.SpaServices.Routing.</Description>
+		<Description>Server-side prerendering for an ASP.NET Core single-page application. Runs your SPA's server bundle in Node.js, uses the page your pipeline would otherwise have served as the render template, and lets your ASP.NET Core code push request-scoped data into the render. Usually consumed through MintPlayer.AspNetCore.SpaServices.Routing.</Description>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices</PackageProjectUrl>
 		<PackageTags>ASP.NET Core, SPA prerendering</PackageTags>
