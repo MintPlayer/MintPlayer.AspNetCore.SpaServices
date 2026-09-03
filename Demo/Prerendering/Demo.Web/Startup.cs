@@ -29,7 +29,10 @@ public class Startup
 			})
 			.AddSpaStaticFilesImproved(configuration =>
 			{
-				configuration.RootPath = "ClientApp/dist";
+				// Angular 17+ splits its output into dist/browser and dist/server, so the browser
+				// assets - index.html above all - are one level below dist. Pointing at dist itself
+				// meant Production could not serve the default page at all.
+				configuration.RootPath = "ClientApp/dist/browser";
 			});
 
 		// Define the SPA-routes for our helper

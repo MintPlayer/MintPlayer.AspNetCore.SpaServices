@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
+using MintPlayer.AspNetCore.SpaServices.Prerendering;
 using MintPlayer.SourceGenerators.Attributes;
 
 namespace MintPlayer.AspNetCore.SpaServices.Routing;
@@ -110,6 +111,10 @@ internal partial class SpaRouteService : ISpaRouteService
 	{
 		var url = await GenerateUrl(routeName, parameters);
 
+		// The middleware decides whether to prerender before this callback runs, so it cannot
+		// see the status set below. Tell it explicitly, or the page is prerendered and thrown away.
+		context.SkipPrerendering();
+
 		context.Response.OnStarting(() =>
 		{
 			// permanent: true, because Response.Redirect defaults to 302 and would otherwise
@@ -122,6 +127,10 @@ internal partial class SpaRouteService : ISpaRouteService
 	public async Task Redirect<T>(HttpContext context, string routeName, T parameters)
 	{
 		var url = await GenerateUrl(routeName, parameters);
+
+		// The middleware decides whether to prerender before this callback runs, so it cannot
+		// see the status set below. Tell it explicitly, or the page is prerendered and thrown away.
+		context.SkipPrerendering();
 
 		context.Response.OnStarting(() =>
 		{

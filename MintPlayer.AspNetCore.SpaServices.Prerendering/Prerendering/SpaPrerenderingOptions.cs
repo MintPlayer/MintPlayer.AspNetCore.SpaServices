@@ -35,10 +35,15 @@ public class SpaPrerenderingOptions
 	public string NodePath { get; set; } = "node";
 
 	/// <summary>
-	/// DEV: Max number of milliseconds to wait before the server bundle is built.
+	/// Max number of milliseconds to wait for a single page to be prerendered by Node.
 	/// Defaults to "0" (30s).
 	/// "-1" means wait indefinitely.
 	/// </summary>
+	/// <remarks>
+	/// This is the render timeout, not a build timeout - it is passed through to the prerendering
+	/// JavaScript for one <c>renderToString</c> call. The time allowed for building the server
+	/// bundle is <see cref="Core.SpaOptions.StartupTimeout"/>.
+	/// </remarks>
 	public int TimeoutMilliseconds { get; set; } = 0;
 
 	/// <summary>
