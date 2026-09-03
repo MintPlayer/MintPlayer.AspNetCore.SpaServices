@@ -71,7 +71,9 @@ public class SpaOptions : Abstractions.ISpaOptions
 	public string? SourcePath { get; set; }
 
 	/// <summary>
-	/// Controls whether the development server should be used with a dynamic or fixed port.
+	/// The port the SPA development server should listen on. Leave it at the default of <c>0</c> to
+	/// have a free port chosen automatically on every start; set a fixed port to pin it, which is
+	/// passed to the CLI as <c>--port</c>.
 	/// </summary>
 	public int DevServerPort { get; set; }
 
@@ -105,5 +107,11 @@ public class SpaOptions : Abstractions.ISpaOptions
 	/// Gets or sets the regexes the middleware waits for while booting the dev server.
 	/// Extracts the <code>openbrowser</code> group from the match.
 	/// </summary>
+	/// <remarks>
+	/// Used only when <c>UseAngularCliServer</c> is called without its <c>cliRegexes</c> parameter;
+	/// an explicit argument there wins. At least one regex must contain an <c>openbrowser</c> group,
+	/// which is how the dev server's URL is discovered from its output. Not exposed on
+	/// <see cref="Abstractions.ISpaOptions"/>, so it has to be set on this concrete type.
+	/// </remarks>
 	public Regex[]? CliRegexes { get; set; }
 }

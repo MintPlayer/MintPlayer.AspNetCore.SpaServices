@@ -70,10 +70,39 @@ Deliverable for M5: add the request token parameter, link it in the middleware i
 notes must mention that `SpaPrerenderingExtensions.cs:168` can now throw `OperationCanceledException`
 where it previously always ran to completion.
 
-### M4 — Solution team
+### M3 — ✅ Complete
 
-A second team, launched only once M3 is red-on-`master`, decides the *correct* fix for each defect
-rather than defaulting to the reporter's patch. Questions it must answer, not just implement:
+`Tests/Prerendering/SpaPrerenderingMiddlewareTests.cs` (the renamed spike harness) and
+`AngularPrerendererBuildTimeoutTests.cs`. **12 tests fail without the fixes** — verified by
+reverting the decode, the abort check and the empty-template guard in turn, then restoring.
+
+### M4 — Solution team ✅ Complete
+
+Four decision records, one per concern, all in `docs/`:
+[`SOLUTION-defect1-decode.md`](./SOLUTION-defect1-decode.md),
+[`SOLUTION-defect2-abort.md`](./SOLUTION-defect2-abort.md),
+[`SOLUTION-workstream3-cancellation.md`](./SOLUTION-workstream3-cancellation.md),
+[`SOLUTION-build-timeout.md`](./SOLUTION-build-timeout.md).
+
+Notable places the team overruled this plan's provisional answers:
+
+- **Decode**: rejected *both* options listed below in favour of `TryGetBuffer`, which is
+  origin-safe *and* copy-free — the stream supplies offset and count, so there is no arithmetic to
+  get wrong. It also found that the reporter's `GetString(buf, 0, (int)Length)` is wrong a second
+  way on an offset stream: `Length` is already `_length - _origin`, so it reads the right count
+  from the wrong start.
+- **Guard**: rejected the `ContentLength`-vs-captured-bytes check as *control flow*. Collateral
+  finding #5 is why — `UseWebMarkupMin` inside `next()` legitimately shrinks the body, so any
+  response-transforming middleware is a false positive, and a false positive there silently
+  disables prerendering. `ContentLength` is used as log *data* instead.
+- **Workstream 3**: found the `applicationStoppingToken` / `StringAsTempFile` trap, so the request
+  token is an added parameter rather than a repurposed one.
+- **Build timeout**: chose `Task.WaitAsync(TimeSpan, CancellationToken)` over the `WithTimeout`
+  helper, because `WaitAsync` propagates the inner fault unwrapped and so keeps the
+  `EndOfStreamException` arm (and its npm output) alive, and separates timeout from shutdown by
+  exception type.
+
+The original questions, for the record:
 
 1. Decode strategy for Defect 1 — length-bounded `GetBuffer`, `ToArray`, `Span`, and whether to
    honour the response charset / strip a BOM instead of hard-coding UTF-8.
@@ -90,10 +119,44 @@ rather than defaulting to the reporter's patch. Questions it must answer, not ju
    signature grows a request token or its existing `applicationStoppingToken` parameter is replaced
    by a pre-linked one, and the G8 public-API call on the token-less `INodeServices` overloads.
 
-### M5 — Implement + verify
+### M5 — Implement + verify ✅ Complete
 
-Apply M4's decisions, then a single test sweep (`dotnet test -c Release`) at the end — not per
-milestone. Verify intermediate steps by reading code and building.
+Four commits on `bugfix/prerendering-aborted-requests`: @Reonekot's three cherry-picked commits
+(authorship preserved), the docs, the fixes, the tests. **319 tests pass.**
+
+Delivered, beyond the two reported defects:
+
+| Change | Where |
+|---|---|
+| `TryGetBuffer` decode + BOM skip | `SpaPrerenderingExtensions.ReadCapturedHtml` |
+| Abort early return, copy-then-return, no token on that copy | `SpaPrerenderingExtensions` |
+| Empty-template guard + Debug/Warning logging (the middleware had none — only two `Console.WriteLine`) | `SpaPrerenderingExtensions` |
+| `SkipPrerendering()` / `IsPrerenderingSkipped()` | `PrerenderingHttpContextExtensions` (new), called by both `SpaRouteService.Redirect` overloads |
+| Request token to the node RPC, as an **added** parameter | `Prerenderer.RenderToString` |
+| Bounded build wait via `Task.WaitAsync`, both diagnostics preserved | `AngularPrerendererBuilder.WaitForBuildToFinish` (extracted for testability) |
+| Shared `Lazy<Task>` build, replacing the bool latched before the await | `SpaPrerenderingExtensions` |
+| `WithTimeout` → `await task` (unwrapped faults) | `SpaServices/Utils/TaskTimeoutExtensions` |
+| Caller-cancel vs. timeout no longer conflated | `OutOfProcessNodeInstance` |
+| CTS disposal | `SpaProxy` |
+| `RootPath` → `ClientApp/dist/browser` | `Demo.Web/Startup.cs` |
+| XML docs: `TimeoutMilliseconds` (was described as a build timeout), token-less `INodeServices` overloads | Prerendering, NodeServices |
+| Dead code removed | `Prerenderer`'s `HttpContext` overload, duplicate `TaskTimeoutExtensions` + its 6 tests, the unused `buildTimeout` local |
+
+**Known verification gap:** the `OutOfProcessNodeInstance` caller-cancel-vs-timeout fix has **no
+test**. Its constructor launches a real node process, so the class has no seam. Reasoned from
+source, not proven by a test.
+
+### M5b — Documentation
+
+The six per-package READMEs exist and are tracked, but had drifted from the code: both the root
+README and the Prerendering README documented `options.SupplyData` and an `AngularCliBuilder` type,
+**neither of which exists** — so the primary documented example did not compile. Being rewritten as
+extensive user-end documentation per package, plus the new surface (`SkipPrerendering`, abort
+behaviour, cancellation semantics, logging categories, the build timeout).
+
+Constraint worth remembering: every package sets `<PackageReadmeFile>README.md</PackageReadmeFile>`
+and packs its own README, so **all links in them must be absolute** — relative links break on
+nuget.org.
 
 ### M6 — PR
 
@@ -113,9 +176,6 @@ superseded (ask before closing someone else's PR).
 
 ## Open decisions for the user
 
-- **Credit / mechanics for #78**: absorb the reporter's commits into our branch (preserving
-  authorship) vs. our own commits plus a `Co-Authored-By` vs. reviewing and merging #78 and adding
-  tests on top. Third option keeps their authorship cleanest but the PRD's guard work would then
-  need to ride along in the same PR anyway.
+- ~~**Credit / mechanics for #78**~~ — decided: absorb, see the decisions table above. Done.
 - **IIS**: PRD declares it out of scope. Confirm that is acceptable given the reporter runs
   production on it (unknown which).

@@ -427,9 +427,58 @@ The reporter's patch, plus the guard from G5:
 
 ## Success criteria
 
-- Two tests that fail on `master` and pass after the fix, one per defect.
-- Spike 5 documented with the actual observed error from the demo app, or a documented reason it
-  could not be provoked.
-- Every spike question answered in the table above, including the ones whose answer retires a claim
-  from the original report.
-- Coverage of `…SpaServices.Prerendering` goes up, not down (it is the weakest package at ~4%).
+| # | Criterion | Status |
+|---|---|---|
+| 1 | Tests that fail on `master` and pass after the fix, one per defect | ✅ **12 fail without the fixes**, verified by reverting the decode, the abort check and the empty-template guard in turn, then restoring. 319 tests pass on the branch. |
+| 2 | Spike 5 documented with the actual observed error, or why it could not be provoked | ✅ `RuntimeError: NG05104` at `DefaultDomRenderer2.selectRootElement`, quoted in the spike table, from a real Chromium abort at 5.5% in Production. |
+| 3 | Every spike question answered, including the ones that retire a claim from the report | ✅ All 8. Retired: "truncated content" via `GetBuffer` (unreachable — though reachable via the abort mid-copy, so the reporter saw a real thing and misattributed it), and `context.Abort()` in the static-files path (does not exist). |
+| 4 | Coverage of `…SpaServices.Prerendering` goes up, not down | ✅ **4.3% → 70.8% lines** (60.4% branches). Measured on the branch, Release, same `coverlet.runsettings` as CI. It was the weakest of the six packages and is now third. |
+
+### Measured coverage (branch, Release, 319 tests)
+
+Overall **60.1%** lines / **50.2%** branches, up from 21.0% / 16.2% at the baseline recorded in
+[PLAN-Code-Coverage.md](./PLAN-Code-Coverage.md).
+
+| Package | Lines | Branches | Baseline (lines) |
+|---|---|---|---|
+| `…SpaServices.Abstractions` | 100.0% | 100.0% | n/a (was interfaces only) |
+| `…SpaServices.Xsrf` | 100.0% | 100.0% | 100.0% |
+| `…SpaServices.Routing` | 87.6% | 90.0% | 86.9% |
+| `…SpaServices.Prerendering` | **70.8%** | 60.4% | **4.3%** |
+| `…SpaServices` | 56.7% | 52.5% | 16.8% |
+| `…NodeServices` | 37.1% | 28.4% | 15.2% |
+
+The Prerendering jump is the middleware request path becoming reachable in tests at all — the
+harness that made `UseSpaPrerendering` invocable without node is what unlocked it. NodeServices
+remains the lowest for the reason the coverage PRD already gives: most of what is left spawns or
+talks to a node process, which needs an injectable process seam rather than more tests. That is
+also exactly why the `OutOfProcessNodeInstance` fix on this branch is untested.
+
+## Verification
+
+Both directions, at two levels. The distinction matters: unit tests prove the logic, the demo app
+proves the defect a user actually hits.
+
+| Level | Bug present without the fix | Bug gone with the fix |
+|---|---|---|
+| **Unit** | ✅ 12 tests red when the decode / abort check / empty guard are reverted | ✅ All 319 green with them in place |
+| **Real app** (`Demo.Web`, Production, real Chromium `fetch` + `AbortController` × 200) | ✅ 11/200 (5.5%) → NG05104 → HTTP 500 on `master` | ⏳ Re-run against the branch in progress |
+
+The real-app re-run also covers the regression risk this branch carries: the build latch became a
+shared `Lazy<Task>` and the build wait became bounded, both on the path that produces the SSR
+bundle at all.
+
+## Documentation
+
+Found while updating the docs, and worth recording because it is a user-facing defect in its own
+right: the root README and the Prerendering README both documented **`options.SupplyData`** and an
+**`AngularCliBuilder`** type. Neither exists. The real API is `services.AddSpaPrerenderingService<T>()`
+with `ISpaPrerenderingService.OnSupplyData`, and the builder is `AngularPrerendererBuilder`. So the
+primary documented usage example did not compile, and the Angular-side example targets a very old
+Angular version.
+
+All six per-package READMEs are being rewritten as extensive user-end documentation, including the
+new surface: `SkipPrerendering()`, the abort pass-through, what cancellation does and does not do
+(it releases the .NET thread; node finishes the render regardless), the log categories and levels,
+and `StartupTimeout` as the build timeout versus `TimeoutMilliseconds` as the per-page render
+timeout.

@@ -28,12 +28,12 @@ public interface ISpaRouteService
 
 	/// <summary>Generates an url for a SPA route.</summary>
 	/// <param name="routeName">Name of the SPA route</param>
-	/// <param name="parameters">Dictionary containing a k
+	/// <param name="parameters">Dictionary containing a key-value mapping for the parameters</param>
 	Task<string> GenerateUrl(string routeName, Dictionary<string, object> parameters);
 
 	/// <summary>Generates an url for a SPA route.</summary>
 	/// <typeparam name="T">Some anonymous type.</typeparam>
-	/// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+	/// <param name="routeName">Name of the SPA route, as declared in <see cref="MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService.BuildRoutes(ISpaRouteBuilder)"/>.</param>
 	/// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
 	Task<string> GenerateUrl<T>(string routeName, T parameters);
 
@@ -45,7 +45,7 @@ public interface ISpaRouteService
 
 	/// <summary>Generates an url for a SPA route.</summary>
 	/// <typeparam name="T">Some anonymous type.</typeparam>
-	/// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+	/// <param name="routeName">Name of the SPA route, as declared in <see cref="MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService.BuildRoutes(ISpaRouteBuilder)"/>.</param>
 	/// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
 	/// <param name="httpContext">Current HTTP context</param>
 	Task<string> GenerateUrl<T>(string routeName, T parameters, HttpContext httpContext);
@@ -59,7 +59,7 @@ public interface ISpaRouteService
 
 	/// <summary>Generates an url for a SPA route.</summary>
 	/// <typeparam name="T">Some anonymous type.</typeparam>
-	/// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+	/// <param name="routeName">Name of the SPA route, as declared in <see cref="MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService.BuildRoutes(ISpaRouteBuilder)"/>.</param>
 	/// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
 	/// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
 	/// <param name="host">The host name for the URL</param>
@@ -75,7 +75,7 @@ public interface ISpaRouteService
 
 	/// <summary>Generates an url for a SPA route.</summary>
 	/// <typeparam name="T">Some anonymous type.</typeparam>
-	/// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+	/// <param name="routeName">Name of the SPA route, as declared in <see cref="MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService.BuildRoutes(ISpaRouteBuilder)"/>.</param>
 	/// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
 	/// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
 	/// <param name="host">The host name for the URL</param>
@@ -152,7 +152,7 @@ internal partial class SpaRouteService : ISpaRouteService
 
 	/// <summary>Generates an url for a SPA route.</summary>
 	/// <typeparam name="T">Some anonymous type.</typeparam>
-	/// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+	/// <param name="routeName">Name of the SPA route, as declared in <see cref="MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService.BuildRoutes(ISpaRouteBuilder)"/>.</param>
 	/// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
 	public async Task<string> GenerateUrl<T>(string routeName, T parameters)
 	{
@@ -173,7 +173,7 @@ internal partial class SpaRouteService : ISpaRouteService
 
 	/// <summary>Generates an url for a SPA route.</summary>
 	/// <typeparam name="T">Some anonymous type.</typeparam>
-	/// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+	/// <param name="routeName">Name of the SPA route, as declared in <see cref="MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService.BuildRoutes(ISpaRouteBuilder)"/>.</param>
 	/// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
 	/// <param name="httpContext">Current HTTP context</param>
 	public async Task<string> GenerateUrl<T>(string routeName, T parameters, HttpContext httpContext)
@@ -195,7 +195,7 @@ internal partial class SpaRouteService : ISpaRouteService
 
 	/// <summary>Generates an url for a SPA route.</summary>
 	/// <typeparam name="T">Some anonymous type.</typeparam>
-	/// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+	/// <param name="routeName">Name of the SPA route, as declared in <see cref="MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService.BuildRoutes(ISpaRouteBuilder)"/>.</param>
 	/// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
 	/// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
 	/// <param name="host">The host name for the URL</param>
@@ -219,7 +219,7 @@ internal partial class SpaRouteService : ISpaRouteService
 
 	/// <summary>Generates an url for a SPA route.</summary>
 	/// <typeparam name="T">Some anonymous type.</typeparam>
-	/// <param name="routeName">Name of the SPA route as defined in the AddSpaRoutes call.</param>
+	/// <param name="routeName">Name of the SPA route, as declared in <see cref="MintPlayer.AspNetCore.SpaServices.Prerendering.Services.ISpaPrerenderingService.BuildRoutes(ISpaRouteBuilder)"/>.</param>
 	/// <param name="parameters">Anonymous object containing the key-value mapping for the parameters of the SPA route.</param>
 	/// <param name="protocol">The protocol for the URL, such as "http" or "https"</param>
 	/// <param name="host">The host name for the URL</param>
