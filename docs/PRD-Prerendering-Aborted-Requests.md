@@ -429,7 +429,7 @@ The reporter's patch, plus the guard from G5:
 
 | # | Criterion | Status |
 |---|---|---|
-| 1 | Tests that fail on `master` and pass after the fix, one per defect | ✅ **12 fail without the fixes**, verified by reverting the decode, the abort check and the empty-template guard in turn, then restoring. 319 tests pass on the branch. |
+| 1 | Tests that fail on `master` and pass after the fix, one per defect | ✅ **12 fail without the fixes**, verified by reverting the decode, the abort check and the empty-template guard in turn, then restoring. 321 tests pass on the branch. |
 | 2 | Spike 5 documented with the actual observed error, or why it could not be provoked | ✅ `RuntimeError: NG05104` at `DefaultDomRenderer2.selectRootElement`, quoted in the spike table, from a real Chromium abort at 5.5% in Production. |
 | 3 | Every spike question answered, including the ones that retire a claim from the report | ✅ All 8. Retired: "truncated content" via `GetBuffer` (unreachable — though reachable via the abort mid-copy, so the reporter saw a real thing and misattributed it), and `context.Abort()` in the static-files path (does not exist). |
 | 4 | Coverage of `…SpaServices.Prerendering` goes up, not down | ✅ **4.3% → 70.8% lines** (60.4% branches). Measured on the branch, Release, same `coverlet.runsettings` as CI. It was the weakest of the six packages and is now third. |
@@ -461,12 +461,43 @@ proves the defect a user actually hits.
 
 | Level | Bug present without the fix | Bug gone with the fix |
 |---|---|---|
-| **Unit** | ✅ 12 tests red when the decode / abort check / empty guard are reverted | ✅ All 319 green with them in place |
-| **Real app** (`Demo.Web`, Production, real Chromium `fetch` + `AbortController` × 200) | ✅ 11/200 (5.5%) → NG05104 → HTTP 500 on `master` | ⏳ Re-run against the branch in progress |
+| **Unit** | ✅ 12 tests red when the decode / abort check / empty guard are reverted | ✅ All 321 green with them in place |
+| **Real app** (`Demo.Web`, Production, real Chromium `fetch` + `AbortController`) | ✅ **11/200 (5.5%)** → NG05104 → HTTP 500 on `master` | ✅ **0 of 400** across two bursts (200 fixed-delay + 200 randomised 1-300 ms). 0 NG05104, 0 5xx, 199 × HTTP 499 |
 
-The real-app re-run also covers the regression risk this branch carries: the build latch became a
-shared `Lazy<Task>` and the build wait became bounded, both on the path that produces the SSR
-bundle at all.
+The decisive number is not the zero on its own: **24 of those 400 requests took the abort
+short-circuit** with `Captured 0 of 547 declared bytes` — more would-be NG05104s than the 11 the
+original run produced — and every one of them finished as a clean 499 instead. One took the
+abort-after-copy path (`Captured 456 of 456`) and passed its complete page through, which is the
+case that justifies copy-then-return over a bare `return`.
+
+Also confirmed:
+
+- **No regression in the build path**, which was this branch's main risk (shared `Lazy<Task>` +
+  `Task.WaitAsync`). `Building server BootModule` logged **exactly once** per session; no rebuild on
+  later requests, no spurious timeout. SSR itself unchanged: `/person` → 200 with 25 KB of real
+  prerendered markup, ~115 ms warm.
+- **Production serves its default page with no manual fixup**, confirming the `RootPath` fix.
+- **The `Content-Length mismatch` cascade is gone** from all 400 real aborts.
+- **`GET /` no longer double-renders**: 301 → `/person` with a 456-byte pass-through template
+  containing a bare `<app-root></app-root>`, not a 24530-byte prerendered page. `SkipPrerendering()`
+  does its job.
+- Both new log lines fire, at the intended levels.
+
+### Follow-up found by the verification, and fixed
+
+The forced-token probe (`?__abortprobe=1`) still returned a 500 —
+`Response Content-Length mismatch: too few bytes written (0 of 547)` — where the real aborts did
+not. That difference is the finding: the probe cancels `RequestAborted` on a connection that is
+**still alive**, so Kestrel's mismatch check (which is `!_connectionAborted`-guarded, Spike 6) is
+not suppressed. Real socket aborts suppress it, which is why 24 identical code paths produced zero
+mismatches.
+
+That is not only a probe artifact — any application that hands the middleware a *synthetic*
+cancelled token on a live connection (a request-timeout feature, a linked token) would hit it. So
+the pass-through now reconciles a declared `ContentLength` with the bytes actually captured
+(`PassThroughAsync`), which defines the error out of existence rather than leaving it to be
+rediscovered. An absent `ContentLength` is deliberately left absent — adding one would re-frame a
+chunked response. Two tests cover both halves.
 
 ## Documentation
 

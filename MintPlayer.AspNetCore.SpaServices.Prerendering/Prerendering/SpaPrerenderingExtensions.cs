@@ -166,7 +166,7 @@ public static class SpaPrerenderingExtensions
 						outputBuffer.Length,
 						context.Response.ContentLength);
 
-					await outputBuffer.CopyToAsync(context.Response.Body);
+					await PassThroughAsync(context, outputBuffer);
 					return;
 				}
 
@@ -182,7 +182,7 @@ public static class SpaPrerenderingExtensions
 					//&& IsNotRedirect(context.Response.StatusCode);
 				if (!canPrerender)
 				{
-					await outputBuffer.CopyToAsync(context.Response.Body);
+					await PassThroughAsync(context, outputBuffer);
 					return;
 				}
 
@@ -202,7 +202,7 @@ public static class SpaPrerenderingExtensions
 						outputBuffer.Length,
 						context.Response.ContentLength);
 
-					await outputBuffer.CopyToAsync(context.Response.Body);
+					await PassThroughAsync(context, outputBuffer);
 					return;
 				}
 
@@ -224,7 +224,7 @@ public static class SpaPrerenderingExtensions
 				// SkipPrerendering() exists - see PrerenderingHttpContextExtensions.
 				if (!IsSuccessStatusCode(context.Response.StatusCode) || context.IsPrerenderingSkipped())
 				{
-					await outputBuffer.CopyToAsync(context.Response.Body);
+					await PassThroughAsync(context, outputBuffer);
 					return;
 				}
 
@@ -252,6 +252,30 @@ public static class SpaPrerenderingExtensions
 			}
 		});
 		return applicationBuilder;
+	}
+
+	/// <summary>
+	/// Writes the captured response through to the client unchanged, reconciling a declared
+	/// <see cref="HttpResponse.ContentLength"/> with what was actually captured.
+	/// </summary>
+	/// <remarks>
+	/// The reconciliation matters when the request's abort token is cancelled while the connection
+	/// is still alive - an application-level request timeout, or a linked token, rather than a real
+	/// client disconnect. Downstream sets `ContentLength` before writing the body, skips the write
+	/// on its own cancellation check, and Kestrel then fails the response with "Response
+	/// Content-Length mismatch: too few bytes written". On a genuine socket abort that check is
+	/// suppressed and this is unreachable, so it is cheap insurance rather than a hot path.
+	/// A length that is already absent is left absent: adding one to a chunked response would
+	/// change how the response is framed.
+	/// </remarks>
+	private static async Task PassThroughAsync(HttpContext context, MemoryStream outputBuffer)
+	{
+		if (context.Response.ContentLength.HasValue && context.Response.ContentLength != outputBuffer.Length)
+		{
+			context.Response.ContentLength = outputBuffer.Length;
+		}
+
+		await outputBuffer.CopyToAsync(context.Response.Body);
 	}
 
 	/// <summary>

@@ -439,6 +439,39 @@ public class AbortedRequestTests
     }
 
     [Fact]
+    public async Task Reconciles_a_declared_content_length_with_the_empty_body_it_passes_through()
+    {
+        // A request whose abort token is cancelled while the connection is still alive - an
+        // application-level request timeout, or a linked token, rather than a real disconnect -
+        // otherwise leaves ContentLength at what downstream declared while zero bytes were written,
+        // and Kestrel fails the response with "Response Content-Length mismatch: too few bytes
+        // written". On a genuine socket abort that check is suppressed, so this is unreachable
+        // there; it is reachable for a synthetic token.
+        var result = await PrerenderingHarness.Run(
+            PrerenderingHarness.AbortedStaticFile(declaredLength: 547),
+            configureContext: Aborted());
+
+        Assert.Equal(0, result.Context.Response.ContentLength);
+        Assert.Empty(result.ClientBody.ToArray());
+    }
+
+    [Fact]
+    public async Task Leaves_an_absent_content_length_absent()
+    {
+        // Adding a Content-Length to a response that did not declare one would change how it is
+        // framed, so a chunked pass-through must stay chunked.
+        var result = await PrerenderingHarness.Run(context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status200OK;
+            context.Response.ContentType = "text/html";
+            return Task.CompletedTask;
+        });
+
+        Assert.False(result.Service.WasCalled);
+        Assert.Null(result.Context.Response.ContentLength);
+    }
+
+    [Fact]
     public async Task Passes_through_a_body_that_was_fully_captured_before_the_abort()
     {
         // An abort can also land after the body was completely copied, in which case the buffer
