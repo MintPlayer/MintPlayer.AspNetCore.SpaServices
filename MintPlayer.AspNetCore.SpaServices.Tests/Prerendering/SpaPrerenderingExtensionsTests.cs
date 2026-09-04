@@ -49,7 +49,11 @@ internal static class PrerenderingTestContext
     public static DefaultHttpContext Create(string? rawTarget = null, MemoryStream? responseBody = null)
     {
         var features = new FeatureCollection();
-        features.Set<IHttpRequestFeature>(new HttpRequestFeature { RawTarget = rawTarget! });
+
+        // HttpRequestFeature.Method defaults to string.Empty, which is not GET - and the
+        // prerendering middleware only prerenders GET requests, so without this every test would
+        // short-circuit before reaching the code under test.
+        features.Set<IHttpRequestFeature>(new HttpRequestFeature { RawTarget = rawTarget!, Method = HttpMethods.Get });
         features.Set<IHttpResponseFeature>(new HttpResponseFeature());
 
         // A response body feature is always required: HttpResponse.Clear() reads Response.Body,
@@ -143,6 +147,10 @@ public class RemoveConditionalRequestHeadersTests
         headers[HeaderNames.IfNoneMatch] = "\"etag\"";
         headers[HeaderNames.IfUnmodifiedSince] = "Wed, 21 Oct 2015 07:28:00 GMT";
         headers[HeaderNames.IfRange] = "\"etag\"";
+
+        // Range goes with them: the capture has to be the whole document, and a Range request makes
+        // StaticFileMiddleware answer 206 with a slice of it (issue #80).
+        headers[HeaderNames.Range] = "bytes=0-0";
         headers[HeaderNames.Accept] = "text/html";
 
         SpaPrerenderingReflection.RemoveConditionalRequestHeaders(context.Request);
@@ -152,6 +160,7 @@ public class RemoveConditionalRequestHeadersTests
         Assert.False(headers.ContainsKey(HeaderNames.IfNoneMatch));
         Assert.False(headers.ContainsKey(HeaderNames.IfUnmodifiedSince));
         Assert.False(headers.ContainsKey(HeaderNames.IfRange));
+        Assert.False(headers.ContainsKey(HeaderNames.Range));
         Assert.Equal("text/html", headers[HeaderNames.Accept].ToString());
     }
 

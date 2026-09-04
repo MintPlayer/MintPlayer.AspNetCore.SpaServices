@@ -30,18 +30,32 @@ The pipeline order that makes this work is therefore:
 2. Inside its callback, `spa.UseSpaPrerendering(...)` is registered **before** `spa.UseAngularCliServer(...)` (development) — and, in production, before the SPA's default-page static file handler.
 3. Requests for URLs your MVC endpoints or static-file middleware already handle never reach the prerenderer.
 
-Before calling downstream, the middleware also strips the conditional-request headers (`If-Match`, `If-None-Match`, `If-Modified-Since`, `If-Unmodified-Since`, `If-Range`) and the `Accept-Encoding` header from the request, so the captured page is a full, uncompressed `200` body rather than a `304` or a gzip stream. `Accept-Encoding` is restored afterwards.
+Before calling downstream, the middleware strips the headers that would make the downstream answer with something other than the whole page: the conditional-request headers (`If-Match`, `If-None-Match`, `If-Modified-Since`, `If-Unmodified-Since`, `If-Range`), `Range`, and `Accept-Encoding`. Otherwise the capture could be a `304`, a `206` slice, or a gzip stream rather than a full `200` body.
+
+`Accept-Encoding` is restored after the capture, because upstream compression middleware reads it when the response starts. `Range` is not restored: nothing downstream of the capture reads it, and a prerendered body cannot satisfy a byte range in any case.
 
 A request is only prerendered when **all** of these hold:
 
+- the request method is `GET`;
 - its path does not start with any prefix in `ExcludeUrls`;
 - the client has not aborted the request;
-- the captured response status is `2xx`;
 - the captured `Content-Type` media type is `text/html` (matched case-insensitively, parameters such as `; charset=utf-8` ignored);
+- the captured response status is **exactly `200`**, and carries no `Content-Range` header;
+- the captured response is not content-encoded (no `Content-Encoding`, or `identity`);
+- if the response declared a `Content-Length`, that many bytes were actually captured;
+- the captured bytes are valid UTF-8, and the decoded template contains no NUL characters;
 - the captured body is not empty or whitespace;
 - `HttpContext.SkipPrerendering()` was not called for the request.
 
 Otherwise the captured bytes are copied through to the real response stream unchanged — so a JSON API response, a `404`, or a CSS file passes through untouched. Not being `text/html` is not an error; it is the normal path for static content in development.
+
+Everything after the content-type check is one requirement stated five ways: **the capture has to be the complete document.** Being `text/html` with a successful status does not establish that — a `Range: bytes=0-0` request makes the static-file middleware answer `206` with a single byte of `index.html`, which is `text/html` and 2xx and would otherwise have been used as the template. The middleware therefore strips `Range` from the request before capturing (alongside the conditional headers), and rejects a partial representation if one arrives anyway from a source it does not control, such as a dev-server proxy.
+
+### `GET` only
+
+Prerendering applies to `GET`. Other methods are passed straight through, before the server bundle is built, so a `POST` or `OPTIONS` to a SPA route does not wait for a build it has no use for.
+
+A `HEAD` is included in that: the static-file middleware answers a `HEAD` with the headers a `GET` would return and no body, so there is no template to render. Its `Content-Length` still reports the length of the document the equivalent `GET` would return, as it should.
 
 ## Basic setup
 
@@ -393,13 +407,14 @@ The same distinction applies at shutdown: a host that is stopping stops waiting 
 
 ## Logging
 
-The middleware logs under the category **`UseSpaPrerendering`**:
+The middleware logs under the category **`MintPlayer.AspNetCore.SpaServices.Prerendering.SpaPrerenderingExtensions`**, so it can be filtered by namespace like any other component.
 
 | Level | When |
 | --- | --- |
 | `Information` | Once, when the server boot module build starts (`"Building server BootModule"`). |
-| `Debug` | A request was skipped because the client aborted. Includes the request path, the number of bytes actually captured, and the `Content-Length` the downstream declared — the gap between the two is the diagnosis. |
-| `Warning` | A request was skipped because the captured template was empty or whitespace, so there was nothing to prerender. There is no known benign cause for this, so it is worth investigating. |
+| `Debug` | The request was not a `GET`, or its status carries no response body (`204`, `205`, `304`), or the client aborted. All three are benign, so none of them warns. The abort line includes the bytes actually captured against the `Content-Length` the downstream declared — the gap between the two is the diagnosis. |
+| `Warning` | The capture could not be used as a template: a partial representation (status other than `200`, or a `Content-Range` header — the line names the method, the status and the `Content-Range`), a `Content-Encoding` this middleware cannot undo, fewer bytes captured than declared, bytes that are not valid UTF-8, a decoded template containing NUL characters, or an empty template. Each of these means prerendering silently stopped happening for that request, which is why they are visible at default level. |
+| `Warning`, then `Debug` | The template has no `<html>` element. This is **not** a rejection — a fragment template is supported, and the render normally succeeds — but if prerendering is misbehaving it is the first thing to check. Warned once per pipeline and logged at `Debug` thereafter, so a deliberate fragment deployment does not warn on every request. Includes the first 200 characters of the template. |
 
 Your build script's own output is logged separately under the category **`AngularPrerendererBuilder`**.
 
@@ -411,7 +426,7 @@ To see the `Debug` messages, raise the level for that category in `appsettings.D
     "LogLevel": {
       "Default": "Information",
       "Microsoft.AspNetCore": "Warning",
-      "UseSpaPrerendering": "Debug",
+      "MintPlayer.AspNetCore.SpaServices.Prerendering": "Debug",
       "AngularPrerendererBuilder": "Debug"
     }
   }
@@ -425,10 +440,10 @@ To see the `Debug` messages, raise the level for that category in `appsettings.D
 Angular was handed an empty or missing document. Check, in order:
 
 1. Your `main.server.ts` passes `params.data.originalHtml` as the `document` option — not `''`, not a hand-written string, not an omitted option.
-2. The response captured from the downstream pipeline is not empty. If it is, a `Warning` under the `UseSpaPrerendering` category names the path and the captured-versus-declared byte counts; enable the logging above.
+2. The response captured from the downstream pipeline is not empty. If it is, a `Warning` under the `MintPlayer.AspNetCore.SpaServices.Prerendering` category names the path and the captured-versus-declared byte counts; enable the logging above.
 3. In production, `SpaStaticFilesOptions.RootPath` points at the folder that actually contains `index.html`. Angular 17+ splits its output, so the browser assets sit in `dist/browser`, not `dist` — pointing at `dist` means there is no default page to capture.
 
-An aborted request no longer produces this: it is skipped, with a `Debug` message.
+An aborted request no longer produces this: it is skipped, with a `Debug` message. Neither does a `Range` request, a `HEAD`, or a response in a non-UTF-8 charset - see the conditions list above.
 
 ### The first request hangs, or the build never finishes
 
@@ -445,9 +460,12 @@ If the build legitimately takes longer than two minutes, raise `spa.Options.Star
 
 The response comes back as the unrendered shell, and no error appears. Work through the conditions the middleware requires:
 
+- **Request method** — must be `GET`. A `HEAD`, `POST` or `OPTIONS` is passed straight through.
 - **`ExcludeUrls`** — is the request path under one of the excluded prefixes?
 - **Content type** — the captured `Content-Type` media type must be `text/html`. A downstream that answers with `application/octet-stream`, or with no `Content-Type` at all, is passed through. (Matching is case-insensitive and ignores parameters, so `TEXT/HTML` and `text/html ; charset=utf-8` both qualify.)
-- **Status code** — must be `2xx`. A `304`, a `404` or a redirect is passed through. Conditional-request headers are stripped precisely so a `304` is not what gets captured.
+- **Status code** — must be exactly `200`. A `304`, a `404`, a redirect or a `206 Partial Content` is passed through. Conditional-request headers and `Range` are stripped precisely so a `304` or a `206` is not what gets captured.
+- **Partial or encoded capture** — a response carrying `Content-Range`, a `Content-Encoding` other than `identity`, or fewer bytes than its own `Content-Length` declared, is skipped with a `Warning`. Each of these means the capture is not the whole document.
+- **Not valid UTF-8** — the template is decoded as UTF-8 regardless of the declared charset, so a response in another charset (`text/html; charset=utf-16`, say) is skipped with a `Warning`.
 - **Empty body** — an empty captured template is skipped with a `Warning`.
 - **`SkipPrerendering()`** — did your own code, or `ISpaRouteService.Redirect`, opt this request out?
 - **Pipeline order** — is `UseSpaPrerendering` registered before the middleware that serves the page (the CLI server in development, the static-file default page in production)? Registered after, it never sees a template.
@@ -456,6 +474,27 @@ The response comes back as the unrendered shell, and no error appears. Work thro
 ### A redirect returns a prerendered page body
 
 The redirect's status was assigned from a `Response.OnStarting` callback, which the middleware cannot see, so the page was prerendered and the render's output collided with the redirect. Call `HttpContext.SkipPrerendering()` alongside the redirect — or use `ISpaRouteService.Redirect`, which already does.
+
+### An error page gets prerendered instead of your app
+
+If `UseExceptionHandler`, `UseStatusCodePagesWithReExecute` or similar is registered **inside** the `UseSpaImproved` callback, it sits inside the capture — so when it handles a downstream failure, its error page becomes what this middleware captures and hands to the renderer. That page is a complete, well-formed `text/html` document, so it passes every check the middleware makes; the render then fails with `NG05104` because the page contains no application root element.
+
+Register error handling **outside** the SPA callback, near the top of `Configure`, as in the Basic setup above. If you need a template assertion that is specific to your app, the place for it is your own `OnSupplyData`:
+
+```csharp
+public Task OnSupplyData(HttpContext httpContext, IDictionary<string, object> data)
+{
+    var template = (string)data["originalHtml"];
+
+    // The middleware cannot check this: it does not know your root element's name.
+    if (!template.Contains("<my-app", StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException("The SSR template has no application root element.");
+    }
+
+    return Task.CompletedTask;
+}
+```
 
 ### `Globals is not supported when prerendering via UseSpaPrerendering()`
 

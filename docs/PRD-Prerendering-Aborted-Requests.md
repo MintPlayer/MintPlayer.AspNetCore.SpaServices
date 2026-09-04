@@ -49,10 +49,22 @@ Two things about this are worth stating up front, because they shape the whole i
 The padding decodes to **genuine `\0`, always, in this code path** — `new MemoryStream()` allocates
 a fresh CLR-zeroed array on each grow and copies only `_length` bytes forward. Stale non-zero bytes
 *are* reachable, but only by shrinking and re-writing the same stream instance
-(`SetLength(0)` + rewrite leaves the old tail readable); this middleware creates a fresh stream per
-request and never shrinks it, so "stale/garbage bytes" is **not** reachable here. The only
-hypothetical is a downstream component that resets and re-writes `Response.Body` — noted, not
-reproducible through the real pipeline.
+(`SetLength(0)` + rewrite leaves the old tail readable).
+
+> **Correction (issue #80 investigation).** This document originally concluded that the shrink was
+> "**not** reachable here", because the middleware creates a fresh stream per request and never
+> shrinks it. **That was wrong.** `ResponseExtensions.Clear()` does
+> `if (response.Body.CanSeek) response.Body.SetLength(0)`, our `MemoryStream` *is* seekable, and
+> setting `Response.Body` leaves `IHttpResponseFeature.HasStarted` untouched — so `Clear()` neither
+> throws nor no-ops, it shrinks our capture buffer. Both `ExceptionHandlerMiddlewareImpl` and
+> `DeveloperExceptionPageMiddlewareImpl` reach it, and either can be registered inside the SPA
+> callback. So a downstream `Clear()` is not hypothetical.
+>
+> The consequence is nil **only because** the decode moved from `GetBuffer()` to `TryGetBuffer`,
+> which bounds the read at `Count`. The original `GetBuffer()` decode *would* have appended the
+> stale non-zero tail of the discarded page — i.e. the reporter's "garbage bytes" wording described
+> a real reachable outcome, and the fix in this PR happens to close it. Recorded so the retired
+> claim is not re-inherited.
 
 That supports the severity read: NUL padding after `</html>` is reparented into `<body>` by normal
 HTML parsing and survives to the browser, which is why this went unnoticed for years. It is **not**
