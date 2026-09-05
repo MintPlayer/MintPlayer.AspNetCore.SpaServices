@@ -1,4 +1,4 @@
-v 10.8.0
+v 10.8.0-preview1
 FIXES
 - SpaRouteService.Redirect now assigns the redirect immediately instead of deferring it to a
   Response.OnStarting callback, and no longer calls SkipPrerendering(). Both existed only because the

@@ -261,8 +261,16 @@ Two test-quality defects found by the exercise and **fixed**:
 - [x] Demo updated to demonstrate the new idioms.
 - [x] `SOLUTION-prerender-status-contract.md`.
 - [x] Release notes — `RELEASE-NOTES.txt` for Prerendering (breaking changes, fixes, new options) and
-      Routing (the `Redirect` simplification). All six packages bumped 10.7.1 → **10.8.0** in
-      lockstep, per the repo's convention.
+      Routing (the `Redirect` simplification).
+- [x] Versions — **only the two packages this PR changes** move: Prerendering and Routing go
+      10.7.1 → **10.8.0-preview1**. NodeServices, SpaServices, Abstractions and Xsrf stay at 10.7.1.
+      This deliberately breaks the lockstep used for 10.7.0 and 10.7.1, on the grounds that a
+      prerelease should not drag four unchanged packages with it. It is safe in this direction
+      because the dependency chain is `Routing → Prerendering → SpaServices → {NodeServices,
+      Abstractions}`: the two prerelease packages sit at the top, so no stable package ends up
+      depending on a prerelease. Reversing it — previewing a package lower in the chain — would not
+      be. `-preview1` matches the house style (`MintPlayer.Pagination 7.0.0-preview1`), not
+      SemVer2 dotted form.
 - [ ] Reply on issue #81.
 - [ ] Open the PR.
 

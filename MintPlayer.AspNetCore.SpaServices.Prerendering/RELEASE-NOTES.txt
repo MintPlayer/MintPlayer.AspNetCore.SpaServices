@@ -1,4 +1,4 @@
-v 10.8.0
+v 10.8.0-preview1
 BREAKING CHANGES
 - Response headers set by middleware upstream of UseSpaPrerendering are no longer discarded.
   ServePrerenderResult used to call Response.Clear(), which emptied the entire response header
