@@ -251,7 +251,7 @@ Two test-quality defects found by the exercise and **fixed**:
 
 **Suite: 381 passing** (was 379).
 
-### M7 — Docs + PR ⬜ Remaining
+### M7 — Docs + PR ✅ Complete
 
 - [x] `SOLUTION-prerender-header-invalidation.md` — drop-set, options contract, `StaticFileMiddleware`
       source audit confirming the drop-set is a strict superset of the six headers it emits and that
@@ -271,8 +271,25 @@ Two test-quality defects found by the exercise and **fixed**:
       depending on a prerelease. Reversing it — previewing a package lower in the chain — would not
       be. `-preview1` matches the house style (`MintPlayer.Pagination 7.0.0-preview1`), not
       SemVer2 dotted form.
-- [ ] Reply on issue #81.
-- [ ] Open the PR.
+- [x] Reply on [issue #81](https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices/issues/81#issuecomment-5555089350)
+      — the mechanism, the Group A/B split, and why the allowlist @Reonekot proposed was not taken.
+- [x] [PR #83](https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices/pull/83) opened
+      against `master`, `Closes #81`.
+
+### Merge
+
+**Squash.** Not a judgement call: the repository allows no other method
+(`allow_merge_commit: false`, `allow_rebase_merge: false`, `allow_squash_merge: true`), which is why
+#82 and #79 each appear on `master` as a single commit. The four commits on this branch are one unit
+of work — fix, tests + redundancy review, docs + release notes, version scoping — and none is
+independently releasable, so nothing is lost.
+
+**The squash message must be written by hand.** GitHub's default concatenates all four commit
+messages into something incoherent. Use the first commit's message as the base, with the later
+commits folded in as short lines.
+
+CI at the point of writing: `build-any` pass, `pull-request` pass, GitGuardian pass, both
+`coverage/*` checks skipping (they do not run on a branch build).
 
 ## Risks
 

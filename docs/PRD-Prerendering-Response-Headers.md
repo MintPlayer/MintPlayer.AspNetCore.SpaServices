@@ -181,7 +181,7 @@ on (`Cookie`, `Authorization`, `Accept-Language`) lets a cache serve one variant
 1. **`StaticFileMiddleware` does not set `Cache-Control` at all by default.** It sets `Content-Type`,
    `Content-Length`, `ETag`, `Last-Modified` and `Accept-Ranges`; caching headers arrive only if the
    app configures `OnPrepareResponse` on `StaticFileOptions`. So the value present at the serve point
-   is normally the *upstream* one, not the static file's. (Spike 2 confirms against
+   is normally the *upstream* one, not the static file's. (Confirmed by the source audit in SOLUTION-prerender-header-invalidation.md §5, against
    `StaticFileContext.ApplyResponseHeaders` rather than taking this on trust.)
 2. **Dropping them contradicts this PRD's own success criteria.** Criterion 3 requires an upstream
    `no-store` to survive and criterion 14 requires the defaults alone to satisfy every criterion. A
@@ -314,7 +314,9 @@ Applied here, `ServePrerenderResult` becomes: **delete Group A, set what the new
 nothing else.** Group B then survives with no snapshot bookkeeping, no allowlist to maintain, no
 duplicate-header risk, and — importantly — no need for consumers to enumerate their own headers.
 
-Three candidate shapes, to be decided in the solution phase (Spike 1):
+Three candidate shapes were considered. **O3 was chosen** — see *Decisions taken* below; the drop-set
+and the options contract are settled in
+[SOLUTION-prerender-header-invalidation.md](./SOLUTION-prerender-header-invalidation.md).
 
 - **O1 — Targeted invalidation (recommended).** Replace `Clear()` with an explicit removal of the
   Group A set, then set status and `Content-Type` as today. Smallest diff; unknown headers default
@@ -351,17 +353,23 @@ Three candidate shapes, to be decided in the solution phase (Spike 1):
      it does not argue for a larger surface, because a consumer's own middleware is a perfectly good
      answer and is where response headers arguably belong anyway.
 
-  Sketch, exact naming to be settled in Spike 1:
+  As shipped:
 
   ```csharp
+  // The built-in drop-set, so consumers can see what they are adjusting.
+  public static IReadOnlyCollection<string> DefaultDroppedResponseHeaders { get; }
   // Kept even though the built-in set would drop them. Rejected at startup for framing headers.
-  public ICollection<string> PreserveResponseHeaders { get; }
+  public ISet<string> PreserveResponseHeaders { get; }
   // Dropped in addition to the built-in set.
-  public ICollection<string> DropResponseHeaders { get; }
+  public ISet<string> DropResponseHeaders { get; }
   ```
 
+  `ISet<string>` rather than `ICollection<string>`, get-only, over a
+  `HashSet<string>(StringComparer.OrdinalIgnoreCase)` — header names are case-insensitive per RFC 9110
+  §5.1, and a get-only set can never be null.
+
   The primary intended use of `PreserveResponseHeaders` is the `Cache-Control` / `Vary` / `Expires`
-  ambiguity in Spike 2 — an application that knows its caching policy is set upstream can say so,
+  ambiguity resolved in decision 4 — an application that knows its caching policy is set upstream can say so,
   which is exactly the reporter's situation and lets the default stay fail-safe-restrictive.
 
 Group A is a **closed, RFC-derived set** — representation metadata is enumerable in a way that
