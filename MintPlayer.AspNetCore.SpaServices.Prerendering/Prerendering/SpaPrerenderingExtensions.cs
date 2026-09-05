@@ -3,6 +3,7 @@
 
 using System.Text;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 using MintPlayer.AspNetCore.NodeServices;
 
@@ -74,7 +75,16 @@ public static class SpaPrerenderingExtensions
 		var excludePathStrings = (options.ExcludeUrls ?? Array.Empty<string>())
 			.Select(url => new PathString(url))
 			.ToArray();
-		var logger = Internals.LoggerFinder.GetOrCreateLogger(applicationBuilder, nameof(UseSpaPrerendering));
+		// The full type name, not "UseSpaPrerendering": a bare method name is not reachable through
+		// the conventional Logging:LogLevel:<namespace> configuration, so a consumer could not turn
+		// this middleware's Debug lines on without turning on everything.
+		var logger = Internals.LoggerFinder.GetOrCreateLogger(applicationBuilder, typeof(SpaPrerenderingExtensions).FullName!);
+
+		// Latches the first "template does not look like a whole document" warning. Scoped to this
+		// UseSpaPrerendering call rather than static, which is the right lifetime, and kept as an
+		// int for Interlocked. A fragment template is legitimate, so warning on every request would
+		// be the same mistake as warning on every HEAD.
+		var structureWarningIssued = 0;
 
 		applicationBuilder.Use(async (context, next) =>
 		{
@@ -97,6 +107,26 @@ public static class SpaPrerenderingExtensions
 					await next();
 					return;
 				}
+			}
+
+			// Prerendering only makes sense for GET. A HEAD carries no body to capture, so it used
+			// to reach the empty-template guard and log a warning for entirely healthy traffic;
+			// anything else either never reaches a template at all or would be prerendered into a
+			// response where a rendered page is meaningless.
+			//
+			// Placed before the build await on purpose: without that ordering a POST or an OPTIONS
+			// to a SPA route blocks on `ng build` before being turned away downstream. Placed after
+			// the exclude loop so the skip is not logged for static asset paths, and after
+			// Response.OnStarting so OnPrepareResponse still runs for every method.
+			if (!HttpMethods.IsGet(context.Request.Method))
+			{
+				logger.LogDebug(
+					"Skipping prerendering of {Path}: prerendering applies to GET requests, and this is a {Method}.",
+					context.Request.Path,
+					context.Request.Method);
+
+				await next();
+				return;
 			}
 
 			if (bootModuleBuildTask != null)
@@ -177,11 +207,95 @@ public static class SpaPrerenderingExtensions
 				// response as-is. Note that the non-text/html case is not an error: this is
 				// typically how the SPA dev server responses for static content are returned
 				// in development mode.
-				var canPrerender = IsSuccessStatusCode(context.Response.StatusCode)
-					&& IsHtmlContentType(context.Response.ContentType);
-					//&& IsNotRedirect(context.Response.StatusCode);
-				if (!canPrerender)
+				if (!IsHtmlContentType(context.Response.ContentType))
 				{
+					await PassThroughAsync(context, outputBuffer);
+					return;
+				}
+
+				// Beyond "is it HTML", the capture has to be the *whole* document. Being 2xx and
+				// text/html does not establish that, which is how a 206 range response - a
+				// one-byte slice of index.html - was accepted as a template.
+				//
+				// Note the status must be exactly 200 rather than any 2xx. That fails closed on
+				// statuses nobody has considered yet, where "2xx except the ones we know about"
+				// fails open. A 206 is rejected even when its range covers the entire file, because
+				// its Content-Range framing cannot survive a body we rewrite.
+				// A status that carries no body at all is a benign reason to have nothing to
+				// prerender, so it is reported at Debug. Warning is reserved for a response that
+				// was supposed to be a document and is not - otherwise this category teaches
+				// consumers to ignore it, which is the mistake the HEAD warning made.
+				if (!CanHaveResponseBody(context))
+				{
+					logger.LogDebug(
+						"Skipping prerendering of {Path}: status {StatusCode} carries no response body, so there is no template.",
+						context.Request.Path,
+						context.Response.StatusCode);
+
+					await PassThroughAsync(context, outputBuffer);
+					return;
+				}
+
+				if (context.Response.StatusCode != StatusCodes.Status200OK
+					|| context.Response.Headers.ContainsKey(HeaderNames.ContentRange))
+				{
+					logger.LogWarning(
+						"Skipping prerendering of {Path}: the captured response is a partial representation ({Method}, status {StatusCode}, Content-Range \"{ContentRange}\").",
+						context.Request.Path,
+						context.Request.Method,
+						context.Response.StatusCode,
+						context.Response.Headers[HeaderNames.ContentRange].ToString());
+
+					await PassThroughAsync(context, outputBuffer);
+					return;
+				}
+
+				// Accept-Encoding is stripped from the request above so that we capture plain text,
+				// but nothing verified the result. A capture that is still encoded would be decoded
+				// as UTF-8 and hand the prerenderer compressed bytes.
+				if (!IsIdentityContentEncoding(context.Response.Headers[HeaderNames.ContentEncoding]))
+				{
+					logger.LogWarning(
+						"Skipping prerendering of {Path}: the captured response is encoded as \"{ContentEncoding}\", which cannot be used as a template.",
+						context.Request.Path,
+						context.Response.Headers[HeaderNames.ContentEncoding].ToString());
+
+					await PassThroughAsync(context, outputBuffer);
+					return;
+				}
+
+				// A declared length that does not match what was actually written means the body
+				// was truncated or never flushed, whatever the status says. Only a short capture is
+				// rejected: a *longer* one cannot be a truncation, and a response-transforming
+				// middleware that legitimately shrinks the body (HTML minification, for instance)
+				// updates ContentLength as it goes - if it did not, every response on every route
+				// that this middleware never touches would already fail Kestrel's own
+				// Content-Length verification.
+				if (context.Response.ContentLength.HasValue && outputBuffer.Length < context.Response.ContentLength)
+				{
+					logger.LogWarning(
+						"Skipping prerendering of {Path}: only {CapturedBytes} of the {DeclaredBytes} declared bytes were captured, so the template is incomplete.",
+						context.Request.Path,
+						outputBuffer.Length,
+						context.Response.ContentLength);
+
+					await PassThroughAsync(context, outputBuffer);
+					return;
+				}
+
+				// Bytes that are not valid UTF-8 cannot be a template. Checked on the bytes rather
+				// than by inspecting the decoded string for U+FFFD, which cannot tell corrupt input
+				// apart from a template legitimately containing a replacement character, and rather
+				// than decoding with throwOnInvalidBytes, which would throw on the request path and
+				// leave nothing to log.
+				if (!IsValidUtf8(outputBuffer))
+				{
+					logger.LogWarning(
+						"Skipping prerendering of {Path}: the captured {CapturedBytes} bytes are not valid UTF-8 (Content-Type \"{ContentType}\"), so they cannot be a template.",
+						context.Request.Path,
+						outputBuffer.Length,
+						context.Response.ContentType);
+
 					await PassThroughAsync(context, outputBuffer);
 					return;
 				}
@@ -193,17 +307,66 @@ public static class SpaPrerenderingExtensions
 
 				// An empty template is never something the prerenderer can work with, and handing
 				// it to Node is what produces an unhelpful NG05104 instead of a diagnosable
-				// message. There is no known benign cause, so this is worth a warning.
+				// message. The one benign producer of an empty capture - a HEAD request, which
+				// carries headers but no body - is turned away before the capture is installed, so
+				// reaching this point on a GET means the body genuinely was never written. It also
+				// covers a chunked empty response, where the declared-length check above is silent.
 				if (string.IsNullOrWhiteSpace(originalHtml))
 				{
 					logger.LogWarning(
-						"Skipping prerendering of {Path}: the captured response was empty ({CapturedBytes} of {DeclaredBytes} declared bytes), so there is no template to prerender.",
+						"Skipping prerendering of {Path}: the captured response was empty ({Method}, status {StatusCode}, {CapturedBytes} of {DeclaredBytes} declared bytes), so there is no template to prerender.",
 						context.Request.Path,
+						context.Request.Method,
+						context.Response.StatusCode,
 						outputBuffer.Length,
 						context.Response.ContentLength);
 
 					await PassThroughAsync(context, outputBuffer);
 					return;
+				}
+
+				// A NUL cannot appear in a conforming HTML document - the HTML parser replaces it -
+				// so its presence means the bytes were not the text they claimed to be. The case
+				// this catches is a non-UTF-8 charset: UTF-16 markup is byte-wise valid UTF-8 for
+				// its ASCII half and decodes to "<\0!\0d\0...", which is neither empty nor
+				// whitespace and so passed every earlier check straight into NG05104.
+				if (originalHtml.Contains('\0'))
+				{
+					logger.LogWarning(
+						"Skipping prerendering of {Path}: the captured {CapturedBytes} bytes decoded to text containing NUL characters (Content-Type \"{ContentType}\"), which is not a usable template. Template begins: {TemplateHead}",
+						context.Request.Path,
+						outputBuffer.Length,
+						context.Response.ContentType,
+						DescribeTemplateHead(originalHtml));
+
+					await PassThroughAsync(context, outputBuffer);
+					return;
+				}
+
+				// Diagnostic only, never a rejection. A fragment template is a legitimate if
+				// unusual deployment - the renderer normalizes a bare "<app-root></app-root>" into
+				// a full document - so failing the request here would break a working application.
+				// Warned once and then only at Debug: a fragment deployment must not emit a warning
+				// per request forever, but a consumer whose template is silently wrong needs to see
+				// something at default level at least once.
+				//
+				// Only the opening <html tag is looked for, never a closing </html>. Those end tags
+				// are optional per the HTML standard *and* are removed by every mainstream HTML
+				// minifier, so requiring one warns about perfectly healthy documents - see the
+				// remarks on LooksLikeWholeDocument for the detail.
+				if (!LooksLikeWholeDocument(originalHtml))
+				{
+					const string structureMessage =
+						"The prerender template for {Path} has no <html> element ({TemplateLength} characters). This is supported, but if prerendering is failing it is the first thing to check. Template begins: {TemplateHead}";
+
+					if (Interlocked.Exchange(ref structureWarningIssued, 1) == 0)
+					{
+						logger.LogWarning(structureMessage, context.Request.Path, originalHtml.Length, DescribeTemplateHead(originalHtml));
+					}
+					else
+					{
+						logger.LogDebug(structureMessage, context.Request.Path, originalHtml.Length, DescribeTemplateHead(originalHtml));
+					}
 				}
 
 				var customData = new Dictionary<string, object>
@@ -270,13 +433,26 @@ public static class SpaPrerenderingExtensions
 	/// </remarks>
 	private static async Task PassThroughAsync(HttpContext context, MemoryStream outputBuffer)
 	{
-		if (context.Response.ContentLength.HasValue && context.Response.ContentLength != outputBuffer.Length)
+		// Only for a response that is allowed to carry a body. "Zero bytes written contradicts the
+		// declared length" is only true when a body was expected: a HEAD reports the length the
+		// equivalent GET would return and deliberately sends nothing, and 204/205/304 have no body
+		// by definition. Rewriting those to 0 discards correct metadata - which is exactly what
+		// this did to every HEAD.
+		if (CanHaveResponseBody(context)
+			&& context.Response.ContentLength.HasValue
+			&& context.Response.ContentLength != outputBuffer.Length)
 		{
 			context.Response.ContentLength = outputBuffer.Length;
 		}
 
 		await outputBuffer.CopyToAsync(context.Response.Body);
 	}
+
+	private static bool CanHaveResponseBody(HttpContext context)
+		=> !HttpMethods.IsHead(context.Request.Method)
+			&& context.Response.StatusCode is not (StatusCodes.Status204NoContent
+				or StatusCodes.Status205ResetContent
+				or StatusCodes.Status304NotModified);
 
 	/// <summary>
 	/// Decodes the captured response body into the HTML template handed to the prerenderer.
@@ -338,6 +514,89 @@ public static class SpaPrerenderingExtensions
 	private static bool IsSuccessStatusCode(int statusCode)
 		=> statusCode >= 200 && statusCode < 300;
 
+	/// <summary>
+	/// Whether the captured response was left unencoded, so that it can be decoded as text.
+	/// </summary>
+	/// <remarks>
+	/// An absent header is the normal case, since <c>Accept-Encoding</c> is stripped from the
+	/// request before the capture. An explicit <c>identity</c> is honoured; anything else is a
+	/// content coding this middleware cannot undo, and a multi-value header means at least one
+	/// coding was applied even if one of them is <c>identity</c>.
+	/// </remarks>
+	private static bool IsIdentityContentEncoding(StringValues contentEncoding)
+	{
+		if (contentEncoding.Count == 0)
+		{
+			return true;
+		}
+
+		if (contentEncoding.Count > 1)
+		{
+			return false;
+		}
+
+		var value = contentEncoding[0];
+
+		return string.IsNullOrEmpty(value)
+			|| string.Equals(value.Trim(), "identity", StringComparison.OrdinalIgnoreCase);
+	}
+
+	/// <summary>
+	/// Whether the captured bytes are valid UTF-8, checked without decoding them.
+	/// </summary>
+	private static bool IsValidUtf8(MemoryStream outputBuffer)
+	{
+		if (!outputBuffer.TryGetBuffer(out var buffer))
+		{
+			return System.Text.Unicode.Utf8.IsValid(outputBuffer.ToArray());
+		}
+
+		return System.Text.Unicode.Utf8.IsValid(buffer.AsSpan());
+	}
+
+	/// <summary>
+	/// Whether the template looks like a complete HTML document. A heuristic, used only to decide
+	/// whether to log - never to reject a template.
+	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// Only the opening tag is checked, deliberately. This originally required a closing
+	/// <c>&lt;/html&gt;</c> as well, which turned out to be a false positive on any template that had
+	/// been through an HTML minifier - it reported a perfectly healthy document, one that visibly
+	/// starts with <c>&lt;html lang=en&gt;</c>, as having no <c>&lt;html&gt;</c> element at all.
+	/// </para>
+	/// <para>
+	/// There are two independent reasons a valid document may have no <c>&lt;/html&gt;</c>. First,
+	/// the HTML Living Standard makes the end tags for <c>html</c> and <c>body</c> *omissible* - an
+	/// <c>html</c> end tag may be omitted when it is not immediately followed by a comment - so a
+	/// document ending at <c>&lt;/div&gt;</c> is not malformed, and the parser closes them
+	/// implicitly. Second, and this is what was actually observed, removing those optional end tags
+	/// is a standard minifier optimisation: WebMarkupMin has <c>RemoveOptionalEndTags</c> and
+	/// html-minifier-terser has <c>removeOptionalTags</c>, and a minifier registered *inside* the
+	/// SPA callback runs downstream of this capture. In the demo that turns a 547-byte
+	/// <c>index.html</c> ending in <c>&lt;/body&gt;&lt;/html&gt;</c> into a 456-character template
+	/// with neither.
+	/// </para>
+	/// <para>
+	/// The opening tag survives all of that: no build tool emits a document without one, and no
+	/// minifier strips it. It carries the whole signal on its own - a genuine fragment template
+	/// (<c>&lt;app-root&gt;&lt;/app-root&gt;</c>) has no <c>&lt;html</c> anywhere, and neither does a
+	/// mid-document byte range.
+	/// </para>
+	/// </remarks>
+	private static bool LooksLikeWholeDocument(string html)
+		=> html.Contains("<html", StringComparison.OrdinalIgnoreCase);
+
+	/// <summary>
+	/// The first 200 characters of a template, on a single line, for a log message.
+	/// </summary>
+	private static string DescribeTemplateHead(string html)
+	{
+		var head = html.Length <= 200 ? html : html[..200];
+
+		return head.ReplaceLineEndings(" ");
+	}
+
 	private static void RemoveConditionalRequestHeaders(HttpRequest request)
 	{
 		request.Headers.Remove(HeaderNames.IfMatch);
@@ -345,6 +604,20 @@ public static class SpaPrerenderingExtensions
 		request.Headers.Remove(HeaderNames.IfNoneMatch);
 		request.Headers.Remove(HeaderNames.IfUnmodifiedSince);
 		request.Headers.Remove(HeaderNames.IfRange);
+
+		// Range, for the same reason as the conditional headers above: we need the whole document
+		// to use as a template, and a Range request makes StaticFileMiddleware answer 206 with a
+		// slice of it. `Range: bytes=0-0` yielded a one-byte template - the "<" of "<!doctype html>".
+		//
+		// Removing If-Range while keeping Range was actively harmful, not merely incomplete:
+		// StaticFileContext.ComputeIfRange is the only code that can cancel an already-parsed
+		// range, so stripping If-Range guaranteed the range was always honoured.
+		//
+		// Unlike Accept-Encoding this is NOT restored afterwards. That restore is functionally
+		// required - it happens before ServePrerenderResult writes, and upstream compression
+		// middleware reads the header at first write - whereas nothing downstream of the capture
+		// reads Range. A prerendered body cannot satisfy a byte range in any case.
+		request.Headers.Remove(HeaderNames.Range);
 	}
 
 	private static string GetAndRemoveAcceptEncodingHeader(HttpRequest request)

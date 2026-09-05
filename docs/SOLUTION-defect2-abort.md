@@ -144,6 +144,22 @@ is the only mechanical way to spot case (b). It is still the wrong thing to bran
 
 `ContentLength` does earn its keep — as **data in a log message**, not as a branch. See §3.
 
+> **Reversed by the issue #80 investigation.** See
+> [`SOLUTION-range-template-gate.md`](./SOLUTION-range-template-gate.md) §3.1.1, which reinstates
+> this comparison as a rejection. The first argument above — the load-bearing one — does not hold:
+> a transforming middleware that left a stale `ContentLength` behind would fail Kestrel's own
+> Content-Length verification on **every** response, on every route this middleware never touches.
+> `UseWebMarkupMin` updates the length as it minifies, which is why the demo works at all. So a
+> mismatch means truncation or an unflushed writer, not transformation.
+>
+> The reinstated form is narrower than what was rejected here, and answers the other two objections
+> rather than overriding them: it fires **only** when a length is declared (so the chunked
+> dev-proxy shape is untouched, and the abort check remains its only cover), **only**
+> one-directionally (captured < declared, since a longer capture cannot be a truncation), and it
+> **logs at Warning** — the objection above was really about a *silent* false positive.
+> `Prerenders_a_response_a_transforming_middleware_shrank` is the regression guard: if that test
+> ever fails, this rejection was right and the reversal was wrong.
+
 **A minimal structural check (`contains "<html"`, `</body>`, …) — rejected.** It buys almost
 nothing: a template truncated mid-`<body>` still contains `<html`, so the check passes on the very
 case it was invented for, while a legitimate consumer supplying a fragment rather than a full
