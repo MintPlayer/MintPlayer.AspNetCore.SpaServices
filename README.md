@@ -129,6 +129,87 @@ public class MySpaPrerenderingService : ISpaPrerenderingService
 `dotnet run` is all you need in development — the SPA middleware starts the Angular CLI dev server
 itself. Do not run `ng serve` separately.
 
+## Response headers and status codes
+
+Prerendering replaces the captured `index.html` with the rendered page, so it removes the headers
+that described the template and **leaves every other header alone**:
+
+| Removed | Kept |
+|---|---|
+| `Content-Length`, `Content-Type`, `Content-Encoding`, `Content-Language`, `Content-Range`, `Content-Location`, `Content-MD5`, `Accept-Ranges`, `ETag`, `Last-Modified`, `Transfer-Encoding` | everything else |
+
+Nothing enumerates what is kept. A header survives because it is *not* in that list — which is how
+`Strict-Transport-Security`, `Content-Security-Policy`, `Set-Cookie` and your own `X-` headers get
+through, including headers this library has never heard of.
+
+> **`UseHsts()` works.** Register it at the top level, as usual. Earlier versions cleared the whole
+> response before writing the rendered page, which silently stripped the header from every rendered
+> navigation — the reason
+> [MintPlayer.AspNetCore.Hsts](https://github.com/MintPlayer/MintPlayer.AspNetCore.Tools/tree/master/Hsts)
+> exists. That package still works, but it is now an alternative rather than a requirement: do not
+> register both, or the header is written twice.
+
+Adjust the list in either direction:
+
+```csharp
+spa.UseSpaPrerendering(options =>
+{
+    // Keep a header that would otherwise be removed.
+    options.PreserveResponseHeaders.Add(HeaderNames.ETag);
+
+    // Remove one that would otherwise be kept.
+    options.DropResponseHeaders.Add("X-Internal-Trace");
+});
+```
+
+`SpaPrerenderingOptions.DefaultDroppedResponseHeaders` is the built-in list. `Content-Length`,
+`Transfer-Encoding` and `Content-Range` cannot be preserved — emitting the template's framing
+alongside a different body corrupts the response — and asking to preserve one throws at startup.
+
+> **Caching headers are kept by default.** `StaticFileMiddleware` sets none of its own, so a
+> `Cache-Control` present at render time is normally the one your middleware intended. If you set a
+> caching policy on `index.html` itself — through `DefaultPageStaticFileOptions`, say — add
+> `Cache-Control` to `DropResponseHeaders`, or that policy is applied to per-user rendered HTML and
+> shared caches may serve one user's page to everyone.
+
+### Status codes
+
+Assign the status in `OnSupplyData`, directly. It reaches the client, and the page is still
+rendered — so a 404 returns your rendered "not found" page *with* a 404:
+
+```csharp
+public async Task OnSupplyData(HttpContext httpContext, IDictionary<string, object> data)
+{
+    var person = await people.GetPerson(id);
+    if (person is null)
+    {
+        httpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    data["person"] = person;
+}
+```
+
+Earlier versions needed a `Response.OnStarting` callback here, plus a `SkipPrerendering()` call so
+the middleware could tell. Neither is needed now. That older pattern still works, so you can migrate
+at your own pace.
+
+Two things skip rendering and pass the response through: a **3xx carrying a `Location`**, and a
+status that cannot carry a body (**204**, **205**, **304**) — those emit no body at all.
+`SkipPrerendering()` remains for the one case a status cannot express: serving the unrendered shell
+on an ordinary 200, for crawler-only rendering or a kill switch.
+
+**The C# route table is authoritative for status codes**, so keep `BuildRoutes` in sync with your
+Angular router. A URL that matches no route in `BuildRoutes` renders the SPA with a 200 — invisible
+in a browser, wrong for crawlers. Angular can report a status of its own by returning
+`{ html, statusCode }` from the boot module; it sets none by default, and an explicit one wins.
+
+### Middleware ordering
+
+Register response-transforming middleware (`UseResponseCaching`, `UseHsts`, `UseWebMarkupMin`, your
+own security headers) **at the top level, before `UseSpaImproved`**.
+
 See the [Routing README](./MintPlayer.AspNetCore.SpaServices.Routing/README.md) for the Angular side
 (how these `data` keys reach `main.server.ts`, and the matching client-side providers), and the
 [Prerendering README](./MintPlayer.AspNetCore.SpaServices.Prerendering/README.md) for every option,

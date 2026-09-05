@@ -1,3 +1,12 @@
+v 10.8.0-preview1
+FIXES
+- SpaRouteService.Redirect now assigns the redirect immediately instead of deferring it to a
+  Response.OnStarting callback, and no longer calls SkipPrerendering(). Both existed only because the
+  prerendering middleware used to clear the response before writing, which would have discarded a
+  status assigned on the way through - and because a deferred status is invisible when the middleware
+  decides whether to prerender. The response is unchanged: still 301 with a Location header, still no
+  prerendered body. Requires MintPlayer.AspNetCore.SpaServices.Prerendering 10.8.0 or later.
+
 v 10.5.0
 BREAKING CHANGES
 - GenerateUrl now percent-encodes parameter values, and GetCurrentRoute now decodes them.

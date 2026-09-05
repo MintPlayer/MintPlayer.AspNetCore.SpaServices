@@ -69,6 +69,12 @@ internal static class PrerenderingHarness
         public CancellationToken ReceivedToken { get; private set; }
         public string Html { get; set; } = "<html><body>prerendered</body></html>";
 
+        /// <summary>Populates <c>RenderToStringResult.RedirectUrl</c>, exercising the redirect branch.</summary>
+        public string? RedirectUrl { get; set; }
+
+        /// <summary>Populates <c>RenderToStringResult.StatusCode</c>, which wins over any status the server assigned.</summary>
+        public int? StatusCode { get; set; }
+
         /// <summary>Runs inside the invocation, while the render token is still alive.</summary>
         public Action? OnInvoke { get; set; }
 
@@ -91,7 +97,12 @@ internal static class PrerenderingHarness
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            var result = new MintPlayer.AspNetCore.SpaServices.Prerendering.RenderToStringResult { Html = Html };
+            var result = new MintPlayer.AspNetCore.SpaServices.Prerendering.RenderToStringResult
+            {
+                Html = Html,
+                RedirectUrl = RedirectUrl,
+                StatusCode = StatusCode,
+            };
             return Task.FromResult((T)(object)result);
         }
 
@@ -134,6 +145,21 @@ internal static class PrerenderingHarness
         public IDictionary<string, object>? Data { get; private set; }
         public int StatusCodeToSet { get; set; } = StatusCodes.Status302Found;
 
+        /// <summary>
+        /// Runs after the status code is assigned, for tests that need OnSupplyData to do more than
+        /// set a status - add a Location header, say. This is the hook a real consumer uses, and
+        /// the whole point of issue #81 is that what it writes here has to survive.
+        /// </summary>
+        public Action<HttpContext>? Configure { get; set; }
+
+        /// <summary>
+        /// Written alongside a 3xx status, because the prerender gate treats a 3xx as a redirect
+        /// only when it carries a <c>Location</c> - a bare 3xx can legitimately have a rendered body
+        /// (300 Multiple Choices), and 304 is kept body-less by the can-this-carry-a-body rule
+        /// rather than by being called a redirect. Set to null to produce a locationless 3xx.
+        /// </summary>
+        public string? LocationToSet { get; set; } = "/redirected";
+
         public Task BuildRoutes(ISpaRouteBuilder routeBuilder) => Task.CompletedTask;
 
         public Task OnSupplyData(HttpContext httpContext, IDictionary<string, object> data)
@@ -142,6 +168,13 @@ internal static class PrerenderingHarness
             Data = data;
             OriginalHtml = data.TryGetValue("originalHtml", out var value) ? value as string : null;
             httpContext.Response.StatusCode = StatusCodeToSet;
+
+            if (LocationToSet != null && StatusCodeToSet is >= 300 and <= 399)
+            {
+                httpContext.Response.Headers.Location = LocationToSet;
+            }
+
+            Configure?.Invoke(httpContext);
             return Task.CompletedTask;
         }
     }
@@ -231,9 +264,18 @@ internal static class PrerenderingHarness
         HarnessApplicationLifetime? lifetime = null,
         Action<SpaPrerenderingOptions>? configureOptions = null,
         bool collectLogs = false,
-        int requestCount = 1)
+        int requestCount = 1,
+        Action<IServiceCollection>? configureServices = null,
+        Action<IApplicationBuilder>? configureUpstream = null,
+        Action<HttpContext>? onSupplyData = null,
+        string? locationFromOnSupplyData = "/redirected")
     {
-        var service = new RecordingPrerenderingService { StatusCodeToSet = statusCodeFromOnSupplyData };
+        var service = new RecordingPrerenderingService
+        {
+            StatusCodeToSet = statusCodeFromOnSupplyData,
+            Configure = onSupplyData,
+            LocationToSet = locationFromOnSupplyData,
+        };
 
         var services = new ServiceCollection();
         if (recordingNodeServices != null)
@@ -255,13 +297,22 @@ internal static class PrerenderingHarness
                 new LoggerFilterOptions { MinLevel = LogLevel.Trace }));
         }
 
-        var applicationServices = services
+        services
             .AddSingleton<IWebHostEnvironment>(new HarnessWebHostEnvironment())
-            .AddSingleton<IHostApplicationLifetime>(lifetime ?? new HarnessApplicationLifetime())
-            .BuildServiceProvider();
+            .AddSingleton<IHostApplicationLifetime>(lifetime ?? new HarnessApplicationLifetime());
+
+        // Lets a test register what a real upstream middleware needs - AddHsts() for UseHsts(),
+        // say. Runs last so it can override the harness defaults above.
+        configureServices?.Invoke(services);
+
+        var applicationServices = services.BuildServiceProvider();
 
         var applicationBuilder = new ApplicationBuilder(applicationServices);
         var spaBuilder = new HarnessSpaBuilder(applicationBuilder, new Core.SpaOptions());
+
+        // Registers middleware *upstream* of prerendering, which is where the headers this work is
+        // about get written. Must run before UseSpaPrerendering so the ordering matches a real app.
+        configureUpstream?.Invoke(applicationBuilder);
 
         // Registers the middleware under test, and resolves INodeServices / IHostApplicationLifetime /
         // IWebHostEnvironment / ILoggerFactory eagerly right here.
@@ -291,6 +342,13 @@ internal static class PrerenderingHarness
             configureContext?.Invoke(context);
 
             await pipeline(context);
+
+            // Stands in for the flush. Kestrel runs these at the first write; nothing after the
+            // prerendered body is written touches headers, so firing here is equivalent - and
+            // without it every OnStarting callback in the pipeline is silently dropped.
+            await ((PrerenderingTestContext.CallbackFiringResponseFeature)
+                context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpResponseFeature>()!)
+                .FireOnStartingAsync();
 
             result = new Result(service, context, clientBody, recordingNodeServices, logProvider.Entries);
         }
@@ -983,6 +1041,36 @@ public class RangeAndTemplateValidityTests
 
         Assert.False(result.Service.WasCalled);
         Assert.Equal(compressed, result.ClientBody.ToArray());
+    }
+
+    /// <summary>
+    /// The test above does not actually exercise the Content-Encoding gate: its payload contains
+    /// 0x00 and 0xf8/0xff, so the NUL and UTF-8 guards reject it first and the request never reaches
+    /// the encoding check. Deleting the gate leaves that test green.
+    /// </summary>
+    /// <remarks>
+    /// This one uses a body that is clean ASCII, so it passes every content-based check and can only
+    /// be turned away by the declared encoding. That distinction is the gate's whole value: it
+    /// rejects by declaration and is therefore deterministic, where the UTF-8 and NUL guards reject
+    /// by content and would let a short compressed stream through whenever its bytes happen to be
+    /// valid UTF-8.
+    /// </remarks>
+    [Fact]
+    public async Task Does_not_prerender_a_capture_that_declares_an_encoding_but_decodes_cleanly()
+    {
+        var body = Encoding.UTF8.GetBytes("<!doctype html><html><body>plain ascii, but declared as brotli</body></html>");
+
+        var result = await PrerenderingHarness.Run(async context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status200OK;
+            context.Response.ContentType = "text/html";
+            context.Response.Headers[HeaderNames.ContentEncoding] = "br";
+            context.Response.ContentLength = body.Length;
+            await context.Response.Body.WriteAsync(body);
+        });
+
+        Assert.False(result.Service.WasCalled);
+        Assert.Equal(body, result.ClientBody.ToArray());
     }
 
     [Theory]

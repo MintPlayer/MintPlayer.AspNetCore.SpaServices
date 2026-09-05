@@ -59,14 +59,20 @@ public class RedirectTests
     }
 
     [Fact]
-    public async Task Does_not_touch_the_response_until_it_starts()
+    public async Task Writes_the_redirect_immediately_rather_than_deferring_it()
     {
         var (context, _) = CreateContext();
         var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
 
         await service.Redirect(context, "person-show", new Dictionary<string, object> { ["personid"] = 5 });
 
-        Assert.False(context.Response.Headers.ContainsKey("Location"));
+        // This used to assert the opposite. The redirect was deferred to an OnStarting callback
+        // because ServePrerenderResult called Response.Clear() and would otherwise have discarded
+        // it - and because a deferred status is invisible to the prerender gate, Redirect also had
+        // to call SkipPrerendering(). Neither is needed now, so the redirect is assigned directly
+        // and the gate sees it straight away. See issue #81.
+        Assert.Equal("/person/5", context.Response.Headers.Location);
+        Assert.Equal(StatusCodes.Status301MovedPermanently, context.Response.StatusCode);
     }
 
     private static (DefaultHttpContext Context, RedirectFeatureCollection Features) CreateContext()

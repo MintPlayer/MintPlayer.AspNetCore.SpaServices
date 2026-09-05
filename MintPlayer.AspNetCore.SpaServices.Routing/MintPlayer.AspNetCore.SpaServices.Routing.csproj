@@ -10,7 +10,7 @@
 
 		<IsPackable>true</IsPackable>
 		<PackageId>MintPlayer.AspNetCore.SpaServices.Routing</PackageId>
-		<Version>10.7.1</Version>
+		<Version>10.8.0-preview1</Version>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<PackageReadmeFile>README.md</PackageReadmeFile>

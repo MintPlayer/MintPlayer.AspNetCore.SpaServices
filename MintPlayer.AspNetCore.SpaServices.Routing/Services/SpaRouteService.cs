@@ -111,34 +111,30 @@ internal partial class SpaRouteService : ISpaRouteService
 	{
 		var url = await GenerateUrl(routeName, parameters);
 
-		// The middleware decides whether to prerender before this callback runs, so it cannot
-		// see the status set below. Tell it explicitly, or the page is prerendered and thrown away.
-		context.SkipPrerendering();
-
-		context.Response.OnStarting(() =>
-		{
-			// permanent: true, because Response.Redirect defaults to 302 and would otherwise
-			// overwrite a status code assigned before this callback runs.
-			context.Response.Redirect(url, permanent: true);
-			return Task.CompletedTask;
-		});
+		// permanent: true - a route redirect is a canonicalisation (a slug corrected to its current
+		// form), so the new URL is the resource's real address and search engines should follow it
+		// permanently.
+		//
+		// This used to be wrapped in a Response.OnStarting callback and preceded by
+		// SkipPrerendering(), both because ServePrerenderResult called Response.Clear() and would
+		// have discarded a status assigned here. It no longer does, so the redirect is assigned
+		// directly and the prerender gate sees it immediately. See issue #81.
+		context.Response.Redirect(url, permanent: true);
 	}
 
 	public async Task Redirect<T>(HttpContext context, string routeName, T parameters)
 	{
 		var url = await GenerateUrl(routeName, parameters);
 
-		// The middleware decides whether to prerender before this callback runs, so it cannot
-		// see the status set below. Tell it explicitly, or the page is prerendered and thrown away.
-		context.SkipPrerendering();
-
-		context.Response.OnStarting(() =>
-		{
-			// permanent: true, because Response.Redirect defaults to 302 and would otherwise
-			// overwrite a status code assigned before this callback runs.
-			context.Response.Redirect(url, permanent: true);
-			return Task.CompletedTask;
-		});
+		// permanent: true - a route redirect is a canonicalisation (a slug corrected to its current
+		// form), so the new URL is the resource's real address and search engines should follow it
+		// permanently.
+		//
+		// This used to be wrapped in a Response.OnStarting callback and preceded by
+		// SkipPrerendering(), both because ServePrerenderResult called Response.Clear() and would
+		// have discarded a status assigned here. It no longer does, so the redirect is assigned
+		// directly and the prerender gate sees it immediately. See issue #81.
+		context.Response.Redirect(url, permanent: true);
 	}
 
 	/// <summary>Generates an url for a SPA route.</summary>

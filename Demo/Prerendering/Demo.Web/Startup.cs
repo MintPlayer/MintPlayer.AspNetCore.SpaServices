@@ -89,6 +89,15 @@ public class Startup
 			app.UseSpaStaticFilesImproved();
 		}
 
+		// Registered before UseSpaImproved, at the top level. Both of these used to be unusable
+		// there: UseHsts writes Strict-Transport-Security eagerly on the way in, and prerendering
+		// cleared the response before writing, so the header never reached the client on a rendered
+		// page. WebMarkupMin had to be registered inside the SPA callback for the same reason.
+		// See issue #81.
+		app.UseResponseCaching();
+		app.UseHsts();
+		app.UseWebMarkupMin();
+
 		app.UseRouting();
 
 		app.UseEndpoints(endpoints =>
@@ -106,21 +115,17 @@ public class Startup
 
 			spa.Options.SourcePath = "ClientApp";
 
-			//spa.ApplicationBuilder.UseResponseCaching().UseHsts();
 			spa.UseSpaPrerendering(options =>
 			{
 				options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.js";
 				options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder("build:ssr:development", @"Build at\:", 1) : null;
 				options.ExcludeUrls = ["/sockjs-node"];
 
-				options.OnPrepareResponse = (context) =>
-				{
-					context.Response.Headers["Whatever"] = "Oasis";
-					return Task.CompletedTask;
-				};
+				// A header set anywhere upstream now survives prerendering, so this no longer needs
+				// the OnPrepareResponse hook that used to exist purely to smuggle it past
+				// Response.Clear(). See DemoSpaPrerenderingService.OnSupplyData, which sets it the
+				// ordinary way.
 			});
-
-			app.UseWebMarkupMin();
 
 			if (env.IsDevelopment())
 			{

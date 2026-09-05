@@ -13,16 +13,27 @@ public static class PrerenderingHttpContextExtensions
 	/// </summary>
 	/// <remarks>
 	/// <para>
-	/// This exists because the prerendering middleware decides whether to prerender by looking at
-	/// <see cref="HttpResponse.StatusCode"/>, and a status code assigned from within a
-	/// <see cref="HttpResponse.OnStarting(Func{Task})"/> callback is not yet visible at that point —
-	/// the callback runs later, when the response actually starts. Code that defers its status that
-	/// way (a redirect, for example) therefore has to say so explicitly, or the request is
-	/// prerendered and the rendered body is thrown away.
+	/// This is the only way to say "serve the shell, do not render" for a response that is otherwise
+	/// an ordinary 200 — the status code cannot express it, because the status is 200 in every such
+	/// case. Typical uses are rendering only for crawlers and serving the unrendered shell to
+	/// everyone else, a per-route decision that a page is not worth prerendering, and a kill switch
+	/// for when the render backend is unhealthy.
 	/// </para>
 	/// <para>
-	/// Deferred status changes made by code that does not call this method remain undetectable to
-	/// the middleware; there is no general way to observe them in time.
+	/// It is <em>not</em> needed to return a non-200 status. A status assigned in
+	/// <c>ISpaPrerenderingService.OnSupplyData</c> is visible to the middleware and is honoured, so a
+	/// 404 is still prerendered and the rendered "not found" page is returned with its 404, and a
+	/// redirect skips the render on its own. That was not always true: the middleware used to clear
+	/// the response before writing, which forced callers to defer the status to a
+	/// <see cref="HttpResponse.OnStarting(Func{Task})"/> callback, and a deferred status is invisible
+	/// when the middleware decides whether to render — so they had to call this as well. See
+	/// <see href="https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices/issues/81">issue #81</see>.
+	/// </para>
+	/// <para>
+	/// That older pattern still works, and this method is still the way to declare a deferred status
+	/// change: a status assigned inside an <c>OnStarting</c> callback remains undetectable to the
+	/// middleware, because the callback has not run yet. Assigning it directly in
+	/// <c>OnSupplyData</c> is simpler and needs neither.
 	/// </para>
 	/// </remarks>
 	/// <param name="context">The current <see cref="HttpContext"/>.</param>
