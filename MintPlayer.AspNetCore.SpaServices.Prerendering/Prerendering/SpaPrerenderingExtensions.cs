@@ -349,6 +349,11 @@ public static class SpaPrerenderingExtensions
 				// Warned once and then only at Debug: a fragment deployment must not emit a warning
 				// per request forever, but a consumer whose template is silently wrong needs to see
 				// something at default level at least once.
+				//
+				// Only the opening <html tag is looked for, never a closing </html>. Those end tags
+				// are optional per the HTML standard *and* are removed by every mainstream HTML
+				// minifier, so requiring one warns about perfectly healthy documents - see the
+				// remarks on LooksLikeWholeDocument for the detail.
 				if (!LooksLikeWholeDocument(originalHtml))
 				{
 					const string structureMessage =
@@ -554,12 +559,30 @@ public static class SpaPrerenderingExtensions
 	/// whether to log - never to reject a template.
 	/// </summary>
 	/// <remarks>
-	/// Only the opening tag is required. Requiring a closing <c>&lt;/html&gt;</c> as well produced a
-	/// false positive on any template that had been through an HTML minifier: the end tags for
-	/// <c>html</c> and <c>body</c> are optional, so aggressive minification legitimately removes
-	/// them, and a perfectly good minified document was reported as having no <c>&lt;html&gt;</c>
-	/// element at all. The opening tag is not optional and is not stripped, so it carries the whole
-	/// signal on its own.
+	/// <para>
+	/// Only the opening tag is checked, deliberately. This originally required a closing
+	/// <c>&lt;/html&gt;</c> as well, which turned out to be a false positive on any template that had
+	/// been through an HTML minifier - it reported a perfectly healthy document, one that visibly
+	/// starts with <c>&lt;html lang=en&gt;</c>, as having no <c>&lt;html&gt;</c> element at all.
+	/// </para>
+	/// <para>
+	/// There are two independent reasons a valid document may have no <c>&lt;/html&gt;</c>. First,
+	/// the HTML Living Standard makes the end tags for <c>html</c> and <c>body</c> *omissible* - an
+	/// <c>html</c> end tag may be omitted when it is not immediately followed by a comment - so a
+	/// document ending at <c>&lt;/div&gt;</c> is not malformed, and the parser closes them
+	/// implicitly. Second, and this is what was actually observed, removing those optional end tags
+	/// is a standard minifier optimisation: WebMarkupMin has <c>RemoveOptionalEndTags</c> and
+	/// html-minifier-terser has <c>removeOptionalTags</c>, and a minifier registered *inside* the
+	/// SPA callback runs downstream of this capture. In the demo that turns a 547-byte
+	/// <c>index.html</c> ending in <c>&lt;/body&gt;&lt;/html&gt;</c> into a 456-character template
+	/// with neither.
+	/// </para>
+	/// <para>
+	/// The opening tag survives all of that: no build tool emits a document without one, and no
+	/// minifier strips it. It carries the whole signal on its own - a genuine fragment template
+	/// (<c>&lt;app-root&gt;&lt;/app-root&gt;</c>) has no <c>&lt;html</c> anywhere, and neither does a
+	/// mid-document byte range.
+	/// </para>
 	/// </remarks>
 	private static bool LooksLikeWholeDocument(string html)
 		=> html.Contains("<html", StringComparison.OrdinalIgnoreCase);
