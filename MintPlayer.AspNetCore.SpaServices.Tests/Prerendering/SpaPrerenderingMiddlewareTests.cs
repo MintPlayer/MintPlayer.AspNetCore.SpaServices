@@ -1043,6 +1043,36 @@ public class RangeAndTemplateValidityTests
         Assert.Equal(compressed, result.ClientBody.ToArray());
     }
 
+    /// <summary>
+    /// The test above does not actually exercise the Content-Encoding gate: its payload contains
+    /// 0x00 and 0xf8/0xff, so the NUL and UTF-8 guards reject it first and the request never reaches
+    /// the encoding check. Deleting the gate leaves that test green.
+    /// </summary>
+    /// <remarks>
+    /// This one uses a body that is clean ASCII, so it passes every content-based check and can only
+    /// be turned away by the declared encoding. That distinction is the gate's whole value: it
+    /// rejects by declaration and is therefore deterministic, where the UTF-8 and NUL guards reject
+    /// by content and would let a short compressed stream through whenever its bytes happen to be
+    /// valid UTF-8.
+    /// </remarks>
+    [Fact]
+    public async Task Does_not_prerender_a_capture_that_declares_an_encoding_but_decodes_cleanly()
+    {
+        var body = Encoding.UTF8.GetBytes("<!doctype html><html><body>plain ascii, but declared as brotli</body></html>");
+
+        var result = await PrerenderingHarness.Run(async context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status200OK;
+            context.Response.ContentType = "text/html";
+            context.Response.Headers[HeaderNames.ContentEncoding] = "br";
+            context.Response.ContentLength = body.Length;
+            await context.Response.Body.WriteAsync(body);
+        });
+
+        Assert.False(result.Service.WasCalled);
+        Assert.Equal(body, result.ClientBody.ToArray());
+    }
+
     [Theory]
     [InlineData("identity")]
     [InlineData("IDENTITY")]

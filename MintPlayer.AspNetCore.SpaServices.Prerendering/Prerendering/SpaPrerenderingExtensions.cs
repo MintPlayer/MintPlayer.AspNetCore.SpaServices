@@ -458,16 +458,6 @@ public static class SpaPrerenderingExtensions
 	}
 
 	/// <summary>
-	/// Whether the response is a redirect, and therefore has no body worth prerendering.
-	/// </summary>
-	/// <remarks>
-	/// A <c>Location</c> header is required, not just a 3xx status: 304 Not Modified carries no
-	/// <c>Location</c> and is not a redirect - it is handled by <see cref="CanHaveResponseBody"/>
-	/// instead, which is what keeps a body off it. Requiring <c>Location</c> also leaves the door
-	/// open for a rendered body on a 3xx that can legitimately carry one, such as 300 Multiple
-	/// Choices.
-	/// </remarks>
-	/// <summary>
 	/// Framing headers cannot be preserved across the body swap: emitting the captured template's
 	/// length or transfer coding alongside a different body corrupts how the response is framed,
 	/// which is a response-smuggling hazard rather than a matter of taste. Rejected at registration
@@ -516,6 +506,16 @@ public static class SpaPrerenderingExtensions
 		return effective;
 	}
 
+	/// <summary>
+	/// Whether the response is a redirect, and therefore has no body worth prerendering.
+	/// </summary>
+	/// <remarks>
+	/// A <c>Location</c> header is required, not just a 3xx status: 304 Not Modified carries no
+	/// <c>Location</c> and is not a redirect - it is handled by <see cref="CanHaveResponseBody"/>
+	/// instead, which is what keeps a body off it. Requiring <c>Location</c> also leaves the door
+	/// open for a rendered body on a 3xx that can legitimately carry one, such as 300 Multiple
+	/// Choices.
+	/// </remarks>
 	private static bool IsRedirect(HttpContext context)
 		=> context.Response.StatusCode is >= 300 and <= 399
 			&& !StringValues.IsNullOrEmpty(context.Response.Headers.Location);

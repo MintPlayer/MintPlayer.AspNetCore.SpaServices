@@ -226,6 +226,31 @@ and it works — and it is the better end state predicted in the PRD: the respon
 markup (`ng-server-context`, real person rows). So the **SSR output** is minified, not just the
 template as in the old inside-the-SPA-callback position.
 
+### M6b — Redundancy review of the recent PRs ✅ Complete
+
+Asked by @PieterjanDeClippel: are the changes from the last few days' PRs now obsolete, since they
+were made "more or less for the same reason"? Three agents — a catalogue of every behavioural change
+in #82/#79/#76, a map of every guard now in the middleware, and an **empirical removal test of all 15
+candidates** (delete one, rebuild, run the suite, restore).
+
+**Answer: no. Nothing is redundant.** Full findings and the per-guard table are in the PRD under
+*"Are the recent PRs' changes now obsolete?"*. The genuinely obsolete pieces — `SkipPrerendering()`
+in `SpaRouteService.Redirect`, `IsSuccessStatusCode`, `OnPrepareResponse`, and the unconditional
+buffer copy — were already removed by M5.
+
+Two test-quality defects found by the exercise and **fixed**:
+
+1. `Does_not_prerender_a_capture_with_a_content_encoding` did not exercise the `Content-Encoding`
+   gate — its payload was rejected two guards earlier by the NUL and UTF-8 checks. Added
+   `Does_not_prerender_a_capture_that_declares_an_encoding_but_decodes_cleanly`, an ASCII-clean body
+   declared `Content-Encoding: br`.
+2. Test case 29 (`HasStarted`) was planned in M4b and never written — the only guard in the whole
+   middleware that no test defended. Added
+   `Fails_with_a_named_error_when_the_response_has_already_started`, which needed a settable
+   `HasStarted` on the test response feature, since the framework stub hard-codes `false`.
+
+**Suite: 381 passing** (was 379).
+
 ### M7 — Docs + PR ⬜ Remaining
 
 - [x] `SOLUTION-prerender-header-invalidation.md` — drop-set, options contract, `StaticFileMiddleware`

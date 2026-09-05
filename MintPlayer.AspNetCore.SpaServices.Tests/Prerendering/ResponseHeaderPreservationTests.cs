@@ -477,6 +477,29 @@ public class ResponseHeaderPreservationTests
         Assert.Contains("X-Confused", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Believed unreachable in practice - the body swap keeps downstream writes in the buffer, and
+    /// <c>OnSupplyData</c> is awaited rather than fire-and-forget as it was in Microsoft's version,
+    /// which is where "the response has already started" used to come from. Pinned anyway, because
+    /// the failure it replaces was opaque: removing a header throws from the header collection and
+    /// assigning the status throws from its setter, neither of which mentions prerendering.
+    /// </summary>
+    [Fact]
+    public async Task Fails_with_a_named_error_when_the_response_has_already_started()
+    {
+        var context = PrerenderingTestContext.Create(responseBody: new MemoryStream());
+        ((PrerenderingTestContext.CallbackFiringResponseFeature)
+            context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpResponseFeature>()!).MarkStarted();
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => SpaPrerenderingReflection.ServePrerenderResult(
+                context,
+                new RenderToStringResult { Html = "<html></html>" }));
+
+        Assert.Contains("response has already started", exception.Message);
+        Assert.Contains("UseSpaPrerendering", exception.Message);
+    }
+
     /// <summary>The drop-set has to be discoverable, or consumers are adjusting something invisible.</summary>
     [Fact]
     public void Exposes_the_default_drop_set()

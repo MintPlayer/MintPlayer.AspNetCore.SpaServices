@@ -631,3 +631,97 @@ the PR.
 - **A general header-transformation API** (predicates, delegates, per-request hooks). Two collections
   plus the consumer's own middleware covers the need, and the deleted `OnPrepareResponse` is a
   cautionary example of a hook outliving its purpose.
+
+## Are the recent PRs' changes now obsolete? — investigated, answer: almost none
+
+@PieterjanDeClippel's hypothesis: the changes landing in the last few days were made "more or less
+for the same reason" as this work, so several could be reverted while keeping the tests green.
+Investigated with three agents — a catalogue of every behavioural change in the window, a map of
+every guard now in the middleware, and an **empirical removal test of all 15 candidates**.
+
+**The hypothesis is not borne out. Nothing is redundant.** Recorded here so it is not re-opened.
+
+### Scope correction
+
+Of the five numbers in the recent commit log, only three are pull requests: **#82** (2026-09-05),
+**#79** (2026-09-03) and **#76** (2026-08-27, just outside a four-day window). **#77 and #81 are
+issues**, and #77 was CI-only with zero production change.
+
+### What genuinely was obsolete — already removed by this work
+
+| Change | Origin | Status |
+|---|---|---|
+| `SkipPrerendering()` + `OnStarting` in `SpaRouteService.Redirect` | #79, added *because* `Redirect` deferred its status past `Clear()` | Removed |
+| `IsSuccessStatusCode` | #76, narrowed to exactly-200 by #82 | Deleted — superseded by the new gate |
+| `SpaPrerenderingOptions.OnPrepareResponse` | pre-existing; only real use was smuggling a header past `Clear()` | Deleted |
+| `PassThroughAsync`'s unconditional buffer copy | that era's code | Fixed (304 emitted a full body) |
+
+That is the whole set. Everything else in #79 and #82 concerns **the captured template being
+wrong** — `GetBuffer()`/`Capacity` NULs, BOM stripping, aborted captures, the `Range`/206 slice,
+UTF-8 validity, the HEAD regression, build timeouts. `Clear()` ran *after* all of it and had no
+bearing on any of it.
+
+### Empirical result
+
+Each guard was deleted on its own from a pristine tree, rebuilt, and the full suite run:
+
+| Guard | Tests broken by removal |
+|---|---|
+| `Range` strip | 3 |
+| `Content-Range` rejection | 1 |
+| exactly-200 status check | 4 |
+| empty/whitespace template | 2 |
+| captured-vs-declared `Content-Length` | 1 |
+| NUL guard | 1 |
+| `IsValidUtf8` | 1 |
+| `ContentType = "text/html"` | 3 |
+| `IsPrerenderingSkipped()` | 1 |
+| `!CanHaveResponseBody` in the gate | 2 |
+| `CanHaveResponseBody` on the buffer copy | 4 |
+| abort early return | 1 |
+| `IsRedirect` in the gate | 1 real (+25 harness artifacts, see below) |
+| `IsIdentityContentEncoding` | **0** — but see below |
+| `HasStarted` throw | **0** |
+
+Two guards survive removal with a green suite, and neither is safe to delete:
+
+- **`IsIdentityContentEncoding`** — its own regression test does not exercise it. The payload
+  `{0x1b, 0x2e, 0x00, 0xf8, …}` contains a NUL and invalid UTF-8, so the content-based guards reject
+  it first and the request never reaches the encoding check. The gate's real value is that it rejects
+  by **declaration** and is therefore deterministic, where the UTF-8 and NUL guards reject by
+  **content** and would pass a short compressed stream whose bytes happen to be valid UTF-8. **Fixed:
+  added `Does_not_prerender_a_capture_that_declares_an_encoding_but_decodes_cleanly`**, an ASCII-clean
+  body declared `Content-Encoding: br`, which can only be turned away by this gate.
+- **`HasStarted`** — the one guard no test and no observed incident defends, exactly as decision 7
+  predicted ("belt-and-braces over a root cause already fixed"). Kept: it costs one branch and
+  converts an opaque throw from the header collection or the `StatusCode` setter into one that names
+  prerendering. **Fixed: test case 29 was planned and never written; it now exists** as
+  `Fails_with_a_named_error_when_the_response_has_already_started`, which required giving the test
+  response feature a settable `HasStarted` (the framework stub hard-codes `false`, so a bare feature
+  collection could not represent a started response at all).
+
+### Two things the exercise revealed that were worth more than the answer
+
+1. **`Content-Encoding` had a regression test that tested something else.** See above. This is the
+   kind of defect only an adversarial removal finds — the test was green, named correctly, and
+   asserting on the right observable, but the request was being rejected two guards earlier.
+2. **The harness's bail-out default gives a misleading blast radius.** `statusCodeFromOnSupplyData`
+   defaults to 302 with a `Location`, so every test that does not override it takes the *redirect*
+   path. Deleting `IsRedirect` therefore reddens 25 unrelated tests that merely expected to bail out
+   before node, obscuring the single genuine assertion. Any shared sentinel has this property — the
+   alternative, defaulting to `SkipPrerendering()`, just moves the blast radius onto that gate — so
+   this is recorded rather than changed.
+
+### Why the overlapping-looking guards are not redundant
+
+The apparent duplication in the gauntlet is deliberate and already litigated:
+
+- #82 **reversed** #79's decision on the declared-vs-captured `Content-Length` check. #79 rejected it
+  on a `UseWebMarkupMin` premise that turned out not to hold; #82 reinstated it narrower.
+  `SOLUTION-defect2-abort.md` carries the correction box. **That guard has already been removed once
+  and had to come back.**
+- Each guard is documented as catching what the others miss: a partial template passes
+  `IsNullOrWhiteSpace`; a one-byte `<` passes the empty check; UTF-16 markup is byte-wise valid UTF-8
+  for its ASCII half and passes both the UTF-8 and empty checks.
+- Several changes in the window (#26, #29, #30, #31) are self-declared as having **no automated
+  test**, so a green suite after deleting one proves nothing about it.

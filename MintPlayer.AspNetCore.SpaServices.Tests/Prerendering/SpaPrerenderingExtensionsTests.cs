@@ -81,6 +81,18 @@ internal static class PrerenderingTestContext
         private readonly Stack<(Func<object, Task> Callback, object State)> _onStarting = new();
         private bool _fired;
 
+        /// <summary>
+        /// <see cref="HttpResponseFeature.HasStarted"/> is hard-coded to <c>false</c>, and neither
+        /// <c>Response.StartAsync()</c> nor a write through <see cref="StreamResponseBodyFeature"/>
+        /// flips it - so a bare feature collection cannot represent a started response at all. Call
+        /// <see cref="MarkStarted"/> to say the response has been flushed.
+        /// </summary>
+        public override bool HasStarted => _hasStarted;
+
+        private bool _hasStarted;
+
+        public void MarkStarted() => _hasStarted = true;
+
         public override void OnStarting(Func<object, Task> callback, object state)
             => _onStarting.Push((callback, state));
 
