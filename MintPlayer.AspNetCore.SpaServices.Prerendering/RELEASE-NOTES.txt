@@ -1,3 +1,50 @@
+v 10.8.0
+BREAKING CHANGES
+- Response headers set by middleware upstream of UseSpaPrerendering are no longer discarded.
+  ServePrerenderResult used to call Response.Clear(), which emptied the entire response header
+  dictionary, so Strict-Transport-Security from the framework's own UseHsts(), Content-Security-Policy,
+  Set-Cookie and any application header vanished from every prerendered page. Only the headers that
+  describe the captured template are removed now: Content-Length, Content-Type, Content-Encoding,
+  Content-Language, Content-Range, Content-Location, Content-MD5, Accept-Ranges, ETag, Last-Modified
+  and Transfer-Encoding. Everything else is preserved, including headers this library knows nothing
+  about. If you were restoring headers by hand after prerendering, stop - you will now be setting
+  them twice.
+- Caching headers are preserved. StaticFileMiddleware sets no Cache-Control of its own, so the value
+  present at render time is normally the one your middleware intended. If you set a caching policy on
+  index.html itself, through DefaultPageStaticFileOptions, add Cache-Control to DropResponseHeaders -
+  otherwise that policy is now applied to per-user server-rendered HTML and a shared cache may serve
+  one user's page to another.
+- The response status code is no longer reset to 200. A status assigned in
+  ISpaPrerenderingService.OnSupplyData now reaches the client, and the page is still prerendered, so a
+  404 returns your rendered "not found" page with its 404. This previously required assigning the
+  status from inside a Response.OnStarting callback plus a SkipPrerendering() call, which meant no
+  rendered page at all. That older pattern still works, so you can migrate at your own pace.
+- SpaPrerenderingOptions.OnPrepareResponse has been removed. Its only real use was setting a header
+  that Response.Clear() would otherwise have destroyed. Set headers in OnSupplyData, or in your own
+  middleware if you need them on every request including non-GET.
+- Prerendering is no longer skipped for a non-2xx status. It is skipped for a 3xx carrying a Location
+  header, for a status that cannot carry a body (204, 205, 304), and when SkipPrerendering() is
+  called. A 4xx or 5xx is prerendered and keeps its status.
+- 204, 205 and 304 responses no longer carry a body. PassThroughAsync copied the captured buffer
+  unconditionally, so a 304 emitted the whole of index.html as its body.
+
+FIXES
+- SkipPrerendering() is no longer needed to return a non-200 status, and its documentation has been
+  rewritten. It remains the way to express what a status code cannot: serve the unrendered shell on
+  an otherwise-200 response, for crawler-only rendering, a per-route opt-out, or a kill switch. It is
+  also still required to declare a status assigned from inside an OnStarting callback, which the
+  middleware cannot observe in time.
+- ServePrerenderResult now fails with an error naming prerendering when the response has already
+  started, instead of throwing from the response header collection or the StatusCode setter.
+
+NEW
+- SpaPrerenderingOptions.PreserveResponseHeaders and DropResponseHeaders adjust the set of removed
+  headers in either direction. SpaPrerenderingOptions.DefaultDroppedResponseHeaders exposes the
+  built-in list. Content-Length, Transfer-Encoding and Content-Range cannot be preserved - emitting
+  the captured template's framing alongside a different body corrupts the response - and asking to
+  preserve one throws when the middleware is registered, as does naming the same header in both
+  collections.
+
 ﻿v 10.6.0
 BREAKING CHANGES
 - Content types are now matched case-insensitively, with optional whitespace allowed before the ';'

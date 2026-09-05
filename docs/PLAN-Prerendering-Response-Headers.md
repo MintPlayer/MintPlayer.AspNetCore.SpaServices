@@ -259,12 +259,12 @@ Two test-quality defects found by the exercise and **fixed**:
 - [x] README — header contract, status contract, `UseHsts()` now works, caching-header risk,
       middleware ordering.
 - [x] Demo updated to demonstrate the new idioms.
-- [ ] `SOLUTION-prerender-status-contract.md` — the status/gate decisions are currently recorded in
-      the PRD only.
+- [x] `SOLUTION-prerender-status-contract.md`.
+- [x] Release notes — `RELEASE-NOTES.txt` for Prerendering (breaking changes, fixes, new options) and
+      Routing (the `Redirect` simplification). All six packages bumped 10.7.1 → **10.8.0** in
+      lockstep, per the repo's convention.
 - [ ] Reply on issue #81.
-- [ ] Release notes: `OnPrepareResponse` deleted; status codes preserved; body-less statuses no
-      longer emit a body; `SkipPrerendering()` re-scoped.
-- [ ] Commit and open the PR.
+- [ ] Open the PR.
 
 ## Risks
 
