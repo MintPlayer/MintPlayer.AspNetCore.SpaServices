@@ -1200,6 +1200,24 @@ public class RangeAndTemplateValidityTests
     }
 
     [Fact]
+    public async Task Does_not_warn_about_a_minified_template_whose_closing_tags_were_removed()
+    {
+        // The end tags for html and body are optional, so an HTML minifier legitimately strips
+        // them - and this check originally required a closing </html> as well, which reported a
+        // perfectly good minified document as having no <html> element at all. Observed in the demo,
+        // which runs UseWebMarkupMin inside the SPA callback and so downstream of the capture.
+        var minified = "<!DOCTYPE html><html lang=en><head><title>t</title></head><body><app-root></app-root>";
+
+        var result = await PrerenderingHarness.Run(
+            PrerenderingHarness.HtmlPage(minified),
+            collectLogs: true);
+
+        Assert.True(result.Service.WasCalled);
+        Assert.Equal(minified, result.Service.OriginalHtml);
+        Assert.DoesNotContain(result.Logs, e => e.Message.Contains("no <html> element", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Warns_once_about_a_fragment_template_and_then_stays_quiet()
     {
         // Two requests through the *same* pipeline. A fragment deployment must not emit a warning

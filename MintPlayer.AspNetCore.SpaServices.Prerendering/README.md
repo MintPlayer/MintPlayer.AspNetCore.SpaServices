@@ -51,6 +51,8 @@ Otherwise the captured bytes are copied through to the real response stream unch
 
 Everything after the content-type check is one requirement stated five ways: **the capture has to be the complete document.** Being `text/html` with a successful status does not establish that — a `Range: bytes=0-0` request makes the static-file middleware answer `206` with a single byte of `index.html`, which is `text/html` and 2xx and would otherwise have been used as the template. The middleware therefore strips `Range` from the request before capturing (alongside the conditional headers), and rejects a partial representation if one arrives anyway from a source it does not control, such as a dev-server proxy.
 
+One consequence worth knowing: because the header is removed before the downstream sees it, a `Range` request is answered with the whole prerendered page rather than a slice, and an *unsatisfiable* range no longer produces a `416` either. A server is permitted to ignore `Range`, and a prerendered body — generated per request — has no stable byte range to serve.
+
 ### `GET` only
 
 Prerendering applies to `GET`. Other methods are passed straight through, before the server bundle is built, so a `POST` or `OPTIONS` to a SPA route does not wait for a build it has no use for.
@@ -414,7 +416,7 @@ The middleware logs under the category **`MintPlayer.AspNetCore.SpaServices.Prer
 | `Information` | Once, when the server boot module build starts (`"Building server BootModule"`). |
 | `Debug` | The request was not a `GET`, or its status carries no response body (`204`, `205`, `304`), or the client aborted. All three are benign, so none of them warns. The abort line includes the bytes actually captured against the `Content-Length` the downstream declared — the gap between the two is the diagnosis. |
 | `Warning` | The capture could not be used as a template: a partial representation (status other than `200`, or a `Content-Range` header — the line names the method, the status and the `Content-Range`), a `Content-Encoding` this middleware cannot undo, fewer bytes captured than declared, bytes that are not valid UTF-8, a decoded template containing NUL characters, or an empty template. Each of these means prerendering silently stopped happening for that request, which is why they are visible at default level. |
-| `Warning`, then `Debug` | The template has no `<html>` element. This is **not** a rejection — a fragment template is supported, and the render normally succeeds — but if prerendering is misbehaving it is the first thing to check. Warned once per pipeline and logged at `Debug` thereafter, so a deliberate fragment deployment does not warn on every request. Includes the first 200 characters of the template. |
+| `Warning`, then `Debug` | The template has no `<html>` opening tag. This is **not** a rejection — a fragment template is supported, and the render normally succeeds — but if prerendering is misbehaving it is the first thing to check. Warned once per pipeline and logged at `Debug` thereafter, so a deliberate fragment deployment does not warn on every request. Includes the first 200 characters of the template. |
 
 Your build script's own output is logged separately under the category **`AngularPrerendererBuilder`**.
 

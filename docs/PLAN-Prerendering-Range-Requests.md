@@ -26,10 +26,16 @@ throwaway test (expected 547, actual 0), then removed. See the PRD.
 
 This document and the PRD.
 
-### M3 — Reproduction tests (G1)
+### M3 — Reproduction tests (G1) ✅ Complete
 
-`Tests/Prerendering/RangeReproTests.cs` currently holds 7 scratch cases from M1. Turn them into a
-committed suite that **fails on the current branch**:
+Delivered as `RangeAndTemplateValidityTests` (21 methods / 24 cases) and `RequestMethodGateTests`
+(8 methods / 10 cases) in `Tests/Prerendering/SpaPrerenderingMiddlewareTests.cs`. The scratch
+`RangeReproTests.cs` is deleted; five of its seven cases live on with inverted assertions.
+
+**Red-before-fix verified**, not assumed: reverting the `Range` strip, the GET gate, the framing
+checks and the bodyless narrowing turns **25 tests red**; restoring them gives 362 green.
+
+The original spec, for the record:
 
 - `bytes=0-0` → the reported one-byte `<`.
 - `bytes=0-99` → **the load-bearing case.** The slice *starts with* `<!doctype html><html lang="en">`,
@@ -45,10 +51,30 @@ committed suite that **fails on the current branch**:
 Assert on the template that reaches `OnSupplyData`, using the existing node-free
 `PrerenderingHarness`.
 
-### M4 — Solution team
+### M4 — Solution team ✅ Complete
 
-A team decides the fix rather than defaulting to "strip the header". The PRD lists five candidates;
-the questions that actually need answering:
+Two decision records: [`SOLUTION-range-template-gate.md`](./SOLUTION-range-template-gate.md) and
+[`SOLUTION-head-and-method-gate.md`](./SOLUTION-head-and-method-gate.md).
+
+Decisions taken, against the questions below:
+
+1. **Both** — strip `Range` *and* narrow the gate, because the dev proxy can forward a 206 from a
+   producer our header surgery never reaches. `Range` is deliberately **not** restored afterwards,
+   unlike `Accept-Encoding`, and the reason is in a code comment so it does not get "fixed".
+2. **Status exactly 200, plus a `Content-Range` rejection.** 200-exactly fails *closed* on statuses
+   nobody has considered; "2xx minus the known bad" fails *open* on a 206 whose proxy dropped the
+   header.
+3. **F1-F4 in; decode reframed; structural as warning only; no root guessing.** The declared-vs-captured
+   comparison (F4) **reverses** `SOLUTION-defect2-abort.md` §2 — a correction box now records that
+   there. Decode integrity became `Utf8.IsValid` on the bytes plus a U+0000 check, which is neither
+   of the two options the PRD offered and avoids both of their defects.
+4. **GET only**, gated *before* the build await so a POST no longer blocks on `ng build`.
+5. **Both** — the gate removes the HEAD cause, and the reconciliation is still narrowed for
+   204/205/304, which the gate cannot reach.
+6. Five new Warning lines, one message template per cause, plus the log category changed to the full
+   type name so it is filterable by namespace.
+
+The original questions, for the record:
 
 1. Strip `Range`, narrow the status check, or both? (Defence in depth matters here because the dev
    proxy can forward a 206 from a third-party dev server that our header surgery never touches.)
@@ -67,9 +93,27 @@ the questions that actually need answering:
 
 ### M5 — Implement + verify
 
-Apply M4's decisions, then one test sweep at the end. Re-run the PRD's `Range` matrix end to end
-against `Demo.Web` in Production, and re-run the previous PRD's 400-abort burst to confirm no
-regression there.
+**Implementation ✅.** All of M4's decisions are in
+`SpaPrerenderingExtensions.cs`, plus the `PrerenderingTestContext.Create` default that the GET gate
+required (`HttpRequestFeature.Method` initialises to `string.Empty`, which would otherwise have
+short-circuited every existing test). 362 tests pass; the full solution builds clean.
+
+One defect in the first implementation, caught by the test author rather than by me: a benign
+`204`/`205`/`304` GET was being logged at Warning as "a partial representation" with an empty
+`Content-Range`. Now routed through `CanHaveResponseBody` to a Debug line, with
+`Reports_a_bodyless_status_at_debug_rather_than_warning` pinning it. Also added
+`Does_not_prerender_any_other_success_status` for 201/202/203/226, which the spec's reflection-based
+theory would have covered had the framing checks been factored as a private static — they are inline,
+so the coverage moved to a middleware-level `[Theory]` instead.
+
+**End-to-end verification ✅ Complete.** Results in the PRD. Every `Range` variant now returns a
+fully prerendered 200; `curl -I` reports `Content-Length: 547` where 10.7.0 reported `0`; the
+200-request abort burst produced 0 NG05104 and 0 5xx, matching the previous run; and the baseline
+render is untouched.
+
+The run found one defect of its own — the structural warning fired falsely on any template that had
+been through an HTML minifier, because it required a closing `</html>` that minifiers legitimately
+strip. Fixed, and pinned by a test. 363 tests pass.
 
 ### M6 — Land it
 

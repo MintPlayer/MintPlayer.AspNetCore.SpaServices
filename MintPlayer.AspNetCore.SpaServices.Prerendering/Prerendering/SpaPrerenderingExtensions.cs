@@ -553,9 +553,16 @@ public static class SpaPrerenderingExtensions
 	/// Whether the template looks like a complete HTML document. A heuristic, used only to decide
 	/// whether to log - never to reject a template.
 	/// </summary>
+	/// <remarks>
+	/// Only the opening tag is required. Requiring a closing <c>&lt;/html&gt;</c> as well produced a
+	/// false positive on any template that had been through an HTML minifier: the end tags for
+	/// <c>html</c> and <c>body</c> are optional, so aggressive minification legitimately removes
+	/// them, and a perfectly good minified document was reported as having no <c>&lt;html&gt;</c>
+	/// element at all. The opening tag is not optional and is not stripped, so it carries the whole
+	/// signal on its own.
+	/// </remarks>
 	private static bool LooksLikeWholeDocument(string html)
-		=> html.Contains("<html", StringComparison.OrdinalIgnoreCase)
-			&& html.Contains("</html", StringComparison.OrdinalIgnoreCase);
+		=> html.Contains("<html", StringComparison.OrdinalIgnoreCase);
 
 	/// <summary>
 	/// The first 200 characters of a template, on a single line, for a log message.

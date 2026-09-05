@@ -253,12 +253,65 @@ Stated as options with their trade-offs, not as a decision.
 
 ## Success criteria
 
-- Tests that fail on the current branch and pass after the fix, covering: `bytes=0-0`, a
-  markup-shaped slice (`bytes=0-99`), a mid-document slice (`bytes=100-200`), and 416 as a control.
-- The `Range` end-to-end matrix above re-run against the fix: every variant either prerenders the
-  full page or is passed through, with **no** 500 and no `NG05104`.
-- HEAD reports the full `Content-Length`, does not warn, and does not reach the prerenderer.
-- No regression in the 400-abort verification from the previous PRD.
+| # | Criterion | Status |
+|---|---|---|
+| 1 | Tests that fail before the fix and pass after, covering `bytes=0-0`, the markup-shaped slice, the mid-document slice, and 416 as a control | ✅ **Verified in both directions.** Reverting the `Range` strip, the GET gate, the framing checks and the bodyless narrowing turns **25 tests red**; restoring them gives **362 green**. |
+| 2 | The `Range` end-to-end matrix re-run against the fix — every variant prerenders the full page or passes through, no 500, no `NG05104` | ✅ **All seven variants → 200, 25252 B, fully prerendered.** No 206 reaches the client, no `Content-Range` header anywhere, nothing logged. |
+| 3 | HEAD reports the full `Content-Length`, does not warn, does not reach the prerenderer | ✅ Unit (`RequestMethodGateTests`) **and** end to end: `curl -I /person` → `Content-Length: 547` (was `0`), one Debug line naming the method, zero Warnings. |
+| 4 | No regression in the 400-abort verification from the previous PRD | ✅ 200 real Chromium aborts: **0 NG05104, 0 5xx, 0 empty-template prerenders**, 195 complete templates, 6 abort-skip Debug lines. |
+
+### End-to-end results (Production, `Demo.Web`)
+
+| `Range` | Before | After |
+|---|---|---|
+| *(none)* | 200, 25252 B | 200, 25252 B |
+| `bytes=0-0` | **206 → 500 NG05104** | **200, 25252 B, prerendered** |
+| `bytes=0-99` | **206 → 500** | **200, 25252 B** |
+| `bytes=100-200` | **206 → 500** | **200, 25252 B** |
+| `bytes=999999-` | 416 | **200, 25252 B** — see the behaviour note below |
+| `bytes=0-0,2-2` | 200, 25252 B | 200, 25252 B |
+| `bytes=-1` | *(untested)* | 200, 25252 B |
+
+Baseline unaffected: `/person` still returns 25252 bytes of real prerendered markup, 0.03-0.06 s warm.
+`GET /` still redirects with a 456-byte pass-through rather than a prerendered page.
+
+**Behaviour change for the release notes:** `bytes=999999-` no longer returns **416**, it returns a
+full 200. The header is gone before `StaticFileMiddleware` sees it, so unsatisfiability can no longer
+be detected. Consistent with the non-goal above (a server MAY ignore `Range`, and a prerendered body
+has no stable byte range to slice), but it is a visible difference.
+
+### Two findings from the verification run
+
+1. **The structural warning was a false positive under an HTML minifier — fixed.** The check
+   required both `<html` and `</html>`, but the end tags for `html` and `body` are optional, so
+   aggressive minification legitimately strips them. The demo runs `UseWebMarkupMin` inside the SPA
+   callback, i.e. downstream of the capture, so its perfectly good 456-character template was
+   reported as having "no `<html>` element". The check now requires only the opening tag, which is
+   not optional and not stripped. Pinned by
+   `Does_not_warn_about_a_minified_template_whose_closing_tags_were_removed`.
+2. The synthetic abort probe still 500s with a `Content-Length` mismatch, from the minifier's
+   declared length rather than from this middleware. Unreachable on a genuine socket abort — 0
+   occurrences across 200 real aborts — and already documented in `SOLUTION-defect2-abort.md`.
+
+**Not reachable in this demo:** the gate's non-GET Debug line for `POST`. Endpoint routing answers
+`405 Allow: GET, HEAD` *upstream* of `UseSpaPrerendering`, so only `HEAD` exercises that branch here.
+The behaviour is right; the log line is simply unobservable in this app.
+
+### Coverage of the enumerated class
+
+| Finding | Closed? |
+|---|---|
+| A1 HEAD | ✅ GET gate; `Content-Length` regression fixed |
+| A2 206 / partial | ✅ `Range` stripped, status must be exactly 200, `Content-Range` rejected |
+| A3 completeness signal discarded | ✅ now a rejection (F4), narrowed and logged |
+| A4 nothing inspected but status class and media type | ✅ method, `Content-Range`, `Content-Encoding` and length are all read now |
+| A5 deferred status codes | ➖ unchanged — `SkipPrerendering()` remains opt-in, as designed |
+| B1 `Content-Encoding` | ✅ F3 |
+| B2 non-UTF-8 charset | ✅ `Utf8.IsValid` + the NUL check |
+| B3 error page as template | ❌ **Not closed, by construction.** A complete, well-formed error page passes every check, including the structural one. Documented instead: the README warns against registering `UseExceptionHandler`/`UseStatusCodePagesWithReExecute` inside the SPA callback, and shows the consumer-side assertion in `OnSupplyData`. The eventual answer is an opt-in template predicate on `SpaPrerenderingOptions`. |
+| B4 `Response.Clear()` shrinking the buffer | ➖ Incidental — harmless since the decode moved to `TryGetBuffer`. The previous PRD's claim that it was unreachable is corrected there. |
+| B5 unflushed writer | ✅ when a length is declared (F4); otherwise the empty guard |
+| Tier C (203/204/205/226) | ✅ rejected by the exactly-200 check; 204/205/304 report at Debug, since an empty body is correct for them |
 
 ## Placement — resolved
 
