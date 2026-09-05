@@ -28,6 +28,10 @@ public partial class DemoSpaPrerenderingService : MintPlayer.AspNetCore.SpaServi
 
 	public async Task OnSupplyData(HttpContext context, IDictionary<string, object> data)
 	{
+		// Set the ordinary way, on the way through. Prerendering preserves it, so it needs neither
+		// an OnStarting callback nor the OnPrepareResponse hook that used to exist for this.
+		context.Response.Headers["Whatever"] = "Oasis";
+
 		var route = await spaRouteService.GetCurrentRoute(context);
 		switch (route?.Name)
 		{
@@ -47,11 +51,10 @@ public partial class DemoSpaPrerenderingService : MintPlayer.AspNetCore.SpaServi
 					var person = await personService.GetPerson(personid, false);
 					if (person == null)
 					{
-						context.Response.OnStarting(() =>
-						{
-							context.Response.StatusCode = StatusCodes.Status404NotFound;
-							return Task.CompletedTask;
-						});
+						// Assigned directly. Prerendering preserves it and still renders, so the
+						// rendered "not found" page is returned with its 404. This used to need an
+						// OnStarting callback plus SkipPrerendering() - see issue #81.
+						context.Response.StatusCode = StatusCodes.Status404NotFound;
 					}
 					else
 					{
@@ -66,11 +69,10 @@ public partial class DemoSpaPrerenderingService : MintPlayer.AspNetCore.SpaServi
 					var person = await personService.GetPerson(personid);
 					if (person == null)
 					{
-						context.Response.OnStarting(() =>
-						{
-							context.Response.StatusCode = StatusCodes.Status404NotFound;
-							return Task.CompletedTask;
-						});
+						// Assigned directly. Prerendering preserves it and still renders, so the
+						// rendered "not found" page is returned with its 404. This used to need an
+						// OnStarting callback plus SkipPrerendering() - see issue #81.
+						context.Response.StatusCode = StatusCodes.Status404NotFound;
 					}
 					else if (route.Parameters["name"] == (person.FirstName + " " + person.LastName).Slugify())
 					{

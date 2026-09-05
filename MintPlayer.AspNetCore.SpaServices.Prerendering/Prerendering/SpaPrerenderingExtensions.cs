@@ -46,6 +46,10 @@ public static class SpaPrerenderingExtensions
 				$"property on the ${nameof(SpaPrerenderingOptions)}.");
 		}
 
+		// Computed once here rather than per request: the collections are fixed after configuration,
+		// so the effective drop-set is a single precomputed collection captured in the closure.
+		var headersToDrop = BuildHeadersToDrop(options);
+
 		// The server bundle is built once, on the first request that needs it, and every request
 		// awaits that same build.
 		//
@@ -88,14 +92,6 @@ public static class SpaPrerenderingExtensions
 
 		applicationBuilder.Use(async (context, next) =>
 		{
-			context.Response.OnStarting(async () =>
-			{
-				if (options.OnPrepareResponse != null)
-				{
-					await options.OnPrepareResponse(context);
-				}
-			});
-
 			// If this URL is excluded, skip prerendering.
 			// This is typically used to ensure that static client-side resources
 			// (e.g., /dist/*.css) are served normally or through SPA development
@@ -116,8 +112,7 @@ public static class SpaPrerenderingExtensions
 			//
 			// Placed before the build await on purpose: without that ordering a POST or an OPTIONS
 			// to a SPA route blocks on `ng build` before being turned away downstream. Placed after
-			// the exclude loop so the skip is not logged for static asset paths, and after
-			// Response.OnStarting so OnPrepareResponse still runs for every method.
+			// the exclude loop so the skip is not logged for static asset paths.
 			if (!HttpMethods.IsGet(context.Request.Method))
 			{
 				logger.LogDebug(
@@ -382,10 +377,15 @@ public static class SpaPrerenderingExtensions
 					await spaPrerenderingService.OnSupplyData(context, customData);
 				}
 
-				// Don't do SSR when we have a redirect. Note that a status code assigned from
-				// inside a Response.OnStarting callback is not visible yet, which is why
-				// SkipPrerendering() exists - see PrerenderingHttpContextExtensions.
-				if (!IsSuccessStatusCode(context.Response.StatusCode) || context.IsPrerenderingSkipped())
+				// A status assigned in OnSupplyData is visible here and is honoured: a 404 is still
+				// prerendered, so the SSR "not found" page is returned *with* its 404. Only two
+				// things skip the render - a redirect, which has no body worth rendering, and a
+				// status that cannot carry a body at all.
+				//
+				// A status assigned from inside a Response.OnStarting callback is still invisible
+				// here, because the callback has not run yet; SkipPrerendering() remains the way to
+				// say so explicitly, and is also how to skip the render on an ordinary 200.
+				if (IsRedirect(context) || !CanHaveResponseBody(context) || context.IsPrerenderingSkipped())
 				{
 					await PassThroughAsync(context, outputBuffer);
 					return;
@@ -411,7 +411,7 @@ public static class SpaPrerenderingExtensions
 					requestPathBase: context.Request.PathBase.ToString(),
 					requestCancellationToken: prerenderCts.Token);
 
-				await ServePrerenderResult(context, renderResult);
+				await ServePrerenderResult(context, renderResult, headersToDrop);
 			}
 		});
 		return applicationBuilder;
@@ -445,8 +445,80 @@ public static class SpaPrerenderingExtensions
 			context.Response.ContentLength = outputBuffer.Length;
 		}
 
+		// The copy is gated on the same rule as the length above. It used to be unconditional, so a
+		// 204/205/304 emitted the entire captured template as its body - a protocol violation on a
+		// status that is defined to carry none. HEAD escaped only by accident: downstream writes
+		// nothing for a HEAD, so the buffer was empty and the copy was a no-op.
+		if (!CanHaveResponseBody(context))
+		{
+			return;
+		}
+
 		await outputBuffer.CopyToAsync(context.Response.Body);
 	}
+
+	/// <summary>
+	/// Whether the response is a redirect, and therefore has no body worth prerendering.
+	/// </summary>
+	/// <remarks>
+	/// A <c>Location</c> header is required, not just a 3xx status: 304 Not Modified carries no
+	/// <c>Location</c> and is not a redirect - it is handled by <see cref="CanHaveResponseBody"/>
+	/// instead, which is what keeps a body off it. Requiring <c>Location</c> also leaves the door
+	/// open for a rendered body on a 3xx that can legitimately carry one, such as 300 Multiple
+	/// Choices.
+	/// </remarks>
+	/// <summary>
+	/// Framing headers cannot be preserved across the body swap: emitting the captured template's
+	/// length or transfer coding alongside a different body corrupts how the response is framed,
+	/// which is a response-smuggling hazard rather than a matter of taste. Rejected at registration
+	/// so the mistake surfaces at startup instead of as a corrupted response under load.
+	/// </summary>
+	private static readonly string[] NonPreservableHeaders =
+	[
+		HeaderNames.ContentLength,
+		HeaderNames.TransferEncoding,
+		HeaderNames.ContentRange,
+	];
+
+	/// <summary>
+	/// Validates the header options and folds them into the effective drop-set:
+	/// defaults ∪ <see cref="SpaPrerenderingOptions.DropResponseHeaders"/>
+	/// minus <see cref="SpaPrerenderingOptions.PreserveResponseHeaders"/>.
+	/// </summary>
+	private static IReadOnlyCollection<string> BuildHeadersToDrop(SpaPrerenderingOptions options)
+	{
+		foreach (var headerName in NonPreservableHeaders)
+		{
+			if (options.PreserveResponseHeaders.Contains(headerName))
+			{
+				throw new InvalidOperationException(
+					$"'{headerName}' cannot be preserved across prerendering: it describes the captured " +
+					$"template, and emitting it alongside a different body corrupts the response framing. " +
+					$"Remove it from {nameof(SpaPrerenderingOptions)}.{nameof(SpaPrerenderingOptions.PreserveResponseHeaders)}.");
+			}
+		}
+
+		// Contradictory configuration is a bug in the caller. Picking a precedence would hide it.
+		foreach (var headerName in options.PreserveResponseHeaders)
+		{
+			if (options.DropResponseHeaders.Contains(headerName))
+			{
+				throw new InvalidOperationException(
+					$"'{headerName}' appears in both " +
+					$"{nameof(SpaPrerenderingOptions.PreserveResponseHeaders)} and " +
+					$"{nameof(SpaPrerenderingOptions.DropResponseHeaders)}. Remove it from one of them.");
+			}
+		}
+
+		var effective = new HashSet<string>(SpaPrerenderingOptions.DefaultDroppedResponseHeaders, StringComparer.OrdinalIgnoreCase);
+		effective.UnionWith(options.DropResponseHeaders);
+		effective.ExceptWith(options.PreserveResponseHeaders);
+		return effective;
+	}
+
+	private static bool IsRedirect(HttpContext context)
+		=> context.Response.StatusCode is >= 300 and <= 399
+			&& !StringValues.IsNullOrEmpty(context.Response.Headers.Location);
 
 	private static bool CanHaveResponseBody(HttpContext context)
 		=> !HttpMethods.IsHead(context.Request.Method)
@@ -510,9 +582,6 @@ public static class SpaPrerenderingExtensions
 
 		return string.Equals(mediaType.Trim(), "text/html", StringComparison.OrdinalIgnoreCase);
 	}
-
-	private static bool IsSuccessStatusCode(int statusCode)
-		=> statusCode >= 200 && statusCode < 300;
 
 	/// <summary>
 	/// Whether the captured response was left unencoded, so that it can be decoded as text.
@@ -648,9 +717,60 @@ public static class SpaPrerenderingExtensions
 		return (unencodedAbsoluteUrl, unencodedPathAndQuery);
 	}
 
-	private static async Task ServePrerenderResult(HttpContext context, RenderToStringResult renderResult)
+	/// <summary>
+	/// Removes the headers that describe the captured template, leaving every other header alone.
+	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// This used to be <c>context.Response.Clear()</c>, inherited verbatim from Microsoft's
+	/// SpaServices. That emptied the whole header dictionary, so everything written by every
+	/// middleware upstream of this one was discarded on exactly the responses that get prerendered -
+	/// including <c>Strict-Transport-Security</c> from the framework's own <c>UseHsts()</c>, which
+	/// writes it eagerly on the way in and never re-applies it. See
+	/// <see href="https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices/issues/81">issue #81</see>.
+	/// </para>
+	/// <para>
+	/// Clearing was never needed for the body: the middleware swaps <c>Response.Body</c> for a
+	/// buffer and simply never copies it out on this path. What it was really doing was dropping the
+	/// static file's <c>Content-Type</c> / <c>Content-Length</c> / <c>ETag</c> - a header problem,
+	/// solved here by removing exactly those and nothing else. This mirrors
+	/// <c>ResponseCompressionBody</c>, which nulls only the representation headers its transform
+	/// invalidates.
+	/// </para>
+	/// <para>
+	/// <strong>Do not reintroduce <c>Response.Clear()</c> here.</strong> A header not in the drop-set
+	/// is preserved on purpose, including headers this library knows nothing about.
+	/// </para>
+	/// </remarks>
+	private static void DropTemplateHeaders(HttpContext context, IReadOnlyCollection<string> headersToDrop)
 	{
-		context.Response.Clear();
+		var headers = context.Response.Headers;
+		foreach (var headerName in headersToDrop)
+		{
+			headers.Remove(headerName);
+		}
+	}
+
+	private static async Task ServePrerenderResult(HttpContext context, RenderToStringResult renderResult, IReadOnlyCollection<string> headersToDrop)
+	{
+		// Response.Clear() used to throw here when the response had already started. Removing a
+		// header throws from the header collection instead, and assigning StatusCode throws from its
+		// setter - both from somewhere that says nothing about prerendering. Fail here instead, with
+		// a message that names the cause.
+		//
+		// Believed unreachable: the body swap means downstream writes land in the buffer, and
+		// OnSupplyData is awaited rather than fire-and-forget as it was in Microsoft's version -
+		// which is where "the response has already started" used to come from. If this ever fires,
+		// something genuinely new is wrong, so it is loud rather than forgiving.
+		if (context.Response.HasStarted)
+		{
+			throw new InvalidOperationException(
+				"Cannot serve the prerendered response because the response has already started. " +
+				"Something upstream of UseSpaPrerendering flushed the response before prerendering " +
+				"completed - an explicit StartAsync or SendFileAsync, most likely.");
+		}
+
+		DropTemplateHeaders(context, headersToDrop);
 
 		// The Globals property exists for back-compatibility but is meaningless for prerendering
 		// that returns complete HTML pages. Checked before the redirect branch too, so that a result

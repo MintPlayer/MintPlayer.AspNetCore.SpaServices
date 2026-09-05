@@ -22,9 +22,6 @@ internal static class SpaPrerenderingReflection
     public static bool IsHtmlContentType(string? contentType)
         => (bool)Method(nameof(IsHtmlContentType)).Invoke(null, [contentType])!;
 
-    public static bool IsSuccessStatusCode(int statusCode)
-        => (bool)Method(nameof(IsSuccessStatusCode)).Invoke(null, [statusCode])!;
-
     public static void RemoveConditionalRequestHeaders(HttpRequest request)
         => Method(nameof(RemoveConditionalRequestHeaders)).Invoke(null, [request]);
 
@@ -34,10 +31,15 @@ internal static class SpaPrerenderingReflection
     public static (string AbsoluteUrl, string PathAndQuery) GetUnencodedUrlAndPathQuery(HttpContext httpContext)
         => ((string, string))Method(nameof(GetUnencodedUrlAndPathQuery)).Invoke(null, [httpContext])!;
 
-    public static Task ServePrerenderResult(HttpContext context, RenderToStringResult renderResult)
+    public static Task ServePrerenderResult(
+        HttpContext context,
+        RenderToStringResult renderResult,
+        IReadOnlyCollection<string>? headersToDrop = null)
         // The target is an async method, so a failure surfaces on the returned task rather than as
         // a TargetInvocationException from Invoke itself.
-        => (Task)Method(nameof(ServePrerenderResult)).Invoke(null, [context, renderResult])!;
+        => (Task)Method(nameof(ServePrerenderResult)).Invoke(
+            null,
+            [context, renderResult, headersToDrop ?? SpaPrerenderingOptions.DefaultDroppedResponseHeaders])!;
 }
 
 internal static class PrerenderingTestContext
@@ -54,7 +56,7 @@ internal static class PrerenderingTestContext
         // prerendering middleware only prerenders GET requests, so without this every test would
         // short-circuit before reaching the code under test.
         features.Set<IHttpRequestFeature>(new HttpRequestFeature { RawTarget = rawTarget!, Method = HttpMethods.Get });
-        features.Set<IHttpResponseFeature>(new HttpResponseFeature());
+        features.Set<IHttpResponseFeature>(new CallbackFiringResponseFeature());
 
         // A response body feature is always required: HttpResponse.Clear() reads Response.Body,
         // which throws a NullReferenceException without one - even on the redirect path that
@@ -62,6 +64,42 @@ internal static class PrerenderingTestContext
         features.Set<IHttpResponseBodyFeature>(new StreamResponseBodyFeature(responseBody ?? new MemoryStream()));
 
         return new DefaultHttpContext(features);
+    }
+
+    /// <summary>
+    /// <see cref="HttpResponseFeature.OnStarting"/> is a no-op stub, so callbacks registered against
+    /// a bare feature collection are silently dropped and any test about deferred header or status
+    /// writes passes or fails for the wrong reason.
+    /// </summary>
+    /// <remarks>
+    /// Kestrel fires these at the first write, in reverse registration order, and the response is
+    /// only marked started afterwards - so a callback may still set a status or a header. This fires
+    /// them once, on the first write or when the harness flushes, and preserves the LIFO order.
+    /// </remarks>
+    internal sealed class CallbackFiringResponseFeature : HttpResponseFeature
+    {
+        private readonly Stack<(Func<object, Task> Callback, object State)> _onStarting = new();
+        private bool _fired;
+
+        public override void OnStarting(Func<object, Task> callback, object state)
+            => _onStarting.Push((callback, state));
+
+        /// <summary>Runs the registered callbacks, once, newest first.</summary>
+        public async Task FireOnStartingAsync()
+        {
+            if (_fired)
+            {
+                return;
+            }
+
+            _fired = true;
+
+            while (_onStarting.Count > 0)
+            {
+                var (callback, state) = _onStarting.Pop();
+                await callback(state);
+            }
+        }
     }
 }
 
@@ -105,33 +143,6 @@ public class IsHtmlContentTypeTests
         // "text/html ; charset=utf-8" is legal per the grammar (OWS is allowed before the ';'), but
         // used to match neither the exact string nor the "text/html;" prefix.
         Assert.True(SpaPrerenderingReflection.IsHtmlContentType("text/html ; charset=utf-8"));
-    }
-}
-
-public class IsSuccessStatusCodeTests
-{
-    [Theory]
-    [InlineData(200)]
-    [InlineData(201)]
-    [InlineData(204)]
-    [InlineData(299)]
-    public void Accepts_the_2xx_range(int statusCode)
-    {
-        Assert.True(SpaPrerenderingReflection.IsSuccessStatusCode(statusCode));
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(100)]
-    [InlineData(199)]
-    [InlineData(300)]
-    [InlineData(301)]
-    [InlineData(304)]
-    [InlineData(404)]
-    [InlineData(500)]
-    public void Rejects_everything_outside_it(int statusCode)
-    {
-        Assert.False(SpaPrerenderingReflection.IsSuccessStatusCode(statusCode));
     }
 }
 
@@ -372,17 +383,26 @@ public class ServePrerenderResultTests
     }
 
     [Fact]
-    public async Task Clears_headers_and_status_written_by_the_inner_middleware()
+    public async Task Keeps_headers_and_status_written_by_the_inner_middleware()
     {
         var body = new MemoryStream();
         var context = PrerenderingTestContext.Create(responseBody: body);
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
         context.Response.Headers["X-Inner"] = "leftover";
+        context.Response.Headers.ETag = "\"template\"";
 
         await SpaPrerenderingReflection.ServePrerenderResult(context, new RenderToStringResult { Html = "<html></html>" });
 
-        Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
-        Assert.False(context.Response.Headers.ContainsKey("X-Inner"));
+        // This test used to assert the exact opposite - a 200 and no X-Inner - because
+        // ServePrerenderResult opened with Response.Clear(). That is the bug in issue #81: clearing
+        // took every upstream security header with it, and reset a status the application had set
+        // deliberately. Only headers describing the captured template are removed now, so an unknown
+        // header survives and the ETag does not.
+        //
+        // Do not "fix" this back.
+        Assert.Equal(StatusCodes.Status500InternalServerError, context.Response.StatusCode);
+        Assert.Equal("leftover", context.Response.Headers["X-Inner"]);
+        Assert.False(context.Response.Headers.ContainsKey(HeaderNames.ETag));
     }
 
     [Fact]
