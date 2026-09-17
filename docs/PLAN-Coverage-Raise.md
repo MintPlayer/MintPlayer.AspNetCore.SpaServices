@@ -30,68 +30,89 @@ figure at roughly 86%**, which is the margin behind the 80% target.
 
 ## Outcome
 
-**Delivered: 64.4% -> 78.04% line (1461/1872), 70.81% branch. 467 tests, green on both target
-frameworks, three consecutive clean sweeps.**
-
-The 80% target was **not** reached. It is short by 1.96 points - 37 covered lines. Why, precisely:
-
-| Still dark | Lines | Why it stayed that way |
-|---|---:|---|
-| `OutOfProcessNodeInstance` | 156 | Out of scope from the start (M8 would have been the invasive one) |
-| `AngularCliMiddleware` | 68 | Seam built and tests written, then **removed** - they crash the test host. See below |
-| `HttpNodeInstance` | 63 | Out of scope; derives from the above and news up its own `HttpClient` |
-| `ProcessTracker` | 36 | Out of scope; Win32 job objects, touching it risks killing the test host |
-| `AngularPrerendererBuilder.Build` | 27 | Same crash hazard as `AngularCliMiddleware` - not attempted |
-| `ClientWebSocketConnector` / `SystemProcessLauncher` | 26 | The seams' own default implementations: they dial a real socket and start a real process |
-
-That last row is worth noting because it is self-inflicted: adding the seams added 26 uncovered lines
-of shipped code. Necessary, but it means the seams cost about 1.4 points before they earned anything.
-
-Per-package at the end:
+**Delivered: 64.4% -> 80.17% line (1533/1912), 73.81% branch. 478 tests, green on both target
+frameworks, three consecutive clean sweeps. The 80% gate is met.**
 
 | Package | Line rate |
 |---|---|
 | `NodeServices` | 47.2% |
-| `SpaServices` | 77.7% |
+| `SpaServices` | 83.6% |
 | `SpaServices.Prerendering` | 94.1% |
 | `SpaServices.Routing` | 98.3% |
 | `SpaServices.Abstractions` | 100.0% |
 | `SpaServices.Xsrf` | 100.0% |
 
-`coverage.yml` still asks for 80%, as agreed. It does not judge this PR (policy is read from the base
-ref), so nothing is red yet - but on the next PR after this merges it will be, unless the target is
-revisited or the remaining work lands. **That is a decision to take deliberately, not to paper over:
-lowering the gate to 78 and adding no exclusions is the honest option, and adding an assembly
-exclusion to manufacture 80% is not (NFR-3.1).**
+What remains dark is almost entirely the out-of-scope set: `OutOfProcessNodeInstance` (156 lines),
+`HttpNodeInstance` (63) and `ProcessTracker`'s Win32 layer (36), plus the seams' own default
+implementations (`ClientWebSocketConnector`, `SystemProcessLauncher`), which dial a real socket and
+start a real process.
 
-## The two defects this work uncovered
+## The bug that nearly cost the target
 
-Neither was fixed - NFR-4.1 forbids behaviour changes in this pass - but both are real, and the
-second one is the reason the target was missed.
+Work stopped at 78.04% with the `AngularCliMiddleware` tests deleted, because they intermittently
+took the whole test run down. That was recorded as a crash caused by a fire-and-forget task whose
+exceptions were never observed.
 
-**1. A root-level group with an empty path emits a double slash.** `Group("", "bare", ...)` at the
-root produces `//thing` rather than `/thing`. Pinned by an assertion in `GenerateUrlOverloadTests`
-with a comment saying it is pinned, not endorsed.
+**That diagnosis was wrong, and NFR-4.1 was relaxed deliberately to fix the real cause.**
 
-**2. `EventedStreamReader` leaks its read loop, and that crashes the xunit host.** The constructor
-starts `Task.Factory.StartNew(Run, ...)` fire-and-forget: nothing awaits it, nothing cancels it, and
-the type is not disposable. Two consequences, both measured:
+Instrumenting a minimal reproduction - an `EventedStreamReader` over a `MemoryStream`, two sequential
+`WaitForMatch` calls, nothing else - showed the first match succeeding, the second never completing,
+and **no exception of any kind**: not unhandled, not unobserved, not even first-chance. Nothing was
+throwing. The process was not crashing; it was hanging, and vstest reports a host it has to kill as
+"Test host process crashed".
 
-- Awaiting `WaitForMatch` twice on one reader crashes the test host. This is a live production path -
-  `AngularPrerendererBuilder` does it whenever its occurrences count is 2.
-- Creating several `NodeScriptRunner`s and abandoning them - which is exactly what
-  `StartAngularCliServerAsync` does per call - crashes the host roughly one run in three.
+The cause is that `WaitForMatch` had no history. It subscribed to `OnReceivedLine` and could only
+see lines emitted after that moment, while `Run` emits every line of a chunk back to back. A second
+`WaitForMatch`, issued from the continuation of the first, raced that loop; when it lost, its line
+**and** the stream-closed notification behind it had already fired, so its task could never complete.
 
-A crash, not a failure: `Test host process crashed`, run aborted, every result after it lost. So the
-`AngularCliMiddleware` tests were removed rather than shipped;
-`MintPlayer.AspNetCore.SpaServices.Tests/TestHelpers/NotTested-AngularCliMiddleware.md` records what
-they covered and how to restore them. The seam is still in place, so restoring them is one commit
-once the reader is made cancellable and disposable.
+Two details worth keeping:
 
-This also caused a flaky failure in `NodeScriptRunnerTests`: the runner starts reading in its
-constructor, so `AttachToLogger` could subscribe after the line had already been emitted. Fixed in
-the tests by gating the fake streams until the handlers are attached - the same technique the
-existing `EventedStreamReader` tests already used.
+- Inline continuations were accidentally *winning* that race most of the time. An early attempt at a
+  fix - giving the `TaskCompletionSource` `RunContinuationsAsynchronously` - made it lose every time,
+  taking the reproduction from 3-in-4 to 4-in-4. It was reverted.
+- `StreamReader.ReadAsync` does not reliably observe a cancellation token, so cancelling was not
+  enough on its own to release a pending waiter. The reader now registers `OnClosed` on the token
+  directly.
+
+**This was a live production bug.** `AngularPrerendererBuilder.WaitForBuildToFinish` waits for its
+finished-regex `occurrences` times in sequence. Against a real dev server the lines usually arrive in
+separate slow reads, so it usually won the race - but any build whose matching lines landed in one
+read hung the prerenderer until its startup timeout. That is a plausible cause of "sometimes the SSR
+build just hangs".
+
+### The fix
+
+`EventedStreamReader` now keeps a bounded history of emitted lines (1000) with a cursor marking what
+previous waits consumed. `WaitForMatch` scans the unconsumed history first, returns immediately on a
+hit, and fails fast with `EndOfStreamException` if the stream has already closed rather than waiting
+for a line that can never arrive. The cursor preserves the "wait for the NEXT occurrence" semantics
+`AngularPrerendererBuilder` depends on - without it, the second wait would re-match the first line and
+declare a half-finished build ready.
+
+It also takes an optional `CancellationToken`, threaded from `NodeScriptRunner`'s
+`applicationStoppingToken`, so the read loop ends at shutdown instead of outliving its owner.
+
+`WaitForMatchSequenceTests` covers all of it: the same-chunk race, repeated occurrences, fail-fast
+after close, cursor advancement, ANSI stripping in the history scan, and cancellation releasing a
+pending wait. The `AngularCliMiddleware` tests are restored, including the two-regex case that could
+not be written before.
+
+## The other defect found
+
+**A root-level group with an empty path emits a double slash.** `Group("", "bare", ...)` at the root
+produces `//thing` rather than `/thing`. Pinned by an assertion in `GenerateUrlOverloadTests` with a
+comment saying it is pinned, not endorsed - it is a routing behaviour change, unrelated to this work,
+and belongs in its own change.
+
+## A note on the denominator
+
+Deduplication (M1) removed 123 uncovered lines and 65 covered ones, moving the number 3.3 points by
+deleting code rather than by testing anything. It is a genuine improvement - half as much code, one
+place to fix a bug - but it is not new verification, and NFR-3.2 requires saying so.
+
+Adding the seams then added 26 uncovered lines of shipped code, costing about 1.4 points before they
+earned anything back.
 
 ## Milestones
 
@@ -189,7 +210,7 @@ Unlocks the `LaunchNodeProcess` failure path (the `InvalidOperationException` wi
 Precedent: `NodeServicesImpl` already takes `Func<INodeInstance>` and is the one file in this area at
 79% with a `FakeNodeInstance` in the tests. This is the same move.
 
-### M6 — `IWebSocketConnector` ✅ *(did NOT reach 80% — see Outcome)*
+### M6 — `IWebSocketConnector` ✅
 
 ```csharp
 internal interface IWebSocketConnector
@@ -207,7 +228,7 @@ is already passed. The server side needs a fake `IHttpWebSocketFeature` added to
 Makes the sub-protocol forwarding, the `NotForwardedWebSocketHeaders` filter, the swallowed
 `ArgumentException` and the `WebSocketException → 400` path assertable.
 
-### M7 — Inject the runner into the two callers 🟡 *(seam landed; tests removed as unstable)*
+### M7 — Inject the runner into the two callers ✅
 
 `AngularCliMiddleware` and `AngularPrerendererBuilder` both `new` a concrete `NodeScriptRunner`. Route
 both through the M5 seam, then lift `StartAngularCliServerAsync`'s regex/`openbrowser` logic and its
@@ -221,14 +242,13 @@ already own a reusable `StubHandler`. Note it loops `while(true)` with `Task.Del
 cancellation, so a test must inject a handler that succeeds, or it hangs the run (the existing PRD
 flags this exact hazard).
 
-### M8 — Gate 🟡 *(partially done)*
+### M8 — Gate ✅
 
-**Done:** `coverage.yml` is committed at the repo root with the agreed policy — fixed 80% project
-target, 80% patch target, zero tolerance on both, blocking on.
+`coverage.yml` is committed at the repo root with the agreed policy — fixed 80% project target, 80%
+patch target, zero tolerance on both, blocking on. **The repository now meets it** (80.17%), so the
+gate goes green rather than red the moment it starts applying.
 
-**Not done:** nothing is enforcing yet, and the settings panel is untouched (see the UI bug below).
-
-`coverage.yml` is committed at the repo root. **It does not gate PR #84** — the service reads gate
+**It does not gate PR #84** — the service reads gate
 policy from the *base* ref precisely so a PR cannot rewrite the policy judging it, so it takes effect
 on the first PR opened after this merges to master.
 
@@ -267,9 +287,9 @@ server-side number. Only the PR workflow does.
 
 | Risk | Severity | Status |
 |---|---|---|
-| Seams alter production behaviour | High | Mitigated by design — every seam is an optional internal parameter defaulting to today's implementation; the 381 existing tests are the check |
-| 80% unreachable without the invasive work | Medium | Open until M6; estimated landing ~86%, ~6 points of margin |
-| Dedup changes behaviour (the copies are not identical) | Medium | Open — M1 names the two real deltas to preserve |
-| `while(true)` poll in `WaitForAngularCliServerToAcceptRequests` hangs the suite | Medium | Open — M7 must inject a succeeding handler |
-| Gate saved as `fixed` with null target abstains silently | Low | Open — M8; verify the check reports pass/fail, not `skipping` |
+| Seams alter production behaviour | High | **Retired** — every seam is an optional internal parameter defaulting to today's implementation |
+| 80% unreachable without the invasive work | Medium | **Retired** — reached 80.17% once the EventedStreamReader hang was fixed |
+| Dedup changes behaviour (the copies are not identical) | Medium | **Retired** — the two deltas were preserved; 478 tests green |
+| `while(true)` poll in `WaitForAngularCliServerToAcceptRequests` hangs the suite | Medium | **Retired** — every test injects a handler that answers first time |
+| Gate saved as `fixed` with null target abstains silently | Low | **Open** — verify the checks report pass/fail, not `skipping`, on the first PR after merge |
 | `ExcludeByFile` not matching `Inject.g.cs` | Low | Pre-existing, 12 lines, immaterial |

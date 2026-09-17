@@ -142,6 +142,15 @@ improvement — half as much code, one place to fix a bug — but it is not new 
 - **NFR-4.1** *(new)* No production behaviour change. Every seam defaults to today's implementation,
   and the existing 381 tests SHALL pass unchanged.
 
+  **Amended mid-flight, deliberately.** The work stalled at 78.04% because a defect in
+  `EventedStreamReader` made a whole class of tests hang the runner — and the same defect hangs the
+  prerenderer in production. Holding NFR-4.1 would have meant shipping a known hang in order to keep
+  a self-imposed rule about not changing behaviour. The exception is narrow and explicit:
+  `EventedStreamReader` gains a bounded line history and an optional `CancellationToken`, covered by
+  `WaitForMatchSequenceTests`. Everything else in this PRD still holds — no other shipped behaviour
+  changes, and the two other defects found (`//thing` route composition, the unbounded readiness
+  poll) remain recorded and unfixed.
+
 ## Out of scope
 
 Deliberately not done — these are not deferred bookkeeping, they are judged not worth it:

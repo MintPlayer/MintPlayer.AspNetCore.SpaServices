@@ -92,8 +92,8 @@ internal sealed class NodeScriptRunner : IDisposable
 		var processStartInfo = BuildStartInfo(workingDirectory, scriptName, arguments, envVars, pkgManagerCommand);
 
 		_npmProcess = LaunchNodeProcess(processLauncher, processStartInfo, pkgManagerCommand);
-		StdOut = new EventedStreamReader(_npmProcess.StandardOutput);
-		StdErr = new EventedStreamReader(_npmProcess.StandardError);
+		StdOut = new EventedStreamReader(_npmProcess.StandardOutput, applicationStoppingToken);
+		StdErr = new EventedStreamReader(_npmProcess.StandardError, applicationStoppingToken);
 
 		applicationStoppingToken.Register(((IDisposable)this).Dispose);
 
