@@ -344,3 +344,5 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+# Playwright MCP browser automation artifacts
+.playwright-mcp/
