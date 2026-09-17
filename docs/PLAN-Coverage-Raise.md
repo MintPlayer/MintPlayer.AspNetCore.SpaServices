@@ -156,7 +156,12 @@ already own a reusable `StubHandler`. Note it loops `while(true)` with `Task.Del
 cancellation, so a test must inject a handler that succeeds, or it hangs the run (the existing PRD
 flags this exact hazard).
 
-### M8 — Gate ⬜
+### M8 — Gate 🟡 *(partially done)*
+
+**Done:** `coverage.yml` is committed at the repo root with the agreed policy — fixed 80% project
+target, 80% patch target, zero tolerance on both, blocking on.
+
+**Not done:** nothing is enforcing yet, and the settings panel is untouched (see the UI bug below).
 
 `coverage.yml` is committed at the repo root. **It does not gate PR #84** — the service reads gate
 policy from the *base* ref precisely so a PR cannot rewrite the policy judging it, so it takes effect
