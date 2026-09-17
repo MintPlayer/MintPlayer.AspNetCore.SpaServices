@@ -91,10 +91,19 @@ public class NodeScriptRunnerStartInfoTests
 	{
 		var info = NodeScriptRunner.BuildStartInfo("C:/app", "build", null, null, pkgManager);
 
-		Assert.Contains($"{pkgManager} run build", info.Arguments);
-		if (!OnWindows)
+		if (OnWindows)
 		{
+			// Windows runs everything through "cmd /c", so the package manager is part of the
+			// argument string rather than the executable.
+			Assert.Equal("cmd", info.FileName);
+			Assert.Contains($"/c {pkgManager} run build", info.Arguments);
+		}
+		else
+		{
+			// Everywhere else it is the executable itself, and the arguments start at "run".
 			Assert.Equal(pkgManager, info.FileName);
+			Assert.StartsWith("run build", info.Arguments);
+			Assert.DoesNotContain(pkgManager, info.Arguments);
 		}
 	}
 
