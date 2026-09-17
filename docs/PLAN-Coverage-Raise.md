@@ -166,11 +166,15 @@ To gate PR #84 itself, the settings panel at coverage.mintplayer.com must be set
 Project comparison → Fixed target, Project target → 80, Allowed drop → 0, Patch target → 80,
 Patch tolerance → 0, Blocking → checked.
 
-**Known UI issue:** the "Project target (%)" input renders only when `projectMode === 'fixed'`, and
-under browser automation the field did not appear after the dropdown was set — the Angular binding
-did not react to programmatic `input`/`change` events. A manual click may behave differently. Worth
-checking in `MintPlayer.Spark`, since a gate saved as `fixed` with a null `projectTarget` is rejected
-by the API — and if one were persisted, the project check would abstain as `neutral` forever.
+**Known UI issue — [MintPlayer.Spark#413](https://github.com/MintPlayer/MintPlayer.Spark/issues/413),
+"Coverage - ProjectTargetPercent attribute never becomes visible".** The "Project target (%)" input
+renders only when `projectMode === 'fixed'`, and it did not appear after the dropdown was set — the
+binding did not react to programmatic `input`/`change` events.
+
+This is why `coverage.yml` is the primary mechanism here rather than a convenience: until #413 is
+fixed, the file is the only reliable way to set a fixed target. Note the API rejects a `fixed` gate
+with a null `projectTarget`, so the bad state cannot be saved — but if one were ever persisted, the
+project check would abstain as `neutral` forever rather than fail loudly.
 
 ## Verification
 
