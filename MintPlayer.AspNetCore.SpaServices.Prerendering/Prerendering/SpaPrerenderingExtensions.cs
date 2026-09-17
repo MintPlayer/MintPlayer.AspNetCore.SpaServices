@@ -82,7 +82,7 @@ public static class SpaPrerenderingExtensions
 		// The full type name, not "UseSpaPrerendering": a bare method name is not reachable through
 		// the conventional Logging:LogLevel:<namespace> configuration, so a consumer could not turn
 		// this middleware's Debug lines on without turning on everything.
-		var logger = Internals.LoggerFinder.GetOrCreateLogger(applicationBuilder, typeof(SpaPrerenderingExtensions).FullName!);
+		var logger = Utils.LoggerFinder.GetOrCreateLogger(applicationBuilder, typeof(SpaPrerenderingExtensions).FullName!);
 
 		// Latches the first "template does not look like a whole document" warning. Scoped to this
 		// UseSpaPrerendering call rather than static, which is the right lifetime, and kept as an

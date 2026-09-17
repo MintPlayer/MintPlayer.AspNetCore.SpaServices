@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using MintPlayer.AspNetCore.SpaServices.Prerendering;
-using MintPlayer.AspNetCore.SpaServices.Prerendering.Internals;
+using MintPlayer.AspNetCore.SpaServices.Tests.TestHelpers;
+using MintPlayer.AspNetCore.SpaServices.Utils;
 using Xunit;
 
 namespace MintPlayer.AspNetCore.SpaServices.Tests.Prerendering;
@@ -12,7 +13,7 @@ namespace MintPlayer.AspNetCore.SpaServices.Tests.Prerendering;
 /// </summary>
 /// <remarks>
 /// No npm process is involved. <see cref="AngularPrerendererBuilder.WaitForBuildToFinish"/> is
-/// exercised directly over a <see cref="PrerenderingEventedStreamReaderTests.GatedStream"/>, whose
+/// exercised directly over a <see cref="GatedStream"/>, whose
 /// first read blocks until released - which is exactly the shape of a hung build.
 /// </remarks>
 public class AngularPrerendererBuildTimeoutTests
@@ -28,10 +29,10 @@ public class AngularPrerendererBuildTimeoutTests
         bool release,
         CancellationToken applicationStoppingToken = default)
     {
-        using var stream = new PrerenderingEventedStreamReaderTests.GatedStream(content);
+        using var stream = new GatedStream(content);
         var stdOut = new EventedStreamReader(new StreamReader(stream));
         using var stdOutReader = new EventedStreamStringReader(stdOut);
-        using var stdErrStream = new PrerenderingEventedStreamReaderTests.GatedStream(string.Empty);
+        using var stdErrStream = new GatedStream(string.Empty);
         var stdErr = new EventedStreamReader(new StreamReader(stdErrStream));
         using var stdErrReader = new EventedStreamStringReader(stdErr);
 
@@ -61,10 +62,10 @@ public class AngularPrerendererBuildTimeoutTests
     [Fact]
     public async Task Completes_when_the_build_reports_success()
     {
-        using var stream = new PrerenderingEventedStreamReaderTests.GatedStream("compiling\nBuild at: 2026-08-27\n");
+        using var stream = new GatedStream("compiling\nBuild at: 2026-08-27\n");
         var stdOut = new EventedStreamReader(new StreamReader(stream));
         using var stdOutReader = new EventedStreamStringReader(stdOut);
-        using var stdErrStream = new PrerenderingEventedStreamReaderTests.GatedStream(string.Empty);
+        using var stdErrStream = new GatedStream(string.Empty);
         var stdErr = new EventedStreamReader(new StreamReader(stdErrStream));
         using var stdErrReader = new EventedStreamStringReader(stdErr);
 

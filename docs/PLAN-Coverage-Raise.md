@@ -28,9 +28,74 @@ The residual ~257 dark lines are almost entirely `OutOfProcessNodeInstance` (190
 (63) and `ProcessTracker`'s Win32 layer (36) — the out-of-scope set. **That caps the achievable
 figure at roughly 86%**, which is the margin behind the 80% target.
 
+## Outcome
+
+**Delivered: 64.4% -> 78.04% line (1461/1872), 70.81% branch. 467 tests, green on both target
+frameworks, three consecutive clean sweeps.**
+
+The 80% target was **not** reached. It is short by 1.96 points - 37 covered lines. Why, precisely:
+
+| Still dark | Lines | Why it stayed that way |
+|---|---:|---|
+| `OutOfProcessNodeInstance` | 156 | Out of scope from the start (M8 would have been the invasive one) |
+| `AngularCliMiddleware` | 68 | Seam built and tests written, then **removed** - they crash the test host. See below |
+| `HttpNodeInstance` | 63 | Out of scope; derives from the above and news up its own `HttpClient` |
+| `ProcessTracker` | 36 | Out of scope; Win32 job objects, touching it risks killing the test host |
+| `AngularPrerendererBuilder.Build` | 27 | Same crash hazard as `AngularCliMiddleware` - not attempted |
+| `ClientWebSocketConnector` / `SystemProcessLauncher` | 26 | The seams' own default implementations: they dial a real socket and start a real process |
+
+That last row is worth noting because it is self-inflicted: adding the seams added 26 uncovered lines
+of shipped code. Necessary, but it means the seams cost about 1.4 points before they earned anything.
+
+Per-package at the end:
+
+| Package | Line rate |
+|---|---|
+| `NodeServices` | 47.2% |
+| `SpaServices` | 77.7% |
+| `SpaServices.Prerendering` | 94.1% |
+| `SpaServices.Routing` | 98.3% |
+| `SpaServices.Abstractions` | 100.0% |
+| `SpaServices.Xsrf` | 100.0% |
+
+`coverage.yml` still asks for 80%, as agreed. It does not judge this PR (policy is read from the base
+ref), so nothing is red yet - but on the next PR after this merges it will be, unless the target is
+revisited or the remaining work lands. **That is a decision to take deliberately, not to paper over:
+lowering the gate to 78 and adding no exclusions is the honest option, and adding an assembly
+exclusion to manufacture 80% is not (NFR-3.1).**
+
+## The two defects this work uncovered
+
+Neither was fixed - NFR-4.1 forbids behaviour changes in this pass - but both are real, and the
+second one is the reason the target was missed.
+
+**1. A root-level group with an empty path emits a double slash.** `Group("", "bare", ...)` at the
+root produces `//thing` rather than `/thing`. Pinned by an assertion in `GenerateUrlOverloadTests`
+with a comment saying it is pinned, not endorsed.
+
+**2. `EventedStreamReader` leaks its read loop, and that crashes the xunit host.** The constructor
+starts `Task.Factory.StartNew(Run, ...)` fire-and-forget: nothing awaits it, nothing cancels it, and
+the type is not disposable. Two consequences, both measured:
+
+- Awaiting `WaitForMatch` twice on one reader crashes the test host. This is a live production path -
+  `AngularPrerendererBuilder` does it whenever its occurrences count is 2.
+- Creating several `NodeScriptRunner`s and abandoning them - which is exactly what
+  `StartAngularCliServerAsync` does per call - crashes the host roughly one run in three.
+
+A crash, not a failure: `Test host process crashed`, run aborted, every result after it lost. So the
+`AngularCliMiddleware` tests were removed rather than shipped;
+`MintPlayer.AspNetCore.SpaServices.Tests/TestHelpers/NotTested-AngularCliMiddleware.md` records what
+they covered and how to restore them. The seam is still in place, so restoring them is one commit
+once the reader is made cancellable and disposable.
+
+This also caused a flaky failure in `NodeScriptRunnerTests`: the runner starts reading in its
+constructor, so `AttachToLogger` could subscribe after the line had already been emitted. Fixed in
+the tests by gating the fake streams until the handlers are attached - the same technique the
+existing `EventedStreamReader` tests already used.
+
 ## Milestones
 
-### M1 — Deduplicate ⬜
+### M1 — Deduplicate ✅
 
 Delete the five `SpaServices.Prerendering/Internals/*` copies; keep the `SpaServices` originals. Add
 to `MintPlayer.AspNetCore.SpaServices.csproj`:
@@ -52,7 +117,7 @@ coverage, which tests the same class twice.
 
 **No new tests.** This milestone moves the number by deleting code; the PRD records that explicitly.
 
-### M2 — Cheap pure-logic wins ⬜
+### M2 — Cheap pure-logic wins ✅
 
 No seams, no production changes beyond two `private` → `internal` widenings. Roughly 60 lines:
 
@@ -68,7 +133,7 @@ No seams, no production changes beyond two `private` → `internal` widenings. R
 | `ConditionalProxyMiddleware.InvokeCore` residual branch | 4 | |
 | `SpaPrerenderingExtensions` — `ExcludeUrls` path | 4 | Add to the existing harness |
 
-### M3 — Widen two `SpaProxy` statics ⬜
+### M3 — Widen two `SpaProxy` statics ✅
 
 `private static` → `internal static`, no other change:
 
@@ -83,7 +148,7 @@ Also extract `internal static HttpClientHandler CreateProxyHandler()`. This unlo
 private fields of `HttpMessageInvoker` to find the handler — a test that breaks whenever the BCL
 rearranges its internals.
 
-### M4 — Extract the start-info builders ⬜
+### M4 — Extract the start-info builders ✅
 
 Pure extraction, no interfaces. Lift the `ProcessStartInfo` composition out of the constructors so it
 can be exercised without launching anything:
@@ -95,7 +160,7 @@ can be exercised without launching anything:
   it is reachable without running the constructor that spawns node. Same for the pure statics
   `UnencodeNewlines`, `IsDebuggerMessage` and `IsFilenameBeingWatched`.
 
-### M5 — `IProcessLauncher` + `IChildProcess` ⬜
+### M5 — `IProcessLauncher` + `IChildProcess` ✅
 
 The runner touches only five members of `Process`:
 
@@ -124,7 +189,7 @@ Unlocks the `LaunchNodeProcess` failure path (the `InvalidOperationException` wi
 Precedent: `NodeServicesImpl` already takes `Func<INodeInstance>` and is the one file in this area at
 79% with a `FakeNodeInstance` in the tests. This is the same move.
 
-### M6 — `IWebSocketConnector` ⬜ *(crosses 80% here)*
+### M6 — `IWebSocketConnector` ✅ *(did NOT reach 80% — see Outcome)*
 
 ```csharp
 internal interface IWebSocketConnector
@@ -142,7 +207,7 @@ is already passed. The server side needs a fake `IHttpWebSocketFeature` added to
 Makes the sub-protocol forwarding, the `NotForwardedWebSocketHeaders` filter, the swallowed
 `ArgumentException` and the `WebSocketException → 400` path assertable.
 
-### M7 — Inject the runner into the two callers ⬜
+### M7 — Inject the runner into the two callers 🟡 *(seam landed; tests removed as unstable)*
 
 `AngularCliMiddleware` and `AngularPrerendererBuilder` both `new` a concrete `NodeScriptRunner`. Route
 both through the M5 seam, then lift `StartAngularCliServerAsync`'s regex/`openbrowser` logic and its

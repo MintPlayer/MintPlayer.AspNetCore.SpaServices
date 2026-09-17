@@ -1,5 +1,4 @@
 using System.Net;
-using System.Reflection;
 using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -10,6 +9,7 @@ using MintPlayer.AspNetCore.SpaServices.Abstractions;
 using MintPlayer.AspNetCore.SpaServices.Extensions;
 using MintPlayer.AspNetCore.SpaServices.Extensions.Proxy;
 using MintPlayer.AspNetCore.SpaServices.Proxying;
+using MintPlayer.AspNetCore.SpaServices.Tests.TestHelpers;
 using Xunit;
 
 namespace MintPlayer.AspNetCore.SpaServices.Tests.Proxying;
@@ -39,9 +39,9 @@ public class CreateHttpClientForProxyTests
     {
         // A redirect from the dev server has to reach the browser verbatim; following it here would
         // silently swallow the 3xx and serve the wrong URL's content.
-        using var client = SpaProxy.CreateHttpClientForProxy(TimeSpan.FromSeconds(1));
+        using var handler = SpaProxy.CreateProxyHandler();
 
-        Assert.False(GetHandler(client).AllowAutoRedirect);
+        Assert.False(handler.AllowAutoRedirect);
     }
 
     [Fact]
@@ -49,28 +49,11 @@ public class CreateHttpClientForProxyTests
     {
         // Cookies belong to the browser session, not to the shared proxy client; letting the handler
         // keep a CookieContainer would leak one visitor's cookies into another visitor's request.
-        using var client = SpaProxy.CreateHttpClientForProxy(TimeSpan.FromSeconds(1));
+        using var handler = SpaProxy.CreateProxyHandler();
 
-        Assert.False(GetHandler(client).UseCookies);
+        Assert.False(handler.UseCookies);
     }
 
-    /// <summary>
-    /// The handler is not exposed by <see cref="HttpClient"/>, so it is pulled off the private field
-    /// that <see cref="HttpMessageInvoker"/> stores it in.
-    /// </summary>
-    private static HttpClientHandler GetHandler(HttpClient client)
-    {
-        for (var type = client.GetType(); type is not null; type = type.BaseType)
-        {
-            foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
-            {
-                if (field.GetValue(client) is HttpClientHandler handler)
-                    return handler;
-            }
-        }
-
-        throw new InvalidOperationException("Could not locate the HttpClientHandler behind the HttpClient.");
-    }
 }
 
 public class PerformProxyRequestTests
@@ -480,41 +463,6 @@ public class PerformProxyRequestTests
         public void Abort() { }
     }
 
-    /// <summary>
-    /// Stands in for the network. Every proxy test drives the real code path through this handler,
-    /// so no test ever opens a socket.
-    /// </summary>
-    private sealed class StubHandler : HttpMessageHandler
-    {
-        private readonly Func<CancellationToken, HttpResponseMessage> respond;
-
-        public StubHandler()
-            : this(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("ok") })
-        {
-        }
-
-        public StubHandler(HttpResponseMessage response) : this(_ => response)
-        {
-        }
-
-        public StubHandler(Func<CancellationToken, HttpResponseMessage> respond)
-        {
-            this.respond = respond;
-        }
-
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public string? LastRequestBody { get; private set; }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            LastRequest = request;
-            if (request.Content is not null)
-                LastRequestBody = await request.Content.ReadAsStringAsync(cancellationToken);
-
-            return respond(cancellationToken);
-        }
-    }
 }
 
 public class ConditionalProxyMiddlewareTests

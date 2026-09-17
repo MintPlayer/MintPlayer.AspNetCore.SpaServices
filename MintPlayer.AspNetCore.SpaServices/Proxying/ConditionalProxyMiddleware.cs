@@ -38,6 +38,31 @@ internal sealed class ConditionalProxyMiddleware
         _applicationStoppingToken = applicationLifetime.ApplicationStopping;
     }
 
+    /// <summary>
+    /// Takes the <see cref="HttpClient"/> instead of building one, so a test can supply a stub
+    /// handler and exercise the proxied path. The public constructor above is unchanged and still
+    /// builds the real client.
+    /// </summary>
+    internal ConditionalProxyMiddleware(
+        RequestDelegate next,
+        string pathPrefix,
+        Task<Uri> baseUriTask,
+        HttpClient httpClient,
+        CancellationToken applicationStoppingToken)
+    {
+        if (!pathPrefix.StartsWith('/'))
+        {
+            pathPrefix = "/" + pathPrefix;
+        }
+
+        _next = next;
+        _pathPrefix = pathPrefix;
+        _pathPrefixIsRoot = string.Equals(_pathPrefix, "/", StringComparison.Ordinal);
+        _baseUriTask = baseUriTask;
+        _httpClient = httpClient;
+        _applicationStoppingToken = applicationStoppingToken;
+    }
+
     public Task Invoke(HttpContext context)
     {
         // If an endpoint was already matched by routing, skip proxying and let the
