@@ -2,13 +2,19 @@
 
 Implementation plan for [PRD-Dotnet-11-Upgrade.md](./PRD-Dotnet-11-Upgrade.md).
 
-Branch: `spike/dotnet-11`. **Single PR** — the framework bump, the two upstream breaks it exposes,
-and the CI/doc updates land together.
+Branch: `feature/dotnet-11` → [PR #84](https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices/pull/84).
+**Single PR** — the framework bump, the two upstream breaks it exposes, and the CI/doc updates land
+together.
+
+Status: **all milestones complete and verified locally.** Every entry in the risk register below is
+retired. The only thing not yet observed is the first CI run — specifically whether
+`actions/setup-dotnet@v4` can fetch SDK `11.0.100-rc.1.26425.128` on `ubuntu-latest`, which cannot
+be tested from a developer machine. It fails fast at the setup step if not.
 
 ## Spikes
 
 All four ran against the locally installed SDK `11.0.100-rc.1.26425.128` /
-`Microsoft.AspNetCore.App 11.0.0-rc.1.26425.128`, on branch `spike/dotnet-11`.
+`Microsoft.AspNetCore.App 11.0.0-rc.1.26425.128`, on branch `feature/dotnet-11`.
 
 ### Spike 1 — Does the solution build on the .NET 11 RC SDK? ✅ **Yes**
 
@@ -130,7 +136,8 @@ buildTransitive/Microsoft.Extensions.FileSystemGlobbing.dll
 | Same rename in the four pack items; `$(Pkg…)` → `$(NuGetPackageRoot)` + `$(FolderHasherTargetsVersion)` | `MintPlayer.AspNetCore.NodeServices.csproj` |
 | Remove redundant `Microsoft.Extensions.DependencyInjection.Abstractions` (NU1510) | `Demo/Prerendering/Demo.Data/Demo.Data.csproj` |
 
-Diff across M1–M4: **19 files, +63/−62** plus the two new docs. No `.cs` file is touched.
+Diff across M1–M4: **17 build/CI/doc files, +63/−62**, plus these two new documents — **19 files,
++379/−62** in total. No `.cs` file is touched.
 
 ### M3 — CI ✅
 
