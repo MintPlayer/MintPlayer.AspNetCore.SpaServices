@@ -16,13 +16,19 @@ namespace MintPlayer.AspNetCore.SpaServices.Npm;
 /// </summary>
 internal sealed class NodeScriptRunner : IDisposable
 {
-	private Process? _npmProcess;
+	private IChildProcess? _npmProcess;
 	public EventedStreamReader StdOut { get; }
 	public EventedStreamReader StdErr { get; }
 
 	private static readonly Regex AnsiColorRegex = new Regex("\x001b\\[[0-9;]*m", RegexOptions.None, TimeSpan.FromSeconds(1));
 
-	public NodeScriptRunner(string workingDirectory, string scriptName, string? arguments, IDictionary<string, string>? envVars, string pkgManagerCommand, DiagnosticSource diagnosticSource, CancellationToken applicationStoppingToken)
+	/// <summary>
+	/// Composes the <see cref="ProcessStartInfo"/> the runner launches. Split out of the constructor
+	/// so the argument guards, the Windows-versus-POSIX branch and the environment copy can be
+	/// asserted without starting a package manager - constructing the runner is what spawns it, so
+	/// there is otherwise no way to reach this logic from a test.
+	/// </summary>
+	internal static ProcessStartInfo BuildStartInfo(string workingDirectory, string scriptName, string? arguments, IDictionary<string, string>? envVars, string pkgManagerCommand)
 	{
 		if (string.IsNullOrEmpty(workingDirectory))
 		{
@@ -68,9 +74,26 @@ internal sealed class NodeScriptRunner : IDisposable
 			}
 		}
 
-		_npmProcess = LaunchNodeProcess(processStartInfo, pkgManagerCommand);
-		StdOut = new EventedStreamReader(_npmProcess.StandardOutput);
-		StdErr = new EventedStreamReader(_npmProcess.StandardError);
+		return processStartInfo;
+	}
+
+	public NodeScriptRunner(string workingDirectory, string scriptName, string? arguments, IDictionary<string, string>? envVars, string pkgManagerCommand, DiagnosticSource diagnosticSource, CancellationToken applicationStoppingToken)
+		: this(workingDirectory, scriptName, arguments, envVars, pkgManagerCommand, diagnosticSource, applicationStoppingToken, SystemProcessLauncher.Instance)
+	{
+	}
+
+	/// <summary>
+	/// Takes the launcher instead of starting a real process. The public constructor above passes
+	/// <see cref="SystemProcessLauncher.Instance"/>, so shipped behaviour is unchanged; a test can
+	/// pass a fake and exercise the runner without a package manager installed.
+	/// </summary>
+	internal NodeScriptRunner(string workingDirectory, string scriptName, string? arguments, IDictionary<string, string>? envVars, string pkgManagerCommand, DiagnosticSource diagnosticSource, CancellationToken applicationStoppingToken, IProcessLauncher processLauncher)
+	{
+		var processStartInfo = BuildStartInfo(workingDirectory, scriptName, arguments, envVars, pkgManagerCommand);
+
+		_npmProcess = LaunchNodeProcess(processLauncher, processStartInfo, pkgManagerCommand);
+		StdOut = new EventedStreamReader(_npmProcess.StandardOutput, applicationStoppingToken);
+		StdErr = new EventedStreamReader(_npmProcess.StandardError, applicationStoppingToken);
 
 		applicationStoppingToken.Register(((IDisposable)this).Dispose);
 
@@ -128,21 +151,15 @@ internal sealed class NodeScriptRunner : IDisposable
 		};
 	}
 
-	private static string StripAnsiColors(string line)
+	/// <summary>Internal so the ANSI-stripping contract can be asserted without a process.</summary>
+	internal static string StripAnsiColors(string line)
 		=> AnsiColorRegex.Replace(line, string.Empty);
 
-	private static Process LaunchNodeProcess(ProcessStartInfo startInfo, string commandName)
+	internal static IChildProcess LaunchNodeProcess(IProcessLauncher launcher, ProcessStartInfo startInfo, string commandName)
 	{
 		try
 		{
-			var process = Process.Start(startInfo)!;
-
-			// See equivalent comment in OutOfProcessNodeInstance.cs for why
-			process.EnableRaisingEvents = true;
-
-			ProcessTracker.AddProcess(process);
-
-			return process;
+			return launcher.Start(startInfo);
 		}
 		catch (Exception ex)
 		{

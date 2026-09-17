@@ -49,9 +49,9 @@ public class AngularPrerendererBuilder : Abstractions.ISpaPrerendererBuilder
 
 		var appBuilder = spaBuilder.ApplicationBuilder;
 		var applicationStoppingToken = appBuilder.ApplicationServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
-		var logger = Internals.LoggerFinder.GetOrCreateLogger(appBuilder, nameof(AngularPrerendererBuilder));
+		var logger = Utils.LoggerFinder.GetOrCreateLogger(appBuilder, nameof(AngularPrerendererBuilder));
 		var diagnosticSource = appBuilder.ApplicationServices.GetRequiredService<DiagnosticSource>();
-		var scriptRunner = new Internals.NodeScriptRunner(
+		var scriptRunner = new Npm.NodeScriptRunner(
 			sourcePath,
 			npmScript,
 			"--watch",
@@ -61,8 +61,8 @@ public class AngularPrerendererBuilder : Abstractions.ISpaPrerendererBuilder
 			applicationStoppingToken);
 		scriptRunner.AttachToLogger(logger);
 
-		using (var stdOutReader = new Internals.EventedStreamStringReader(scriptRunner.StdOut))
-		using (var stdErrReader = new Internals.EventedStreamStringReader(scriptRunner.StdErr))
+		using (var stdOutReader = new Utils.EventedStreamStringReader(scriptRunner.StdOut))
+		using (var stdErrReader = new Utils.EventedStreamStringReader(scriptRunner.StdErr))
 		{
 			await WaitForBuildToFinish(
 				scriptRunner.StdOut,
@@ -98,15 +98,15 @@ public class AngularPrerendererBuilder : Abstractions.ISpaPrerendererBuilder
 	/// </para>
 	/// </remarks>
 	internal static async Task WaitForBuildToFinish(
-		Internals.EventedStreamReader stdOut,
+		Utils.EventedStreamReader stdOut,
 		Regex finishedRegex,
 		int occurrences,
 		TimeSpan timeout,
 		CancellationToken applicationStoppingToken,
 		string pkgManagerCommand,
 		string npmScript,
-		Internals.EventedStreamStringReader stdOutReader,
-		Internals.EventedStreamStringReader stdErrReader)
+		Utils.EventedStreamStringReader stdOutReader,
+		Utils.EventedStreamStringReader stdErrReader)
 	{
 		try
 		{

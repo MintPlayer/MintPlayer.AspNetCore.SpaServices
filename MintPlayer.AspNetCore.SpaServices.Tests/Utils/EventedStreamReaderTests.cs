@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using MintPlayer.AspNetCore.SpaServices.Utils;
+using MintPlayer.AspNetCore.SpaServices.Tests.TestHelpers;
 using Xunit;
 
 namespace MintPlayer.AspNetCore.SpaServices.Tests.Utils;
@@ -172,68 +173,4 @@ public class EventedStreamReaderTests
         Assert.Equal(string.Empty, stringReader.ReadAsString());
     }
 
-    /// <summary>
-    /// An in-memory stream whose first read blocks until <see cref="Release"/> is called, so a test
-    /// can attach handlers before any data flows.
-    /// </summary>
-    private sealed class GatedStream(string content) : Stream
-    {
-        private readonly MemoryStream inner = new(Encoding.UTF8.GetBytes(content));
-        private readonly SemaphoreSlim gate = new(0, 1);
-        private bool opened;
-
-        public void Release() => gate.Release();
-
-        private async ValueTask OpenAsync(CancellationToken cancellationToken)
-        {
-            if (opened) return;
-            await gate.WaitAsync(cancellationToken);
-            opened = true;
-        }
-
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
-        {
-            await OpenAsync(cancellationToken);
-            return await inner.ReadAsync(buffer, cancellationToken);
-        }
-
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            => ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            if (!opened)
-            {
-                gate.Wait();
-                opened = true;
-            }
-            return inner.Read(buffer, offset, count);
-        }
-
-        public override bool CanRead => true;
-        public override bool CanSeek => false;
-        public override bool CanWrite => false;
-        public override long Length => inner.Length;
-
-        public override long Position
-        {
-            get => inner.Position;
-            set => throw new NotSupportedException();
-        }
-
-        public override void Flush() { }
-        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-        public override void SetLength(long value) => throw new NotSupportedException();
-        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                inner.Dispose();
-                gate.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-    }
 }

@@ -1,0 +1,37 @@
+# Coverage gate policy for coverage.mintplayer.com.
+#
+# Overrides the repository's "Coverage gate" settings panel per field. Read from the BASE ref of a
+# pull request - never from the head - so a PR cannot rewrite the policy that judges it. The
+# practical consequence: this file does not gate the PR that introduces it. It starts enforcing on
+# the first PR opened after it reaches master.
+#
+# Schema: MintPlayer.Spark/docs/code-coverage/upload-api.md. Unknown keys are silently ignored, and
+# a malformed file is discarded whole (the stored panel settings then stand), so a typo here fails
+# open rather than loud. Check the coverage/project and coverage/patch check runs after changing it.
+gate:
+  # Compare against a fixed target rather than ratcheting against the base commit.
+  projectMode: fixed
+
+  # Require 80% overall line coverage. The baseline when this gate was written was 64.4%; the plan
+  # in docs/PLAN-Coverage-Raise.md reaches roughly 86%, so this is deliberately set to a number the
+  # repository does not yet meet - the gate is red until that work lands.
+  projectTarget: 80
+
+  # Tolerance BELOW the target, in percentage points. The rule is: head >= projectTarget -
+  # projectThreshold. Zero makes it a strict >= 80%.
+  projectThreshold: 0
+
+  # Only consulted for builds the uploader declares partial, which this repository never does - the
+  # two per-TFM reports merge into one whole-workspace build. Pinned to the honest option so that
+  # if a partial upload is ever introduced it compares like for like instead of synthesising a
+  # whole-workspace projection.
+  projectBasis: scoped
+
+  # Added or changed lines must be 80% covered. This is what actually keeps the number climbing:
+  # it stops new uncovered code arriving, rather than relying on one-off pushes.
+  patchTarget: 80
+  patchThreshold: 0
+
+  # Failed checks turn red. With this off, both checks post the same numbers but always conclude
+  # "neutral" - which is exactly why coverage/project and coverage/patch read "skipping" today.
+  blocking: true

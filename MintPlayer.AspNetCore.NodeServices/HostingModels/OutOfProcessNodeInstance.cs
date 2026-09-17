@@ -214,18 +214,39 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		IDictionary<string, string> environmentVars, bool launchWithDebugging, int debuggingPort, string nodePath)
 	{
 		// This method is virtual, as it provides a way to override the NODE_PATH or the path to node.exe
+		if (launchWithDebugging)
+		{
+			_nodeDebuggingPort = debuggingPort;
+		}
+
+		return BuildNodeProcessStartInfo(
+			entryPointFilename, projectPath, commandLineArguments, environmentVars, launchWithDebugging, debuggingPort, nodePath);
+	}
+
+	/// <summary>
+	/// The composition half of <see cref="PrepareNodeProcessStartInfo"/>, with the one piece of
+	/// instance state - the recorded debugging port - left behind in the caller.
+	/// <para>
+	/// Split out because the constructor launches node, so the only way to reach the argument
+	/// composition, the NODE_PATH handling and the environment copy from a test is without an
+	/// instance at all.
+	/// </para>
+	/// </summary>
+	internal static ProcessStartInfo BuildNodeProcessStartInfo(
+		string entryPointFilename, string projectPath, string commandLineArguments,
+		IDictionary<string, string> environmentVars, bool launchWithDebugging, int debuggingPort, string nodePath)
+	{
 		string debuggingArgs;
 		if (launchWithDebugging)
 		{
 			debuggingArgs = debuggingPort != default(int) ? $"--inspect={debuggingPort} " : "--inspect ";
-			_nodeDebuggingPort = debuggingPort;
 		}
 		else
 		{
 			debuggingArgs = string.Empty;
 		}
 
-		var thisProcessPid = Process.GetCurrentProcess().Id;
+		var thisProcessPid = Environment.ProcessId;
 		var startInfo = new ProcessStartInfo(nodePath)
 		{
 			Arguments = $"{debuggingArgs}\"{entryPointFilename}\" --parentPid {thisProcessPid} {commandLineArguments ?? string.Empty}",
@@ -346,7 +367,8 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		}
 	}
 
-	private static string UnencodeNewlines(string str)
+	/// <summary>Internal so the stdio token-replacement contract with OverrideStdOutputs.ts can be tested directly.</summary>
+	internal static string UnencodeNewlines(string str)
 	{
 		if (str != null)
 		{
@@ -394,7 +416,8 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		_nodeProcess.BeginErrorReadLine();
 	}
 
-	private static bool IsDebuggerMessage(string message)
+	/// <summary>Internal so the debugger-noise filter can be tested without launching node under a debugger.</summary>
+	internal static bool IsDebuggerMessage(string message)
 	{
 		return message.StartsWith("Debugger attached", StringComparison.Ordinal) ||
 			message.StartsWith("Debugger listening ", StringComparison.Ordinal) ||
@@ -441,7 +464,10 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		}
 	}
 
-	private bool IsFilenameBeingWatched(string fullPath)
+	private bool IsFilenameBeingWatched(string fullPath) => IsFilenameBeingWatched(fullPath, _watchFileExtensions);
+
+	/// <summary>Internal so the extension match can be tested without a FileSystemWatcher or a node process.</summary>
+	internal static bool IsFilenameBeingWatched(string fullPath, string[] watchFileExtensions)
 	{
 		if (string.IsNullOrEmpty(fullPath))
 		{
@@ -450,7 +476,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		else
 		{
 			var actualExtension = Path.GetExtension(fullPath) ?? string.Empty;
-			return _watchFileExtensions.Any(actualExtension.Equals);
+			return watchFileExtensions.Any(actualExtension.Equals);
 		}
 	}
 

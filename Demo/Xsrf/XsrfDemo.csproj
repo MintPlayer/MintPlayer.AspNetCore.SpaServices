@@ -3,8 +3,8 @@
 	<Import Project="..\..\MintPlayer.AspNetCore.NodeServices\Targets\nodeservices.props" />
 
 	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
-		<LangVersion>14</LangVersion>
+		<TargetFramework>net11.0</TargetFramework>
+		<LangVersion>15</LangVersion>
 		<TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
 		<TypeScriptToolsVersion>Latest</TypeScriptToolsVersion>
 		<Nullable>enable</Nullable>
@@ -16,8 +16,8 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="MintPlayer.SourceGenerators" Version="10.13.0" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
-		<PackageReference Include="MintPlayer.SourceGenerators.Attributes" Version="10.13.0" GeneratePathProperty="true" />
+		<PackageReference Include="MintPlayer.SourceGenerators" Version="10.22.0" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+		<PackageReference Include="MintPlayer.SourceGenerators.Attributes" Version="10.20.1" GeneratePathProperty="true" />
 	</ItemGroup>
 
 	<ItemGroup>

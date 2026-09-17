@@ -22,6 +22,27 @@ internal class SpaRouteItem : ISpaRouteItem, Prerendering.Services.ISpaRouteBuil
 	public string FullPath { get; set; }
 	public List<ISpaRouteItem> Routes { get; set; }
 
+	/// <summary>
+	/// Joins a child segment onto this item's path.
+	/// </summary>
+	/// <remarks>
+	/// <c>FullPath</c> is stored WITHOUT a leading slash: both <c>GenerateUrl</c> and the matcher
+	/// prepend one themselves. Joining with a bare <c>$"{FullPath}/{path}"</c> broke that invariant
+	/// whenever the parent's path was empty - a group declared as <c>Group("", "bare", ...)</c> left
+	/// <c>FullPath</c> empty, so its children came out as <c>"/thing"</c> and then rendered as
+	/// <c>"//thing"</c>. The matcher built <c>"^//thing$"</c> from the same value, so such a route
+	/// could never match a real request either.
+	/// </remarks>
+	private string CombinePath(string path)
+	{
+		if (string.IsNullOrEmpty(path))
+		{
+			return FullPath;
+		}
+
+		return string.IsNullOrEmpty(FullPath) ? path : $"{FullPath}/{path}";
+	}
+
 	public Prerendering.Services.ISpaRouteBuilder Route(string path, string name)
 	{
 		var route = new SpaRouteItem
@@ -29,7 +50,7 @@ internal class SpaRouteItem : ISpaRouteItem, Prerendering.Services.ISpaRouteBuil
 			Path = path,
 			Name = name,
 			FullName = $"{FullName}-{name}",
-			FullPath = string.IsNullOrEmpty(path) ? FullPath : $"{FullPath}/{path}"
+			FullPath = CombinePath(path)
 		};
 		Routes.Add(route);
 		return this;
@@ -42,7 +63,7 @@ internal class SpaRouteItem : ISpaRouteItem, Prerendering.Services.ISpaRouteBuil
 			Path = path,
 			Name = name,
 			FullName = $"{FullName}-{name}",
-			FullPath = string.IsNullOrEmpty(path) ? FullPath : $"{FullPath}/{path}"
+			FullPath = CombinePath(path)
 		};
 		builder(group);
 		Routes.Add(group);

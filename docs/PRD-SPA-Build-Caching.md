@@ -134,7 +134,7 @@ test-results/
 
 ### NFR-2: Compatibility
 
-- **NFR-2.1**: The feature SHALL work with .NET 8.0, .NET 9.0, and .NET 10.0
+- **NFR-2.1**: The feature SHALL work with .NET 8.0, .NET 9.0, .NET 10.0, and .NET 11.0
 - **NFR-2.2**: The feature SHALL work with Angular, React, Vue, and other npm-based SPAs
 - **NFR-2.3**: The feature SHALL not break existing projects that don't use caching
 

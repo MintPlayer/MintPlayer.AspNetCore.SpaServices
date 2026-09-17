@@ -46,7 +46,18 @@ internal static class AngularCliMiddleware
 		});
 	}
 
-	private static async Task<Uri> StartAngularCliServerAsync(
+	/// <summary>
+	/// Starts the dev server and waits for it to announce its URL.
+	/// </summary>
+	/// <param name="processLauncher">
+	/// Left null in production, where the real package manager is started. A test passes a fake so
+	/// the whole start-up handshake can be exercised without Angular installed.
+	/// </param>
+	/// <param name="readinessHandler">
+	/// Left null in production. A test passes a stub so the readiness poll answers immediately - it
+	/// is an unbounded <c>while (true)</c> loop, so a test that let it run for real would hang.
+	/// </param>
+	internal static async Task<Uri> StartAngularCliServerAsync(
 		string sourcePath,
 		string scriptName,
 		string pkgManagerCommand,
@@ -54,7 +65,9 @@ internal static class AngularCliMiddleware
 		Regex[]? finishedRegexes,
 		ILogger logger,
 		DiagnosticSource diagnosticSource,
-		CancellationToken applicationStoppingToken)
+		CancellationToken applicationStoppingToken,
+		Npm.IProcessLauncher? processLauncher = null,
+		HttpMessageHandler? readinessHandler = null)
 	{
 		if (portNumber == default)
 		{
@@ -65,7 +78,7 @@ internal static class AngularCliMiddleware
 			logger.LogInformation($"Starting @angular/cli on port {portNumber}...");
 		}
 
-		var scriptRunner = new Npm.NodeScriptRunner(sourcePath, scriptName, $"--port {portNumber}", null, pkgManagerCommand, diagnosticSource, applicationStoppingToken);
+		var scriptRunner = new Npm.NodeScriptRunner(sourcePath, scriptName, $"--port {portNumber}", null, pkgManagerCommand, diagnosticSource, applicationStoppingToken, processLauncher ?? Npm.SystemProcessLauncher.Instance);
 		scriptRunner.AttachToLogger(logger);
 
 		string? openBrowserUrl = null;
@@ -109,12 +122,21 @@ internal static class AngularCliMiddleware
 
 		// Even after the Angular CLI claims to be listening for requests, there's a short
 		// period where it will give an error if you make a request too quickly
-		await WaitForAngularCliServerToAcceptRequests(uri);
+		await WaitForAngularCliServerToAcceptRequests(uri, readinessHandler, applicationStoppingToken);
 
 		return uri;
 	}
 
-	private static async Task WaitForAngularCliServerToAcceptRequests(Uri cliServerUri)
+	/// <summary>
+	/// Polls the dev server until it answers.
+	/// </summary>
+	/// <remarks>
+	/// Retrying indefinitely is deliberate - see the comment in the body - but it used to ignore
+	/// <paramref name="applicationStoppingToken"/> entirely, so a host shutdown while the dev server
+	/// was still coming up left this loop running and the shutdown waiting on it. Cancellation now
+	/// ends the wait; the retry policy itself is unchanged.
+	/// </remarks>
+	private static async Task WaitForAngularCliServerToAcceptRequests(Uri cliServerUri, HttpMessageHandler? handler, CancellationToken applicationStoppingToken)
 	{
 		// To determine when it's actually ready, try making HEAD requests to '/'. If it
 		// produces any HTTP response (even if it's 404) then it's ready. If it rejects the
@@ -122,20 +144,29 @@ internal static class AngularCliMiddleware
 		// only, and only a single startup attempt will be made, and there's a further level
 		// of timeouts enforced on a per-request basis.
 		var timeoutMilliseconds = 1000;
-		using (var client = new HttpClient())
+		using (var client = handler is null ? new HttpClient() : new HttpClient(handler, disposeHandler: false))
 		{
 			while (true)
 			{
+				applicationStoppingToken.ThrowIfCancellationRequested();
+
 				try
 				{
 					// If we get any HTTP response, the CLI server is ready
-					using var cancellationTokenSource = new CancellationTokenSource(timeoutMilliseconds);
+					using var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(applicationStoppingToken);
+					cancellationTokenSource.CancelAfter(timeoutMilliseconds);
 					await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, cliServerUri), cancellationTokenSource.Token);
 					return;
 				}
 				catch (Exception)
 				{
-					await Task.Delay(500);
+					// A shutdown is not a failed attempt. Checked here rather than in an exception
+					// filter: a filter is evaluated before the handler runs, so a cancellation landing
+					// in that window let the attempt's own exception escape instead - the caller saw
+					// "connection refused" when the real answer was "we are shutting down".
+					applicationStoppingToken.ThrowIfCancellationRequested();
+
+					await Task.Delay(500, applicationStoppingToken);
 
 					// Depending on the host's networking configuration, the requests can take a while
 					// to go through, most likely due to the time spent resolving 'localhost'.
