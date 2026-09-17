@@ -110,8 +110,23 @@ behavioural changes that do not belong in a framework bump, and each needs its o
 - Introducing a `Directory.Build.props` to collapse the 11-way duplication.
 - xunit v2 → v3.
 
-## Open question
+## Resolved: `rollForward` across the RC → GA boundary
 
-`rollForward: latestFeature` is assumed to accept GA `11.0.100` when it replaces the RC on CI
-runners. This is reasoned from documented semantics and is **not verified** — AspNetCore.Tools#31
-flags the same assumption. It needs re-checking when .NET 11 goes GA in November 2026.
+AspNetCore.Tools#31 flags, as an unverified assumption, that `rollForward: latestFeature` will accept
+GA `11.0.100` once it replaces the RC on a runner. **Verified here, and it holds.**
+
+GA `11.0.100` does not exist yet, so the equivalent question was put to the .NET 10 SDKs installed
+locally (`10.0.112`, `10.0.401`) using a prerelease pin for a version that is *not* installed:
+
+| `global.json` | Resolved |
+|---|---|
+| `10.0.100-rc.1.25451.107` + `rollForward: latestFeature` | **`10.0.401`** |
+| `10.0.100-rc.1.25451.107`, no `rollForward` (control) | **`10.0.112`** |
+
+A prerelease pin rolls forward to a **GA** SDK — and the control shows even the default
+(`latestPatch`) does so. Prerelease-vs-GA is not a barrier in the SDK resolver; the version is
+ordered by SemVer, where `11.0.100` sorts above `11.0.100-rc.1.*`.
+
+This is belt-and-braces anyway: CI uses `actions/setup-dotnet` pinned to the same exact version, so
+the runner always has an exact match and never needs to roll forward at all. `rollForward` matters
+only for a local developer who has GA installed but not the RC.

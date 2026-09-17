@@ -180,5 +180,5 @@ Coverage: 64.43% line, 55.36% branch, 1301/2019 lines across 53 files — unchan
 | FolderHasher task rename breaks SPA build caching silently | High | **Fixed + verified** — Spike 2 |
 | Pack breaks under multi-targeting | Medium | **Fixed + verified** — Spike 4 |
 | Coverage double-counted across two TFMs | Medium | **Retired** — rate is invariant, M3 |
-| `rollForward: latestFeature` vs GA `11.0.100` | Low | **Open** — re-check Nov 2026 |
+| `rollForward: latestFeature` vs GA `11.0.100` | Low | **Retired** — measured against the .NET 10 SDKs; a prerelease pin rolls forward to GA (see PRD) |
 | `.hasherignore` auto-created in a consumer's SPA root on first build | Low | Pre-existing behaviour; noted, not changed |
