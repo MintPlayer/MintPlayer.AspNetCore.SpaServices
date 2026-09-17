@@ -1,0 +1,582 @@
+- generic [ref=e5]:
+  - link "Skip to content" [ref=e6] [cursor=pointer]:
+    - /url: "#"
+  - button "Toggle sidebar" [expanded] [ref=e7]
+  - banner [ref=e8]:
+    - generic [ref=e9]:
+      - button "Toggle navigation" [ref=e11] [cursor=pointer]
+      - generic [ref=e16]:
+        - combobox [ref=e34]:
+          - option "English" [selected]
+          - option "French"
+          - option "Dutch"
+        - generic [ref=e35]: PieterjanDeClippel
+        - button "Logout" [ref=e36] [cursor=pointer]
+  - generic [ref=e19]:
+    - complementary "Sidebar" [ref=e20]:
+      - navigation [ref=e21]:
+        - heading "Coverage" [level=5] [ref=e37]
+        - group [ref=e41]:
+          - generic " Coverage" [ref=e42] [cursor=pointer]:
+            - generic [ref=e43]:
+              - generic [ref=e45]: 
+              - text: Coverage
+          - generic: 
+    - main [ref=e23]:
+      - main [ref=e24]:
+        - generic [ref=e28]:
+          - navigation "Navigation" [ref=e48]:
+            - generic [ref=e49]:
+              - button "Back" [ref=e51] [cursor=pointer]:
+                - img [ref=e54]: 
+                - text: Back
+              - button "Edit" [ref=e57] [cursor=pointer]:
+                - img [ref=e60]: 
+                - text: Edit
+            - text:  
+          - heading "MintPlayer/MintPlayer.AspNetCore.SpaServices" [level=2] [ref=e62]
+          - generic [ref=e67]:
+            - tablist [ref=e69]:
+              - tab "General" [selected] [ref=e70] [cursor=pointer]:
+                - generic [ref=e71]: General
+            - tabpanel "General" [ref=e72]:
+              - generic [ref=e77]:
+                - term [ref=e78]:
+                  - text: Account
+                  - button "The GitHub user or organization that owns this repository." [ref=e80] [cursor=pointer]:
+                    - generic [ref=e82]: 
+                - definition [ref=e83]:
+                  - link "MintPlayer" [ref=e84] [cursor=pointer]:
+                    - /url: /po/account/Accounts%2F48772716
+                - term [ref=e85]:
+                  - text: Repository
+                  - button "The repository name without the owner, e.g. MintPlayer.Spark." [ref=e87] [cursor=pointer]:
+                    - generic [ref=e89]: 
+                - definition [ref=e90]:
+                  - generic [ref=e91]: MintPlayer.AspNetCore.SpaServices
+                - term [ref=e92]:
+                  - text: Coverage
+                  - button "The repository's headline coverage." [ref=e94] [cursor=pointer]:
+                    - generic [ref=e96]: 
+                - definition [ref=e97]:
+                  - generic [ref=e99]:
+                    - generic [ref=e101]:
+                      - progressbar "Coverage" [ref=e104]
+                      - generic [ref=e105]: 64.4%
+                    - generic [ref=e106]: 1301/2019 lines · 285/548 branches · 53 files
+                - term [ref=e107]:
+                  - text: Latest commit
+                  - button "The default-branch commit the headline coverage was taken from." [ref=e109] [cursor=pointer]:
+                    - generic [ref=e111]: 
+                - definition [ref=e112]:
+                  - link "51cb55f" [ref=e114] [cursor=pointer]:
+                    - /url: /r/MintPlayer/MintPlayer.AspNetCore.SpaServices/c/51cb55fa998181daa810f46014170d7f6877e8c8
+                - term [ref=e115]:
+                  - text: Owner
+                  - button "GitHub login of the owning user or organization." [ref=e117] [cursor=pointer]:
+                    - generic [ref=e119]: 
+                - definition [ref=e120]: MintPlayer
+                - term [ref=e121]:
+                  - text: Connection
+                  - button "Whether the GitHub App can still see this repository." [ref=e123] [cursor=pointer]:
+                    - generic [ref=e125]: 
+                - definition [ref=e126]: Connected
+                - term [ref=e127]:
+                  - text: Default Branch
+                  - button "The repository's default branch on GitHub." [ref=e129] [cursor=pointer]:
+                    - generic [ref=e131]: 
+                - definition [ref=e132]: master
+                - term [ref=e133]:
+                  - text: Archived
+                  - button "Whether the repository has been archived on GitHub." [ref=e135] [cursor=pointer]:
+                    - generic [ref=e137]: 
+                - definition [ref=e138]:
+                  - checkbox [disabled] [ref=e139]
+                - term [ref=e140]:
+                  - text: Disconnected Reason
+                  - button "Why the repository is disconnected, from DisconnectedReasons; null while connected." [ref=e142] [cursor=pointer]:
+                    - generic [ref=e144]: 
+                - definition [ref=e145]: "-"
+                - term [ref=e146]:
+                  - text: Gate
+                  - button "Gate policy; empty means every default (informational, auto-ratchet)." [ref=e148] [cursor=pointer]:
+                    - generic [ref=e150]: 
+                - definition [ref=e151]: "-"
+                - term [ref=e152]:
+                  - text: Badge Token
+                  - button "Grants access to the rendered badge SVG only — never report data." [ref=e154] [cursor=pointer]:
+                    - generic [ref=e156]: 
+                - definition [ref=e157]: "-"
+                - term [ref=e158]:
+                  - text: Disconnected
+                  - button "When the repository was last disconnected (UTC); null while connected." [ref=e160] [cursor=pointer]:
+                    - generic [ref=e162]: 
+                - definition [ref=e163]: "-"
+                - term [ref=e164]:
+                  - text: Last Measured
+                  - button "When the headline coverage was last refreshed." [ref=e166] [cursor=pointer]:
+                    - generic [ref=e168]: 
+                - definition [ref=e169]: 9/6/26, 12:31 AM
+                - term [ref=e170]:
+                  - text: Delete Branch On Merge
+                  - button "Whether a merged pull request's head branch is deleted — or whether that is left to the owning Account." [ref=e172] [cursor=pointer]:
+                    - generic [ref=e174]: 
+                - definition [ref=e175]: Use account setting
+          - generic [ref=e178]:
+            - generic:
+              - generic [ref=e181]: Commits
+              - generic [ref=e184]:
+                - status [ref=e185]
+                - generic [ref=e186]:
+                  - table [ref=e187]:
+                    - rowgroup [ref=e188]:
+                      - row "↑ Commit The full 40-character git commit sha. Resize column Sha ↓ ↑ Branch The branch the commit was pushed to or the PR head branch, when known. Resize column Branch ↓ ↑ Coverage The commit's headline coverage. Resize column Coverage ↓ ↑ Δ parent Percentage-point change versus the git first parent. Resize column CoverageDeltaVsParent ↓ ↑ PR Base Ref The branch the pull request targets, not its head branch. Resize column PullRequestBaseRef ↓ ↑ Δ base branch Percentage-point change versus the default branch — what merging would do. Resize column CoverageDeltaVsDefaultBranch ↓ ↑ PR Base Sha Tip of the target branch as of the PR's last synchronise. Resize column PullRequestBaseSha ↓ ↑ Date Resize column Date ↓" [ref=e189]:
+                        - columnheader "↑ Commit The full 40-character git commit sha. Resize column Sha ↓" [ref=e190] [cursor=pointer]:
+                          - text: ↑
+                          - button "Commit The full 40-character git commit sha." [ref=e191]:
+                            - generic [ref=e193]:
+                              - text: Commit
+                              - button "The full 40-character git commit sha." [ref=e195]:
+                                - generic [ref=e197]: 
+                          - separator "Resize column Sha" [ref=e198]
+                          - text: ↓
+                        - columnheader "↑ Branch The branch the commit was pushed to or the PR head branch, when known. Resize column Branch ↓" [ref=e199] [cursor=pointer]:
+                          - text: ↑
+                          - button "Branch The branch the commit was pushed to or the PR head branch, when known." [ref=e200]:
+                            - generic [ref=e202]:
+                              - text: Branch
+                              - button "The branch the commit was pushed to or the PR head branch, when known." [ref=e204]:
+                                - generic [ref=e206]: 
+                          - separator "Resize column Branch" [ref=e207]
+                          - text: ↓
+                        - columnheader "↑ Coverage The commit's headline coverage. Resize column Coverage ↓" [ref=e208] [cursor=pointer]:
+                          - text: ↑
+                          - button "Coverage The commit's headline coverage." [ref=e209]:
+                            - generic [ref=e211]:
+                              - text: Coverage
+                              - button "The commit's headline coverage." [ref=e213]:
+                                - generic [ref=e215]: 
+                          - separator "Resize column Coverage" [ref=e216]
+                          - text: ↓
+                        - columnheader "↑ Δ parent Percentage-point change versus the git first parent. Resize column CoverageDeltaVsParent ↓" [ref=e217] [cursor=pointer]:
+                          - text: ↑
+                          - button "Δ parent Percentage-point change versus the git first parent." [ref=e218]:
+                            - generic [ref=e220]:
+                              - text: Δ parent
+                              - button "Percentage-point change versus the git first parent." [ref=e222]:
+                                - generic [ref=e224]: 
+                          - separator "Resize column CoverageDeltaVsParent" [ref=e225]
+                          - text: ↓
+                        - columnheader "↑ PR Base Ref The branch the pull request targets, not its head branch. Resize column PullRequestBaseRef ↓" [ref=e226] [cursor=pointer]:
+                          - text: ↑
+                          - button "PR Base Ref The branch the pull request targets, not its head branch." [ref=e227]:
+                            - generic [ref=e229]:
+                              - text: PR Base Ref
+                              - button "The branch the pull request targets, not its head branch." [ref=e231]:
+                                - generic [ref=e233]: 
+                          - separator "Resize column PullRequestBaseRef" [ref=e234]
+                          - text: ↓
+                        - columnheader "↑ Δ base branch Percentage-point change versus the default branch — what merging would do. Resize column CoverageDeltaVsDefaultBranch ↓" [ref=e235] [cursor=pointer]:
+                          - text: ↑
+                          - button "Δ base branch Percentage-point change versus the default branch — what merging would do." [ref=e236]:
+                            - generic [ref=e238]:
+                              - text: Δ base branch
+                              - button "Percentage-point change versus the default branch — what merging would do." [ref=e240]:
+                                - generic [ref=e242]: 
+                          - separator "Resize column CoverageDeltaVsDefaultBranch" [ref=e243]
+                          - text: ↓
+                        - columnheader "↑ PR Base Sha Tip of the target branch as of the PR's last synchronise. Resize column PullRequestBaseSha ↓" [ref=e244] [cursor=pointer]:
+                          - text: ↑
+                          - button "PR Base Sha Tip of the target branch as of the PR's last synchronise." [ref=e245]:
+                            - generic [ref=e247]:
+                              - text: PR Base Sha
+                              - button "Tip of the target branch as of the PR's last synchronise." [ref=e249]:
+                                - generic [ref=e251]: 
+                          - separator "Resize column PullRequestBaseSha" [ref=e252]
+                          - text: ↓
+                        - columnheader "↑ Date Resize column Date ↓" [ref=e253] [cursor=pointer]:
+                          - text: ↑
+                          - button "Date" [ref=e254]:
+                            - generic [ref=e256]: Date
+                          - separator "Resize column Date" [ref=e257]
+                          - text: ↓
+                    - rowgroup [ref=e258]:
+                      - row "f7f925c feature/dotnet-11 64.5% 64.5% 0.0 master +0.1 51cb55fa998181daa810f46014170d7f6877e8c8 Sep 17, 2026, 4:01:35 PM" [ref=e259] [cursor=pointer]:
+                        - cell "f7f925c" [ref=e260]:
+                          - link "f7f925c" [ref=e261]:
+                            - /url: /po/commit/Commits%2F204431316%2Ff7f925cd3a89c105423fd74ecec70b09f0fc59ec
+                            - generic [ref=e263]: f7f925c
+                        - cell "feature/dotnet-11" [ref=e264]:
+                          - generic [ref=e265]: feature/dotnet-11
+                        - cell "64.5% 64.5%" [ref=e266]:
+                          - generic [ref=e270]:
+                            - progressbar "Coverage" [ref=e273]
+                            - generic [ref=e274]: 64.5%
+                        - cell "0.0" [ref=e275]:
+                          - generic [ref=e277]: "0.0"
+                        - cell "master" [ref=e278]:
+                          - generic [ref=e279]: master
+                        - cell "+0.1" [ref=e280]:
+                          - generic [ref=e282]: "+0.1"
+                        - cell "51cb55fa998181daa810f46014170d7f6877e8c8" [ref=e283]:
+                          - generic [ref=e284]: 51cb55fa998181daa810f46014170d7f6877e8c8
+                        - cell "Sep 17, 2026, 4:01:35 PM" [ref=e285]:
+                          - generic [ref=e286]: Sep 17, 2026, 4:01:35 PM
+                      - row "94b3d9d feature/dotnet-11 64.5% 64.5% — master +0.1 51cb55fa998181daa810f46014170d7f6877e8c8 Sep 17, 2026, 3:59:45 PM" [ref=e287] [cursor=pointer]:
+                        - cell "94b3d9d" [ref=e288]:
+                          - link "94b3d9d" [ref=e289]:
+                            - /url: /po/commit/Commits%2F204431316%2F94b3d9d27c276c4f817f0a9261d732a65ca68f66
+                            - generic [ref=e291]: 94b3d9d
+                        - cell "feature/dotnet-11" [ref=e292]:
+                          - generic [ref=e293]: feature/dotnet-11
+                        - cell "64.5% 64.5%" [ref=e294]:
+                          - generic [ref=e298]:
+                            - progressbar "Coverage" [ref=e301]
+                            - generic [ref=e302]: 64.5%
+                        - cell "—" [ref=e303]:
+                          - generic [ref=e305]: —
+                        - cell "master" [ref=e306]:
+                          - generic [ref=e307]: master
+                        - cell "+0.1" [ref=e308]:
+                          - generic [ref=e310]: "+0.1"
+                        - cell "51cb55fa998181daa810f46014170d7f6877e8c8" [ref=e311]:
+                          - generic [ref=e312]: 51cb55fa998181daa810f46014170d7f6877e8c8
+                        - cell "Sep 17, 2026, 3:59:45 PM" [ref=e313]:
+                          - generic [ref=e314]: Sep 17, 2026, 3:59:45 PM
+                      - row "51cb55f master 64.4% 64.4% +0.8 +0.8 Sep 6, 2026, 12:30:31 AM" [ref=e315] [cursor=pointer]:
+                        - cell "51cb55f" [ref=e316]:
+                          - link "51cb55f" [ref=e317]:
+                            - /url: /po/commit/Commits%2F204431316%2F51cb55fa998181daa810f46014170d7f6877e8c8
+                            - generic [ref=e319]: 51cb55f
+                        - cell "master" [ref=e320]:
+                          - generic [ref=e321]: master
+                        - cell "64.4% 64.4%" [ref=e322]:
+                          - generic [ref=e326]:
+                            - progressbar "Coverage" [ref=e329]
+                            - generic [ref=e330]: 64.4%
+                        - cell "+0.8" [ref=e331]:
+                          - generic [ref=e333]: "+0.8"
+                        - cell [ref=e334]
+                        - cell "+0.8" [ref=e335]:
+                          - generic [ref=e337]: "+0.8"
+                        - cell [ref=e338]
+                        - cell "Sep 6, 2026, 12:30:31 AM" [ref=e339]:
+                          - generic [ref=e340]: Sep 6, 2026, 12:30:31 AM
+                      - row "3eacca2 bugfix/prerendering-response-headers 64.4% 64.4% 0.0 master +0.8 0cf312b32a857c36b4a47fd5282c5e4b222377fd Sep 6, 2026, 12:09:47 AM" [ref=e341] [cursor=pointer]:
+                        - cell "3eacca2" [ref=e342]:
+                          - link "3eacca2" [ref=e343]:
+                            - /url: /po/commit/Commits%2F204431316%2F3eacca2bef672cd743fe589994a863dce794eb88
+                            - generic [ref=e345]: 3eacca2
+                        - cell "bugfix/prerendering-response-headers" [ref=e346]:
+                          - generic [ref=e347]: bugfix/prerendering-response-headers
+                        - cell "64.4% 64.4%" [ref=e348]:
+                          - generic [ref=e352]:
+                            - progressbar "Coverage" [ref=e355]
+                            - generic [ref=e356]: 64.4%
+                        - cell "0.0" [ref=e357]:
+                          - generic [ref=e359]: "0.0"
+                        - cell "master" [ref=e360]:
+                          - generic [ref=e361]: master
+                        - cell "+0.8" [ref=e362]:
+                          - generic [ref=e364]: "+0.8"
+                        - cell "0cf312b32a857c36b4a47fd5282c5e4b222377fd" [ref=e365]:
+                          - generic [ref=e366]: 0cf312b32a857c36b4a47fd5282c5e4b222377fd
+                        - cell "Sep 6, 2026, 12:09:47 AM" [ref=e367]:
+                          - generic [ref=e368]: Sep 6, 2026, 12:09:47 AM
+                      - row "5fe4266 bugfix/prerendering-response-headers 64.4% 64.4% 0.0 master +0.8 0cf312b32a857c36b4a47fd5282c5e4b222377fd Sep 6, 2026, 12:06:50 AM" [ref=e369] [cursor=pointer]:
+                        - cell "5fe4266" [ref=e370]:
+                          - link "5fe4266" [ref=e371]:
+                            - /url: /po/commit/Commits%2F204431316%2F5fe4266e6c66c73eac758f45b4a447ba63f6af09
+                            - generic [ref=e373]: 5fe4266
+                        - cell "bugfix/prerendering-response-headers" [ref=e374]:
+                          - generic [ref=e375]: bugfix/prerendering-response-headers
+                        - cell "64.4% 64.4%" [ref=e376]:
+                          - generic [ref=e380]:
+                            - progressbar "Coverage" [ref=e383]
+                            - generic [ref=e384]: 64.4%
+                        - cell "0.0" [ref=e385]:
+                          - generic [ref=e387]: "0.0"
+                        - cell "master" [ref=e388]:
+                          - generic [ref=e389]: master
+                        - cell "+0.8" [ref=e390]:
+                          - generic [ref=e392]: "+0.8"
+                        - cell "0cf312b32a857c36b4a47fd5282c5e4b222377fd" [ref=e393]:
+                          - generic [ref=e394]: 0cf312b32a857c36b4a47fd5282c5e4b222377fd
+                        - cell "Sep 6, 2026, 12:06:50 AM" [ref=e395]:
+                          - generic [ref=e396]: Sep 6, 2026, 12:06:50 AM
+                      - row "37be367 bugfix/prerendering-response-headers 64.4% 64.4% — master +0.8 0cf312b32a857c36b4a47fd5282c5e4b222377fd Sep 6, 2026, 12:02:25 AM" [ref=e397] [cursor=pointer]:
+                        - cell "37be367" [ref=e398]:
+                          - link "37be367" [ref=e399]:
+                            - /url: /po/commit/Commits%2F204431316%2F37be367c63cc1cb810a9e53145ebb518ddc1a0e7
+                            - generic [ref=e401]: 37be367
+                        - cell "bugfix/prerendering-response-headers" [ref=e402]:
+                          - generic [ref=e403]: bugfix/prerendering-response-headers
+                        - cell "64.4% 64.4%" [ref=e404]:
+                          - generic [ref=e408]:
+                            - progressbar "Coverage" [ref=e411]
+                            - generic [ref=e412]: 64.4%
+                        - cell "—" [ref=e413]:
+                          - generic [ref=e415]: —
+                        - cell "master" [ref=e416]:
+                          - generic [ref=e417]: master
+                        - cell "+0.8" [ref=e418]:
+                          - generic [ref=e420]: "+0.8"
+                        - cell "0cf312b32a857c36b4a47fd5282c5e4b222377fd" [ref=e421]:
+                          - generic [ref=e422]: 0cf312b32a857c36b4a47fd5282c5e4b222377fd
+                        - cell "Sep 6, 2026, 12:02:25 AM" [ref=e423]:
+                          - generic [ref=e424]: Sep 6, 2026, 12:02:25 AM
+                      - row "0cf312b master 63.7% 63.7% +3.7 +3.7 Sep 5, 2026, 1:19:33 PM" [ref=e425] [cursor=pointer]:
+                        - cell "0cf312b" [ref=e426]:
+                          - link "0cf312b" [ref=e427]:
+                            - /url: /po/commit/Commits%2F204431316%2F0cf312b32a857c36b4a47fd5282c5e4b222377fd
+                            - generic [ref=e429]: 0cf312b
+                        - cell "master" [ref=e430]:
+                          - generic [ref=e431]: master
+                        - cell "63.7% 63.7%" [ref=e432]:
+                          - generic [ref=e436]:
+                            - progressbar "Coverage" [ref=e439]
+                            - generic [ref=e440]: 63.7%
+                        - cell "+3.7" [ref=e441]:
+                          - generic [ref=e443]: "+3.7"
+                        - cell [ref=e444]
+                        - cell "+3.7" [ref=e445]:
+                          - generic [ref=e447]: "+3.7"
+                        - cell [ref=e448]
+                        - cell "Sep 5, 2026, 1:19:33 PM" [ref=e449]:
+                          - generic [ref=e450]: Sep 5, 2026, 1:19:33 PM
+                      - row "49787c1 bugfix/prerendering-range-requests 63.7% 63.7% — master +3.7 29db888295e5832d006ba837b7dbcfdd7aeec3cf Sep 5, 2026, 12:41:55 PM" [ref=e451] [cursor=pointer]:
+                        - cell "49787c1" [ref=e452]:
+                          - link "49787c1" [ref=e453]:
+                            - /url: /po/commit/Commits%2F204431316%2F49787c1014c29019669d154a0754334efd603a1b
+                            - generic [ref=e455]: 49787c1
+                        - cell "bugfix/prerendering-range-requests" [ref=e456]:
+                          - generic [ref=e457]: bugfix/prerendering-range-requests
+                        - cell "63.7% 63.7%" [ref=e458]:
+                          - generic [ref=e462]:
+                            - progressbar "Coverage" [ref=e465]
+                            - generic [ref=e466]: 63.7%
+                        - cell "—" [ref=e467]:
+                          - generic [ref=e469]: —
+                        - cell "master" [ref=e470]:
+                          - generic [ref=e471]: master
+                        - cell "+3.7" [ref=e472]:
+                          - generic [ref=e474]: "+3.7"
+                        - cell "29db888295e5832d006ba837b7dbcfdd7aeec3cf" [ref=e475]:
+                          - generic [ref=e476]: 29db888295e5832d006ba837b7dbcfdd7aeec3cf
+                        - cell "Sep 5, 2026, 12:41:55 PM" [ref=e477]:
+                          - generic [ref=e478]: Sep 5, 2026, 12:41:55 PM
+                      - row "29db888 master 60.0% 60.0% +11.3 +11.3 Sep 3, 2026, 8:31:08 PM" [ref=e479] [cursor=pointer]:
+                        - cell "29db888" [ref=e480]:
+                          - link "29db888" [ref=e481]:
+                            - /url: /po/commit/Commits%2F204431316%2F29db888295e5832d006ba837b7dbcfdd7aeec3cf
+                            - generic [ref=e483]: 29db888
+                        - cell "master" [ref=e484]:
+                          - generic [ref=e485]: master
+                        - cell "60.0% 60.0%" [ref=e486]:
+                          - generic [ref=e490]:
+                            - progressbar "Coverage" [ref=e493]
+                            - generic [ref=e494]: 60.0%
+                        - cell "+11.3" [ref=e495]:
+                          - generic [ref=e497]: "+11.3"
+                        - cell [ref=e498]
+                        - cell "+11.3" [ref=e499]:
+                          - generic [ref=e501]: "+11.3"
+                        - cell [ref=e502]
+                        - cell "Sep 3, 2026, 8:31:08 PM" [ref=e503]:
+                          - generic [ref=e504]: Sep 3, 2026, 8:31:08 PM
+                      - row "54d04dd bugfix/prerendering-aborted-requests 60.0% 60.0% 0.0 +11.3 Sep 3, 2026, 8:28:49 PM" [ref=e505] [cursor=pointer]:
+                        - cell "54d04dd" [ref=e506]:
+                          - link "54d04dd" [ref=e507]:
+                            - /url: /po/commit/Commits%2F204431316%2F54d04dd904c844ab57502b2162c1aa946eb1008e
+                            - generic [ref=e509]: 54d04dd
+                        - cell "bugfix/prerendering-aborted-requests" [ref=e510]:
+                          - generic [ref=e511]: bugfix/prerendering-aborted-requests
+                        - cell "60.0% 60.0%" [ref=e512]:
+                          - generic [ref=e516]:
+                            - progressbar "Coverage" [ref=e519]
+                            - generic [ref=e520]: 60.0%
+                        - cell "0.0" [ref=e521]:
+                          - generic [ref=e523]: "0.0"
+                        - cell [ref=e524]
+                        - cell "+11.3" [ref=e525]:
+                          - generic [ref=e527]: "+11.3"
+                        - cell [ref=e528]
+                        - cell "Sep 3, 2026, 8:28:49 PM" [ref=e529]:
+                          - generic [ref=e530]: Sep 3, 2026, 8:28:49 PM
+                  - generic [ref=e531]:
+                    - generic "Rows per page" [ref=e532]:
+                      - navigation "Rows per page" [ref=e533]:
+                        - list [ref=e534]:
+                          - listitem [ref=e535]:
+                            - button "Page 10" [ref=e536] [cursor=pointer]: "10"
+                          - listitem [ref=e537]:
+                            - button "Page 25" [ref=e538] [cursor=pointer]: "25"
+                          - listitem [ref=e539]:
+                            - button "Page 50" [ref=e540] [cursor=pointer]: "50"
+                    - navigation "Pagination" [ref=e542]:
+                      - list [ref=e543]:
+                        - listitem [ref=e544]:
+                          - button "Previous" [disabled]:
+                            - generic: «
+                            - generic: Previous
+                        - listitem [ref=e545]:
+                          - button "Page 1" [ref=e546] [cursor=pointer]: "1"
+                        - listitem [ref=e547]:
+                          - button "Page 2" [ref=e548] [cursor=pointer]: "2"
+                        - listitem [ref=e549]:
+                          - button "Next" [ref=e550] [cursor=pointer]:
+                            - generic [ref=e551]: »
+                            - generic [ref=e552]: Next
+          - generic [ref=e555]:
+            - generic:
+              - generic [ref=e556]:
+                - generic [ref=e557]: 
+                - text: Coverage badge
+              - generic [ref=e558]:
+                - generic [ref=e559]:
+                  - combobox [ref=e561]:
+                    - option "master (default)" [selected]
+                    - option "bugfix/prerendering-aborted-requests"
+                    - option "bugfix/prerendering-range-requests"
+                    - option "bugfix/prerendering-response-headers"
+                    - option "feature/code-coverage"
+                    - option "feature/dotnet-11"
+                  - img "coverage badge" [ref=e562]
+                - generic [ref=e563]:
+                  - generic [ref=e564]:
+                    - strong [ref=e565]: README badge
+                    - button " Copy markdown" [ref=e566] [cursor=pointer]:
+                      - generic [ref=e567]: 
+                      - text: Copy markdown
+                  - code [ref=e568]: "[![Coverage](https://coverage.mintplayer.com/badge/MintPlayer/MintPlayer.AspNetCore.SpaServices.svg)](https://coverage.mintplayer.com/r/MintPlayer/MintPlayer.AspNetCore.SpaServices)"
+                  - generic [ref=e569]:
+                    - text: "Any branch works: add"
+                    - code [ref=e570]: "?branch="
+                    - text: . For a pull request, add
+                    - code [ref=e571]: "?pr={number}"
+                    - text: — it tracks that PR's newest covered commit. A branch or PR with no coverage renders an "unknown" badge rather than an error.
+          - generic [ref=e574]:
+            - generic:
+              - generic [ref=e575]:
+                - generic [ref=e576]: 
+                - text: Coverage gate
+              - generic [ref=e582]:
+                - generic [ref=e583]:
+                  - generic [ref=e584]:
+                    - generic [ref=e585]: Project comparison
+                    - combobox [ref=e587]:
+                      - option "Ratchet against the base commit"
+                      - option "Fixed target" [selected]
+                  - generic [ref=e588]:
+                    - generic [ref=e589]: Allowed drop (points)
+                    - spinbutton "Allowed drop (points)" [ref=e590]: "0"
+                  - generic [ref=e591]:
+                    - generic [ref=e592]: Partial builds judge
+                    - combobox [ref=e594]:
+                      - option "Scoped baseline (like-for-like)"
+                      - option "Patched projection (whole workspace)"
+                  - generic [ref=e595]:
+                    - generic [ref=e596]: Patch target (%)
+                    - spinbutton "Patch target (%)" [ref=e597]
+                  - generic [ref=e598]:
+                    - generic [ref=e599]: Patch tolerance (points)
+                    - spinbutton "Patch tolerance (points)" [ref=e600]: "0"
+                - generic [ref=e602]:
+                  - checkbox "Blocking — failed checks turn red. Off, the checks post the same numbers but never fail." [ref=e603]
+                  - generic [ref=e604]:
+                    - generic: Blocking — failed checks turn red. Off, the checks post the same numbers but never fail.
+                - button " Save gate" [ref=e606] [cursor=pointer]:
+                  - generic [ref=e607]: 
+                  - text: Save gate
+                - generic [ref=e608]:
+                  - text: A
+                  - code [ref=e609]: coverage.yml
+                  - text: in the repository overrides these per field, read from the base branch.
+          - generic [ref=e612]:
+            - generic:
+              - generic [ref=e613]:
+                - generic [ref=e614]: 
+                - text: Coverage over time
+              - group "Coverage over time" [ref=e619]:
+                - generic [ref=e621]:
+                  - generic [ref=e622]: "0"
+                  - generic [ref=e623]: "20"
+                  - generic [ref=e624]: "40"
+                  - generic [ref=e625]: "60"
+                  - generic [ref=e626]: "80"
+                  - generic [ref=e627]: "100"
+                  - generic [ref=e628]: 29 aug
+                  - generic [ref=e629]: 31 aug
+                  - generic [ref=e630]: 2 sep
+                  - generic [ref=e631]: 4 sep
+                  - generic [ref=e632]: 6 sep
+                - generic [ref=e634]: 80% goal
+                - button "Line coverage %, Aug 27, 2026, 48.7" [ref=e638] [cursor=pointer]
+                - button "Line coverage %, Sep 1, 2026, 48.7" [ref=e639] [cursor=pointer]
+                - button "Line coverage %, Sep 3, 2026, 60" [ref=e640] [cursor=pointer]
+                - button "Line coverage %, Sep 5, 2026, 63.7" [ref=e641] [cursor=pointer]
+                - button "Line coverage %, Sep 6, 2026, 64.4" [ref=e642] [cursor=pointer]
+          - generic [ref=e645]:
+            - generic:
+              - generic [ref=e646]:
+                - generic [ref=e647]: 
+                - text: Set up coverage uploads
+              - generic [ref=e648]:
+                - paragraph [ref=e649]:
+                  - text: Add a workflow like this to
+                  - code [ref=e650]: .github/workflows/ci.yml
+                  - text: . Public repositories upload tokenless via OIDC (the
+                  - code [ref=e651]: "id-token: write"
+                  - text: permission); for a private repository, create an upload token on the account page, store it as a repository secret and replace the
+                  - code [ref=e652]: use-oidc
+                  - text: line with a
+                  - code [ref=e653]: token
+                  - text: input.
+                - generic [ref=e655]:
+                  - tablist [ref=e657]:
+                    - tab ".NET" [selected] [ref=e658] [cursor=pointer]:
+                      - generic [ref=e659]: .NET
+                    - tab "Node.js" [ref=e660] [cursor=pointer]:
+                      - generic [ref=e661]: Node.js
+                    - tab "Angular" [ref=e662] [cursor=pointer]:
+                      - generic [ref=e663]: Angular
+                    - tab "React" [ref=e664] [cursor=pointer]:
+                      - generic [ref=e665]: React
+                    - tab "Python" [ref=e666] [cursor=pointer]:
+                      - generic [ref=e667]: Python
+                    - tab "Java" [ref=e668] [cursor=pointer]:
+                      - generic [ref=e669]: Java
+                    - tab "Nx" [ref=e670] [cursor=pointer]:
+                      - generic [ref=e671]: Nx
+                  - tabpanel ".NET" [ref=e672]:
+                    - generic [ref=e674]:
+                      - paragraph [ref=e675]: Coverlet ships with the xunit/mstest templates; --collect produces a Cobertura report the action auto-detects.
+                      - generic [ref=e677]:
+                        - button "Copy yaml code to clipboard" [ref=e678] [cursor=pointer]: Copy yaml
+                        - region "yaml code sample" [ref=e679]:
+                          - code [ref=e680]:
+                            - generic [ref=e682]: "name: CI"
+                            - generic [ref=e684]: "on:"
+                            - generic [ref=e686]: "push:"
+                            - generic [ref=e688]: "branches: [main]"
+                            - generic [ref=e690]: "pull_request:"
+                            - generic [ref=e694]: "permissions:"
+                            - generic [ref=e696]: "contents: read"
+                            - generic [ref=e698]: "id-token: write # tokenless upload via OIDC"
+                            - generic [ref=e702]: "jobs:"
+                            - generic [ref=e704]: "test:"
+                            - generic [ref=e706]: "runs-on: ubuntu-latest"
+                            - generic [ref=e708]: "steps:"
+                            - generic [ref=e710]: "- uses: actions/checkout@v4"
+                            - generic [ref=e712]: "- uses: actions/setup-dotnet@v4"
+                            - generic [ref=e714]: "with:"
+                            - generic [ref=e716]: "dotnet-version: 9.0.x"
+                            - generic [ref=e718]: "- run: dotnet test --collect:\"XPlat Code Coverage\""
+                            - generic [ref=e720]: "- name: Upload coverage"
+                            - generic [ref=e722]: "uses: MintPlayer/MintPlayer.Spark/apps/CodeCoverage/action@coverage-upload-v1"
+                            - generic [ref=e724]: "with:"
+                            - generic [ref=e726]: "url: https://coverage.mintplayer.com"
+                            - generic [ref=e728]: "use-oidc: true"
+                            - generic [ref=e730]: "finish: true"
+                        - generic: Copied!
+                        - status [ref=e731]

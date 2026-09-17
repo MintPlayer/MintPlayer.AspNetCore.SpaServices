@@ -1,0 +1,18 @@
+- generic [ref=e5]:
+  - link "Skip to content" [ref=e6] [cursor=pointer]:
+    - /url: "#"
+  - button "Toggle sidebar" [expanded] [ref=e7]
+  - banner [ref=e8]:
+    - generic [ref=e9]:
+      - button "Toggle navigation" [ref=e11] [cursor=pointer]
+      - button " app.signInWithGitHub" [ref=e17] [cursor=pointer]:
+        - generic [ref=e18]: 
+        - text: app.signInWithGitHub
+  - generic [ref=e19]:
+    - complementary "Sidebar" [ref=e20]:
+      - navigation [ref=e21]:
+        - heading "app.title" [level=5] [ref=e22]
+    - main [ref=e23]:
+      - main [ref=e24]:
+        - status [ref=e31]:
+          - generic [ref=e32]: Loading...
