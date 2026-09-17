@@ -1,8 +1,8 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
 	<!-- Import the FolderHasher task for SPA build caching -->
-	<UsingTask TaskName="MintPlayer.FolderHasher.MSBuild.ComputeFolderHashTask"
-	           AssemblyFile="$(MSBuildThisFileDirectory)MintPlayer.FolderHasher.MSBuild.dll" />
+	<UsingTask TaskName="MintPlayer.FolderHasher.Targets.ComputeFolderHashTask"
+	           AssemblyFile="$(MSBuildThisFileDirectory)MintPlayer.FolderHasher.Targets.dll" />
 
 	<!-- Create default .hasherignore file if it doesn't exist -->
 	<Target Name="EnsureHasherIgnoreFile"

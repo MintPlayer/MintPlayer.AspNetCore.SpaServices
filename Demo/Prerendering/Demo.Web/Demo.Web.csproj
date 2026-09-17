@@ -3,8 +3,8 @@
 	<Import Project="..\..\..\MintPlayer.AspNetCore.NodeServices\Targets\nodeservices.props" />
 
 	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
-		<LangVersion>14</LangVersion>
+		<TargetFramework>net11.0</TargetFramework>
+		<LangVersion>15</LangVersion>
 		<TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
 		<TypeScriptToolsVersion>Latest</TypeScriptToolsVersion>
 		<Nullable>enable</Nullable>
@@ -20,12 +20,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.2">
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0-rc.1.26425.128">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="MintPlayer.SourceGenerators" Version="10.13.0" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
-		<PackageReference Include="MintPlayer.SourceGenerators.Attributes" Version="10.13.0" GeneratePathProperty="true" />
+		<PackageReference Include="MintPlayer.SourceGenerators" Version="10.22.0" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+		<PackageReference Include="MintPlayer.SourceGenerators.Attributes" Version="10.20.1" GeneratePathProperty="true" />
 		<PackageReference Include="WebMarkupMin.AspNetCoreLatest" Version="2.20.0" />
 	</ItemGroup>
 
