@@ -89,12 +89,10 @@ public class GenerateUrlOverloadTests
 		// An empty group path contributes a name segment but no path segment, so the group itself
 		// adds nothing to the URL.
 		//
-		// NOTE: the leading "//" is the CURRENT behaviour, and it looks wrong - a root-level group
-		// with an empty path leaves the root's own empty FullPath in place, and the child then
-		// concatenates "/" + "thing" onto it. Pinned rather than corrected: this suite is not allowed
-		// to change shipped behaviour (NFR-4.1 in PRD-Coverage-Raise). If it is ever fixed to "/thing",
-		// this assertion is the one to update, deliberately.
-		Assert.Equal("//thing", await service.GenerateUrl("bare-thing", Params()));
+		// This used to render "//thing": FullPath is stored without a leading slash, and an empty
+		// parent path made the child produce "/thing", which the generator then prefixed again. The
+		// matcher built "^//thing$" from the same value, so the route could not be matched either.
+		Assert.Equal("/thing", await service.GenerateUrl("bare-thing", Params()));
 	}
 
 	[Fact]
@@ -121,6 +119,20 @@ public class GenerateUrlOverloadTests
 
 		// The empty inner path contributes to the route NAME but not to the URL.
 		Assert.Equal("/admin/thing", await service.GenerateUrl("admin-bare-thing", Params()));
+	}
+
+	[Fact]
+	public async Task A_route_under_an_empty_path_group_can_be_matched()
+	{
+		// The other half of the same bug: the matcher builds its regex as "^/{FullPath}$", so the
+		// stray leading slash produced "^//thing$" and no real request could ever match it.
+		var service = SpaRouteTestHost.Create(routes => routes
+			.Group("", "bare", bare => bare.Route("thing", "thing")));
+
+		var route = await service.GetCurrentRoute(HttpContextFactory.WithRawTarget("/thing"));
+
+		Assert.NotNull(route);
+		Assert.Equal("bare-thing", route!.Name);
 	}
 
 	[Fact]

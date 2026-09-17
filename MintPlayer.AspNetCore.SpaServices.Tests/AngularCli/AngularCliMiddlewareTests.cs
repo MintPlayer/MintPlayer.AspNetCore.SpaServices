@@ -28,17 +28,17 @@ public class AngularCliMiddlewareTests
 {
 	private static readonly Regex DefaultRegex = new("open your browser on (?<openbrowser>http\\S+)");
 
-	private static Task<Uri> Start(string stdOut, string stdErr = "", Regex[]? regexes = null, HttpMessageHandler? readiness = null)
+	private static Task<Uri> Start(string stdOut, string stdErr = "", Regex[]? regexes = null, HttpMessageHandler? readiness = null, CancellationToken stoppingToken = default, int port = 4200, ScriptedLauncher? launcher = null)
 		=> AngularCliMiddleware.StartAngularCliServerAsync(
 			"C:/app",
 			"start",
 			"npm",
-			4200,
+			port,
 			regexes ?? [DefaultRegex],
 			NullLogger.Instance,
 			new DiagnosticListener("test"),
-			CancellationToken.None,
-			new ScriptedLauncher(stdOut, stdErr),
+			stoppingToken,
+			launcher ?? new ScriptedLauncher(stdOut, stdErr),
 			readiness ?? new StubHandler(new HttpResponseMessage(HttpStatusCode.NotFound)));
 
 	[Fact]
@@ -98,10 +98,79 @@ public class AngularCliMiddlewareTests
 		Assert.Contains("start", ex.Message);
 	}
 
+	[Fact]
+	public async Task Picks_a_free_port_when_none_is_configured_and_passes_it_to_the_script()
+	{
+		// DevServerPort defaults to 0, meaning "find me one". Every other test pins 4200, so without
+		// this the free-port path is never exercised.
+		var launcher = new ScriptedLauncher("open your browser on http://localhost:51234/\n", string.Empty);
+
+		await Start(string.Empty, port: 0, launcher: launcher);
+
+		var port = ExtractPort(launcher.LastStartInfo!.Arguments);
+		Assert.InRange(port, 1, 65535);
+		Assert.NotEqual(0, port);
+	}
+
+	[Fact]
+	public async Task Uses_the_url_the_dev_server_announced_not_the_port_it_was_asked_for()
+	{
+		// The requested port and the announced one are NOT the same thing: the CLI can refuse the
+		// port and pick another, and the middleware has to proxy to whatever it actually bound.
+		// Scripting a different port is the only way to tell the two apart - a test that announces
+		// the same port it requested passes either way.
+		var launcher = new ScriptedLauncher("open your browser on http://localhost:49999/\n", string.Empty);
+
+		var uri = await Start(string.Empty, port: 4200, launcher: launcher);
+
+		Assert.Equal(new Uri("http://localhost:49999/"), uri);
+		Assert.Contains("--port 4200", launcher.LastStartInfo!.Arguments);
+	}
+
+	private static int ExtractPort(string arguments)
+	{
+		var match = Regex.Match(arguments, @"--port (?<port>\d+)");
+		Assert.True(match.Success, $"No --port in '{arguments}'.");
+		return int.Parse(match.Groups["port"].Value);
+	}
+
+	[Fact]
+	public async Task Stops_polling_for_readiness_when_the_host_shuts_down()
+	{
+		// The readiness poll retries indefinitely by design. Before this, it ignored the stopping
+		// token, so a shutdown while the dev server was still coming up left the loop running and the
+		// shutdown waiting on it. A handler that never succeeds would hang this test if it regressed.
+		using var cts = new CancellationTokenSource();
+		var reachedPoll = new TaskCompletionSource();
+		using var neverReady = new StubHandler(_ =>
+		{
+			reachedPoll.TrySetResult();
+			throw new HttpRequestException("connection refused");
+		});
+
+		var starting = Start(
+			"open your browser on http://localhost:4200/\n",
+			readiness: neverReady,
+			stoppingToken: cts.Token);
+
+		// Wait until the poll has actually started before cancelling. Cancelling earlier would close
+		// the output reader instead, and the run would fail on the stdout wait rather than here.
+		await reachedPoll.Task;
+		await cts.CancelAsync();
+
+		await Assert.ThrowsAnyAsync<OperationCanceledException>(() => starting);
+	}
+
 	/// <summary>Replays a fixed stdout/stderr script as if it were a package-manager process.</summary>
 	private sealed class ScriptedLauncher(string stdOut, string stdErr) : IProcessLauncher
 	{
-		public IChildProcess Start(ProcessStartInfo startInfo) => new ScriptedChild(stdOut, stdErr);
+		public ProcessStartInfo? LastStartInfo { get; private set; }
+
+		public IChildProcess Start(ProcessStartInfo startInfo)
+		{
+			LastStartInfo = startInfo;
+			return new ScriptedChild(stdOut, stdErr);
+		}
 
 		private sealed class ScriptedChild(string stdOut, string stdErr) : IChildProcess
 		{

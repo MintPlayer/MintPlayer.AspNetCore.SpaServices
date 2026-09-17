@@ -147,9 +147,13 @@ improvement — half as much code, one place to fix a bug — but it is not new 
   prerenderer in production. Holding NFR-4.1 would have meant shipping a known hang in order to keep
   a self-imposed rule about not changing behaviour. The exception is narrow and explicit:
   `EventedStreamReader` gains a bounded line history and an optional `CancellationToken`, covered by
-  `WaitForMatchSequenceTests`. Everything else in this PRD still holds — no other shipped behaviour
-  changes, and the two other defects found (`//thing` route composition, the unbounded readiness
-  poll) remain recorded and unfixed.
+  `WaitForMatchSequenceTests`.
+
+  **Extended again, on the same reasoning**, to the two other defects this work uncovered: the
+  empty-path route group that rendered `//thing` and could never be matched, and the Angular CLI
+  readiness poll that ignored application shutdown. Each is fixed with tests. Leaving a known bug in
+  shipped code to protect a rule about not touching shipped code is the wrong trade, and the rule was
+  written before these were known.
 
 ## Out of scope
 

@@ -30,13 +30,13 @@ figure at roughly 86%**, which is the margin behind the 80% target.
 
 ## Outcome
 
-**Delivered: 64.4% -> 80.17% line (1533/1912), 73.81% branch. 478 tests, green on both target
+**Delivered: 64.4% -> 80.39% line (1542/1918), 74.00% branch. 482 tests, green on both target
 frameworks, three consecutive clean sweeps. The 80% gate is met.**
 
 | Package | Line rate |
 |---|---|
 | `NodeServices` | 47.2% |
-| `SpaServices` | 83.6% |
+| `SpaServices` | 83.9% |
 | `SpaServices.Prerendering` | 94.1% |
 | `SpaServices.Routing` | 98.3% |
 | `SpaServices.Abstractions` | 100.0% |
@@ -98,12 +98,39 @@ after close, cursor advancement, ANSI stripping in the history scan, and cancell
 pending wait. The `AngularCliMiddleware` tests are restored, including the two-regex case that could
 not be written before.
 
-## The other defect found
+## The other two defects - also fixed
 
-**A root-level group with an empty path emits a double slash.** `Group("", "bare", ...)` at the root
-produces `//thing` rather than `/thing`. Pinned by an assertion in `GenerateUrlOverloadTests` with a
-comment saying it is pinned, not endorsed - it is a routing behaviour change, unrelated to this work,
-and belongs in its own change.
+Both were originally recorded as found-but-not-fixed. They are fixed here, on the same reasoning as
+the reader: leaving a known bug in place to protect a self-imposed rule is the wrong trade.
+
+**1. A group with an empty path emitted a double slash, and could never be matched.**
+`FullPath` is stored WITHOUT a leading slash - `GenerateUrl` and the matcher each prepend one. Joining
+a child with a bare `$"{FullPath}/{path}"` broke that whenever the parent's path was empty:
+`Group("", "bare", ...)` left `FullPath` empty, so its children became `"/thing"` and rendered as
+`"//thing"`.
+
+The URL was the visible half. The matcher built `"^//thing$"` from the same value, so **a route under
+an empty-path group could never match a real request at all** - it was unreachable, not just
+mis-rendered. `SpaRouteItem.CombinePath` now joins correctly, and there is a test for each half.
+
+**2. The Angular CLI readiness poll ignored application shutdown.** It retries indefinitely by design
+- that is documented in the body and unchanged - but it took no cancellation token, so a shutdown
+while the dev server was still coming up left the loop running and the shutdown waiting on it. It now
+takes the `applicationStoppingToken`.
+
+One subtlety worth recording. The first attempt used an exception filter,
+`catch (Exception) when (!token.IsCancellationRequested)`. Filters are evaluated *before* the handler
+runs, so a cancellation landing in that window let the attempt's own exception escape instead: the
+caller saw `HttpRequestException: connection refused` when the real answer was "we are shutting down".
+It showed up as a 1-in-3 flake. The check now happens inside the handler, which is deterministic.
+
+### A test that would have hidden a bug
+
+The readiness tests originally pinned port 4200 on both sides - requested and announced. The CLI can
+refuse the port it is given and bind another, and the middleware must proxy to whatever it actually
+announced; a test that announces the port it requested passes either way and proves nothing. The
+tests now request one port and announce a different one, and separately cover the
+`DevServerPort == 0` path where a free port is found.
 
 ## A note on the denominator
 
@@ -292,4 +319,6 @@ server-side number. Only the PR workflow does.
 | Dedup changes behaviour (the copies are not identical) | Medium | **Retired** — the two deltas were preserved; 478 tests green |
 | `while(true)` poll in `WaitForAngularCliServerToAcceptRequests` hangs the suite | Medium | **Retired** — every test injects a handler that answers first time |
 | Gate saved as `fixed` with null target abstains silently | Low | **Open** — verify the checks report pass/fail, not `skipping`, on the first PR after merge |
+| Readiness poll ignores shutdown | Medium | **Retired** — takes the stopping token; covered by a test |
+| Empty-path group unreachable | Medium | **Retired** — `CombinePath`; covered for both generation and matching |
 | `ExcludeByFile` not matching `Inject.g.cs` | Low | Pre-existing, 12 lines, immaterial |
