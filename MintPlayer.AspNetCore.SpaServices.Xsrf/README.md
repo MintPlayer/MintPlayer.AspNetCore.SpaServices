@@ -295,7 +295,26 @@ app.UseSpaImproved(/* serves index.html, and does pass through the mint */);
 
 Registered *before* `UseStaticFiles()`, every asset response also carries a per-user `Set-Cookie: XSRF-TOKEN` and has its `Cache-Control` forced to `private` (see [Caching](#caching)), so `public, max-age=31536000` on a hashed bundle becomes `max-age=31536000, private` and drops out of shared caches. Correct, but wasteful — the CDN-cacheability of your static assets is decided by where you put this line.
 
-Endpoint-routed static assets (`MapStaticAssets()`) are served from `UseEndpoints`, so they are *after* the mint wherever you put it. Move the call below `UseEndpoints` if that matters and nothing before it serves your HTML.
+### Endpoint-routed static assets
+
+`MapStaticAssets()` serves from `UseEndpoints`, so those responses are reached *after* this middleware wherever you put it — `UseStaticFiles` short-circuits, an endpoint does not. To exempt them, [short-circuit the endpoint](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/static-files) **and** register the generator below `UseRouting()`:
+
+```csharp
+app.UseRouting();
+app.UseAntiforgeryGenerator();                            // must be BELOW UseRouting
+app.UseEndpoints(e => e.MapStaticAssets().ShortCircuit());
+```
+
+The ordering condition is not cosmetic. Short-circuiting takes effect once routing has *matched*, so it can only skip middleware registered after `UseRouting()`. Put the generator above it and the middleware has already run and already registered its `Response.OnStarting` callback — and that callback fires when the response starts regardless of what short-circuited afterwards, so the cookie still goes out and the cache headers are still touched.
+
+Measured on a real server, `GET` of a short-circuited endpoint:
+
+| Generator | `Set-Cookie` | `Cache-Control` |
+|---|---|---|
+| above `UseRouting()` | both cookies written | overwritten by the mint |
+| below `UseRouting()` | none | untouched |
+
+The SPA's HTML entry point is an endpoint too, so it still mints in the second arrangement — the two requirements compose. Which of these you want is your application's call; the library has no opinion and does nothing about it on your behalf.
 
 ## Caching
 

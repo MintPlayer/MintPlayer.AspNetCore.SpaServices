@@ -79,6 +79,13 @@ internal sealed class Antiforgery
 			// breaks every mutating call that follows it.
 			var tokens = antiforgery.GetAndStoreTokens(httpContext);
 
+			// Sequential, deliberately not a finally. This depends on SetDoNotCacheHeaders being the
+			// last thing GetAndStoreTokens does, so a throw leaves the application's headers
+			// untouched and there is nothing to restore - but the dependency buys something rather
+			// than merely costing something. On the failure path no token cookie is written, so a
+			// finally would run TryMakePrivate over a response that has nothing to protect and
+			// downgrade its shared-cacheability for no reason. Leaving the application's value
+			// exactly as it set it is the correct outcome precisely because the mint failed.
 			restore.Apply(response);
 
 			// Unreachable with the framework's DefaultAntiforgery, whose serializer is declared to

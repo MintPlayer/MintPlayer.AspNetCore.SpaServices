@@ -42,6 +42,10 @@ DOCUMENTATION
   which is stronger than necessary: the real rule is "before whatever serves the SPA's HTML entry
   point". Putting it after UseStaticFiles lets fingerprinted assets short-circuit, so they keep
   their public, max-age=... instead of being given a per-user Set-Cookie and downgraded to private.
+  Also covers MapStaticAssets, which is served from UseEndpoints and so is reached after this
+  middleware wherever it sits: exempting it needs ShortCircuit() on the endpoint AND the
+  generator registered below UseRouting, because short-circuiting can only skip middleware
+  registered after the route match. Verified on a real server rather than taken from the docs.
 - Documented that AntiforgeryOptions.Cookie.SecurePolicy defaults to None, so the framework's own
   antiforgery cookie ships without Secure even over HTTPS, and that this package cannot fix it.
 
