@@ -1,4 +1,55 @@
-﻿v 10.2.2
+﻿v 11.0.0-rc.2
+BREAKING CHANGES
+- The XSRF-TOKEN cookie is now written with SameSite=Strict and with Secure on HTTPS requests
+  (CookieSecurePolicy.SameAsRequest). Both were previously absent, so the browser applied its own
+  SameSite default and the token travelled in clear over plain HTTP. If your SPA is served from a
+  different site than the API, review SameSite before upgrading; configure it through the new
+  UseAntiforgeryGenerator(options => ...) overload.
+- Cache-Control and Pragma set by your application now survive the token mint. Previously every
+  response through this middleware became "no-cache, no-store", because IAntiforgery stamps those
+  headers whenever the response has not started and this middleware runs at exactly that moment.
+  A preserved Cache-Control is forced to "private" - the response carries a Set-Cookie, so it must
+  never be stored by a shared cache. Responses that set no Cache-Control of their own still get
+  "no-cache, no-store", as does a Cache-Control that cannot be parsed - a malformed value cannot be
+  made safe, and prefixing "private" onto it could emit "private, public, ..." with no defined
+  winner. A Pragma the application set is preserved even when it set no Cache-Control. Set
+  options.CacheHeaders = XsrfCacheHeaderPolicy.NoStore for the old behaviour.
+FIXES
+- A failure while issuing the token no longer destroys the response. Kestrel catches outside its
+  OnStarting loop, so a throw here abandoned every remaining callback and produced a bare 500 with
+  every header reset - including Set-Cookie - which UseExceptionHandler could not see. The mint now
+  degrades to "no cookie on this response" and logs an error. This was reachable in production:
+  AntiforgeryOptions.Cookie.SecurePolicy = Always throws on a plain-HTTP request, which is what a
+  TLS-terminating reverse proxy looks like without UseForwardedHeaders.
+- A null RequestToken no longer throws. Unreachable with the built-in IAntiforgery, but it took the
+  whole response with it when a replacement returned one.
+- The middleware warns once when it writes the cookie without Secure outside of Development,
+  naming UseForwardedHeaders - the case where a proxy terminates TLS and Request.IsHttps is false.
+- IAntiforgery is resolved per request instead of once from the root provider, so a scoped
+  decorator over it is no longer captured for the lifetime of the application.
+FEATURES
+- New overload UseAntiforgeryGenerator(Action<XsrfOptions>) configuring the cookie name, path,
+  SameSite, SecurePolicy and the cache-header policy. Configurations that cannot work - an HttpOnly
+  cookie the SPA could not read, SameSite=None without Secure - are rejected at startup rather than
+  diagnosed later from a 400. XsrfOptions.Cookie is get-only by design: set its properties
+  (options.Cookie.Name = "...") rather than assigning a new CookieBuilder, which would silently
+  reset SameSite to Unspecified and reintroduce the defect this release fixes.
+DOCUMENTATION
+- The README claimed the cookie was written "without Secure or an explicit SameSite value, so the
+  framework's cookie policy defaults apply". No cookie policy applies unless the application calls
+  UseCookiePolicy; the attributes were simply absent.
+- New "Where to register it" section. The old advice was "register early, before static files",
+  which is stronger than necessary: the real rule is "before whatever serves the SPA's HTML entry
+  point". Putting it after UseStaticFiles lets fingerprinted assets short-circuit, so they keep
+  their public, max-age=... instead of being given a per-user Set-Cookie and downgraded to private.
+  Also covers MapStaticAssets, which is served from UseEndpoints and so is reached after this
+  middleware wherever it sits: exempting it needs ShortCircuit() on the endpoint AND the
+  generator registered below UseRouting, because short-circuiting can only skip middleware
+  registered after the route match. Verified on a real server rather than taken from the docs.
+- Documented that AntiforgeryOptions.Cookie.SecurePolicy defaults to None, so the framework's own
+  antiforgery cookie ships without Secure even over HTTPS, and that this package cannot fix it.
+
+v 10.2.2
 DOCUMENTATION
 - The README told you to call app.UseSpaXsrf(), which does not exist. The method is
   app.UseAntiforgeryGenerator().
