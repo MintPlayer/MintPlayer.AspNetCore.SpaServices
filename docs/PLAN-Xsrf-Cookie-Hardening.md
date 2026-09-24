@@ -97,7 +97,7 @@ rather than committed; `11.0.0-rc.2` across all six packages.
 
 ### M5 — Reproduction tests ✅ Complete
 
-**40 Xsrf tests, all green; 515 across the solution on both TFMs.**
+**43 Xsrf tests, all green; 518 across the solution on both TFMs.**
 
 The suite moved onto a LIFO response feature first (spike 7) — otherwise the cache-header tests
 would have passed for the wrong reason — and the stub `IAntiforgery` was rewritten to reproduce
@@ -109,7 +109,7 @@ so no assertion about the clobber could have meant anything. Both live in a new
 **Red verified in the reverse direction.** Rather than writing the tests against `master` — whose
 constructor signature the fix changes, so they could not compile there — the finished tests were run
 against a deliberately reverted implementation (`SameSite=Unspecified`, `SecurePolicy=None`,
-`CacheHeaders=NoStore`, `catch … when (false)`, null guard disabled): **19 of 40 failed**, spread
+`CacheHeaders=NoStore`, `catch … when (false)`, null guard disabled): **18 of 43 failed**, spread
 across all four defect classes. Restoring the implementation returned all 39 to green. The wire
 captures in the SOLUTION doc are the stronger evidence for the defects themselves.
 
@@ -215,10 +215,10 @@ rather than defensive, and a comment in `Validate` records that.
 
 ### M8 — Verify ✅ Complete
 
-- ✅ Full suite, both TFMs, one batched run: **515 passed, 0 failed** on `net10.0` and `net11.0`.
-- ✅ Coverage: overall line **81.16%** (was 80.39% on `master`), `Xsrf` assembly back to
+- ✅ Full suite, both TFMs, one batched run: **518 passed, 0 failed** on `net10.0` and `net11.0`.
+- ✅ Coverage: overall line **81.29%** (was 80.39% on `master`), `Xsrf` assembly back to
   **100% line / 100% branch** after two gaps the first run exposed.
-- ✅ Reverse check: 19 of 40 Xsrf tests red against a reverted implementation, all 40 green when
+- ✅ Reverse check: 18 of 43 Xsrf tests red against a reverted implementation, all 43 green when
   restored.
 - ✅ AOT/trim/single-file analyzers on the package: **zero IL warnings**. The pre-existing `CS8604`
   on the old cookie append is also gone.

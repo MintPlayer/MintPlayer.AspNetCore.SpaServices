@@ -359,16 +359,48 @@ public class AntiforgeryMiddlewareCacheHeaderTests
     }
 
     [Theory]
-    // max-age demands delta-seconds, so these do not parse as a Cache-Control at all. The directives
-    // cannot be edited safely, so `private` is prefixed rather than merged.
-    [InlineData("max-age=abc", "private, max-age=abc")]
-    [InlineData("private, max-age=abc", "private, max-age=abc")]
-    public async Task Prefixes_private_onto_an_unparseable_cache_control(string original, string expected)
+    // max-age demands delta-seconds, so none of these parse as a Cache-Control at all.
+    [InlineData("max-age=abc")]
+    [InlineData("private, max-age=abc")]
+    [InlineData("public, max-age=abc")]
+    public async Task Keeps_no_store_when_the_cache_control_cannot_be_parsed(string original)
     {
+        // An unparseable value cannot be made safe. Prefixing `private` onto it would emit
+        // "private, public, max-age=abc" for the third case - two contradictory directives on the
+        // one path where a shared cache storing this user's token actually matters, and RFC 9111
+        // does not say which wins. Editing the text is no better, since directive boundaries cannot
+        // be found in a value that does not parse. So the mint's no-store stays.
         var result = await XsrfTestHost.Run(
             configureContext: context => context.Response.Headers.CacheControl = original);
 
-        Assert.Equal(expected, result.Context.Response.Headers.CacheControl.ToString());
+        Assert.Equal("no-cache, no-store", result.Context.Response.Headers.CacheControl.ToString());
+    }
+
+    [Fact]
+    public async Task Keeps_the_pragma_no_cache_when_the_cache_control_cannot_be_parsed()
+    {
+        // Restoring the Pragma while leaving the mint's Cache-Control would leave the pair
+        // inconsistent, so an unrestorable Cache-Control restores neither.
+        var result = await XsrfTestHost.Run(configureContext: context =>
+        {
+            context.Response.Headers.CacheControl = "max-age=abc";
+            context.Response.Headers.Pragma = "custom";
+        });
+
+        Assert.Equal("no-cache", result.Context.Response.Headers.Pragma.ToString());
+    }
+
+    [Fact]
+    public async Task Preserves_a_pragma_set_without_any_cache_control()
+    {
+        // Setting Pragma alone is odd, but it is still a caching policy the application expressed,
+        // and the mint used to overwrite it purely because the other header was absent.
+        var result = await XsrfTestHost.Run(
+            configureContext: context => context.Response.Headers.Pragma = "custom");
+
+        Assert.Equal("custom", result.Context.Response.Headers.Pragma.ToString());
+        // No Cache-Control was expressed, so the mint's own stays.
+        Assert.Equal("no-cache, no-store", result.Context.Response.Headers.CacheControl.ToString());
     }
 
     [Fact]

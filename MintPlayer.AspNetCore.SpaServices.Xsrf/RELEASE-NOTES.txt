@@ -10,8 +10,10 @@ BREAKING CHANGES
   headers whenever the response has not started and this middleware runs at exactly that moment.
   A preserved Cache-Control is forced to "private" - the response carries a Set-Cookie, so it must
   never be stored by a shared cache. Responses that set no Cache-Control of their own still get
-  "no-cache, no-store". Set options.CacheHeaders = XsrfCacheHeaderPolicy.NoStore for the old
-  behaviour.
+  "no-cache, no-store", as does a Cache-Control that cannot be parsed - a malformed value cannot be
+  made safe, and prefixing "private" onto it could emit "private, public, ..." with no defined
+  winner. A Pragma the application set is preserved even when it set no Cache-Control. Set
+  options.CacheHeaders = XsrfCacheHeaderPolicy.NoStore for the old behaviour.
 FIXES
 - A failure while issuing the token no longer destroys the response. Kestrel catches outside its
   OnStarting loop, so a throw here abandoned every remaining callback and produced a bare 500 with
@@ -36,6 +38,10 @@ DOCUMENTATION
 - The README claimed the cookie was written "without Secure or an explicit SameSite value, so the
   framework's cookie policy defaults apply". No cookie policy applies unless the application calls
   UseCookiePolicy; the attributes were simply absent.
+- New "Where to register it" section. The old advice was "register early, before static files",
+  which is stronger than necessary: the real rule is "before whatever serves the SPA's HTML entry
+  point". Putting it after UseStaticFiles lets fingerprinted assets short-circuit, so they keep
+  their public, max-age=... instead of being given a per-user Set-Cookie and downgraded to private.
 - Documented that AntiforgeryOptions.Cookie.SecurePolicy defaults to None, so the framework's own
   antiforgery cookie ships without Secure even over HTTPS, and that this package cannot fix it.
 

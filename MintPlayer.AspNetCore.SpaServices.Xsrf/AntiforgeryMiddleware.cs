@@ -181,15 +181,28 @@ internal sealed class Antiforgery
 
 		public void Apply(HttpResponse response)
 		{
-			// A response that set no caching policy of its own keeps the antiforgery system's
-			// no-store. Only a value the application actually chose is worth restoring.
-			if (!active || !hadCacheControl)
+			// "The application expressed a caching policy" means it set either header. A response
+			// that expressed none keeps the antiforgery system's no-store, untouched.
+			if (!active || (!hadCacheControl && !hadPragma))
 			{
 				return;
 			}
 
-			response.Headers[HeaderNames.CacheControl] = ForcePrivate(cacheControl);
+			if (hadCacheControl)
+			{
+				if (!TryMakePrivate(cacheControl, out var restored))
+				{
+					// The value cannot be made safe, so nothing is restored - not even the Pragma,
+					// which would leave the pair inconsistent. See TryMakePrivate.
+					return;
+				}
 
+				response.Headers[HeaderNames.CacheControl] = restored;
+			}
+
+			// Restored independently of Cache-Control. An application that set only Pragma still
+			// expressed a policy, and overwriting it because it happened not to set the other
+			// header would be the same clobbering this snapshot exists to undo.
 			if (hadPragma)
 			{
 				response.Headers[HeaderNames.Pragma] = pragma;
@@ -201,31 +214,39 @@ internal sealed class Antiforgery
 		}
 
 		/// <summary>
-		/// Returns <paramref name="value"/> with <c>private</c> guaranteed and <c>public</c> removed,
-		/// because the response carries a <c>Set-Cookie</c> holding this user's token.
+		/// Produces <paramref name="value"/> with <c>private</c> guaranteed and <c>public</c>
+		/// removed, because the response carries a <c>Set-Cookie</c> holding this user's token.
+		/// Returns <see langword="false"/> when the value cannot be parsed, and therefore cannot be
+		/// made safe.
 		/// </summary>
-		private static StringValues ForcePrivate(StringValues value)
+		/// <remarks>
+		/// An unparseable value is deliberately <em>not</em> restored. Prefixing <c>private</c> onto
+		/// text that cannot be parsed can emit <c>private, public, …</c> — RFC 9111 does not define
+		/// which directive wins and caches differ, so the one path where the threat is real (a
+		/// shared cache handing one user's token to the next) is the path that would carry the
+		/// ambiguity. Editing the text instead is no better: if the value cannot be parsed, neither
+		/// can its directive boundaries be found reliably — <c>public</c> may sit inside a quoted
+		/// extension value. A malformed <c>Cache-Control</c> is not a policy worth preserving, so
+		/// the antiforgery system's <c>no-store</c> stays in place.
+		/// </remarks>
+		private static bool TryMakePrivate(StringValues value, out StringValues result)
 		{
-			var text = value.ToString();
-
-			if (CacheControlHeaderValue.TryParse(text, out var parsed))
+			if (!CacheControlHeaderValue.TryParse(value.ToString(), out var parsed))
 			{
-				if (parsed!.Private && !parsed.Public)
-				{
-					return value;
-				}
-
-				parsed.Public = false;
-				parsed.Private = true;
-				return parsed.ToString();
+				result = default;
+				return false;
 			}
 
-			// Unparseable, so the directives cannot be edited safely. Prefixing still binds: a cache
-			// that understands `private` honours it, and one that does not was never going to parse
-			// the rest either.
-			return text.Contains("private", StringComparison.OrdinalIgnoreCase)
-				? value
-				: $"private, {text}";
+			if (parsed!.Private && !parsed.Public)
+			{
+				result = value;
+				return true;
+			}
+
+			parsed.Public = false;
+			parsed.Private = true;
+			result = parsed.ToString();
+			return true;
 		}
 	}
 }
@@ -240,9 +261,22 @@ public static class AntiforgeryExtensions
 	/// and stores it in a cookie named "XSRF-TOKEN".
 	/// </summary>
 	/// <remarks>
-	/// Register it early - before static files, routing and endpoints - so the cookie is issued on
-	/// every response, including the SPA's HTML navigation. <c>services.AddAntiforgery(...)</c> must
-	/// be registered too; the middleware resolves <see cref="IAntiforgery"/> per request.
+	/// <para>
+	/// Register it before whatever serves the SPA's HTML entry point, so the cookie is issued on the
+	/// navigation that loads the app - Angular sends no antiforgery header until the cookie exists,
+	/// and the first mutating request would otherwise be rejected.
+	/// </para>
+	/// <para>
+	/// It does <em>not</em> have to come before <c>UseStaticFiles</c>. Static-file middleware
+	/// short-circuits for a file it can serve, so anything registered after it is skipped for those
+	/// responses - which is usually what you want: fingerprinted assets keep their
+	/// <c>public, max-age=…</c> and stay shared-cacheable, instead of being given a per-user
+	/// <c>Set-Cookie</c> and downgraded to <c>private</c>.
+	/// </para>
+	/// <para>
+	/// <c>services.AddAntiforgery(...)</c> must be registered too; the middleware resolves
+	/// <see cref="IAntiforgery"/> per request.
+	/// </para>
 	/// </remarks>
 	public static IApplicationBuilder UseAntiforgeryGenerator(this IApplicationBuilder builder)
 		=> builder.UseAntiforgeryGenerator(static _ => { });

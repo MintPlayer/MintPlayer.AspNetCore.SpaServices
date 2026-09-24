@@ -258,7 +258,7 @@ Both tokens arrived but don't pair up.
 
 ### The `XSRF-TOKEN` cookie is never set
 
-- Is `app.UseAntiforgeryGenerator()` actually reached? Middleware placed after a terminal branch (`UseStaticFiles` short-circuiting for a static asset, a `Map`/`UseSpa` branch, or an endpoint that already wrote the response) never runs for that request. Register it early — right after `UseHttpsRedirection()` is a good spot — and before your SPA/static-file and endpoint middleware.
+- Is `app.UseAntiforgeryGenerator()` actually reached? Middleware placed after a terminal branch (`UseStaticFiles` short-circuiting for a static asset, a `Map`/`UseSpa` branch, or an endpoint that already wrote the response) never runs for that request. For static assets that is deliberate — see [Where to register it](#where-to-register-it) — but it must still sit **before whatever serves your SPA's HTML entry point**, or the app loads with no cookie and the first mutating request is rejected.
 - The cookie is written from a `Response.OnStarting` callback, so it appears only on responses that actually start. Requests aborted before headers are flushed get nothing.
 - Confirm `IAntiforgery` is registered (`AddAntiforgery()` directly, or via `AddControllersWithViews()`/`AddMvc()`/`AddRazorPages()`).
 
@@ -277,6 +277,25 @@ The cookie is written with `Path=/`, `SameSite=Strict`, and `Secure` whenever th
 - Keep the SPA and the API on the **same origin**. XSRF-cookie-to-header only works same-origin: with `SameSite=Lax` (the ASP.NET Core default) the cookie isn't sent on cross-site requests, and cross-origin JavaScript can't read it either. If you genuinely must split origins, you need a CORS design with credentials, `SameSite=None; Secure`, and `Access-Control-Allow-Headers` including your token header — at which point you should reconsider whether cookie-based antiforgery is the right tool.
 - During development over `http://localhost`, `SameSite=None` cookies are rejected by browsers for lacking `Secure`. Prefer running the dev server over HTTPS (`app.UseHttpsRedirection()` plus the ASP.NET Core dev certificate) and stay on the same origin.
 - Behind a TLS-terminating proxy, configure forwarded headers so the app knows the request was HTTPS; otherwise redirect and cookie behaviour will disagree with the browser's view of the connection.
+
+## Where to register it
+
+One rule: **before whatever serves the SPA's HTML entry point.** Angular attaches no antiforgery header until the cookie exists, so if the navigation that loads the app does not mint one, the first mutating request is rejected.
+
+It does **not** have to come before `UseStaticFiles()`, and usually should not. Static-file middleware short-circuits for a file it can serve, so anything registered after it never runs for those responses — which is what you want:
+
+```csharp
+app.UseHttpsRedirection();
+app.UseStaticFiles();            // fingerprinted assets short-circuit here...
+app.UseAntiforgeryGenerator();   // ...so they keep public, max-age=31536000
+app.UseRouting();
+app.UseEndpoints(/* ... */);
+app.UseSpaImproved(/* serves index.html, and does pass through the mint */);
+```
+
+Registered *before* `UseStaticFiles()`, every asset response also carries a per-user `Set-Cookie: XSRF-TOKEN` and has its `Cache-Control` forced to `private` (see [Caching](#caching)), so `public, max-age=31536000` on a hashed bundle becomes `max-age=31536000, private` and drops out of shared caches. Correct, but wasteful — the CDN-cacheability of your static assets is decided by where you put this line.
+
+Endpoint-routed static assets (`MapStaticAssets()`) are served from `UseEndpoints`, so they are *after* the mint wherever you put it. Move the call below `UseEndpoints` if that matters and nothing before it serves your HTML.
 
 ## Caching
 
