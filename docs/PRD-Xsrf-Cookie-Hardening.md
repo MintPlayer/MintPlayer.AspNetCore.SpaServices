@@ -144,7 +144,7 @@ Two consequences worth putting on the record:
   it belongs to `AddAntiforgery`. The README should say so.
 - Setting `SameSite=Strict` on this package's cookie **to match** the framework's is cargo-culting;
   the two halves have different jobs. It is still a reasonable *default* — see
-  [Open decision 1](#open-decisions).
+  [Decision 1](#decisions-taken).
 
 ### 3. `tokens.RequestToken` unguarded — real, but downgraded
 
@@ -498,7 +498,7 @@ unconditionally on every response — 'only if absent' permanently breaks login.
 This collides head-on with the most attractive remedy for defect 5, which is to mint only on HTML
 navigation responses. **A `text/html` content-type gate would silently break Spark's sign-in flow.**
 Any gate must therefore be either configurable or predicated on something other than content type.
-This is [Spike 4](./PLAN-Xsrf-Cookie-Hardening.md#spikes) and [Open decision 2](#open-decisions).
+This is [Spike 4](./PLAN-Xsrf-Cookie-Hardening.md#spikes) and [Decision 2](#decisions-taken).
 
 Spark's warmup contract also has to survive: `SparkClient.EnsureAntiforgeryAsync` and
 `SparkEndpointFactory.MintAntiforgeryAsync` both `GET /spark` and require **both**
@@ -533,7 +533,7 @@ Spark's warmup contract also has to survive: `SparkClient.EnsureAntiforgeryAsync
 
 ## Candidate solutions
 
-Stated as options with trade-offs. The solution phase decides; [Open decisions](#open-decisions)
+Stated as options with trade-offs. The solution phase decides; [Decisions taken](#decisions-taken)
 lists what genuinely needs @PieterjanDeClippel's call.
 
 ### O1 — The issue's patch, as written
@@ -615,7 +615,7 @@ implementation. This table is the authoritative record.
 |---|---|
 | `Secure` on a plain-HTTP deployment silently drops the cookie, and the SPA gets a `400` on every mutation with no server-side error | `SameAsRequest` default never emits `Secure` over HTTP. The one-time warning is what makes the *safe* default non-silent. Test both schemes against the real demo (Spike 3). |
 | A `catch {}` hides defect C forever — the app 400s on every mutation and nothing says why | Catch, but **log an error** with the exception. "Degrade to no cookie" is only acceptable if it is loud in the log. |
-| Restoring `Cache-Control` re-enables shared caching of a response carrying `Set-Cookie` | Open decision 4 — downgrade to `private, no-cache` rather than restore verbatim. |
+| Restoring `Cache-Control` re-enables shared caching of a response carrying `Set-Cookie` | Decision 4 — downgrade to `private, no-cache` rather than restore verbatim. |
 | A mint gate breaks Spark's `csrf-refresh` | Spike 4 before any gate is written; un-gated is the default. |
 | New public options surface on an AOT-enabled package | Keep the options type a plain POCO, no reflection-based binding in the package itself. Verify `dotnet publish` AOT still succeeds. |
 | The seven existing tests are rewritten to match the new behaviour and stop being a regression guard | Each changed assertion gets a comment citing #85, exactly as #83 did when it inverted `Clears_headers_and_status_written_by_the_inner_middleware`. |
@@ -625,12 +625,12 @@ implementation. This table is the authoritative record.
 
 | # | Criterion | Status |
 |---|---|---|
-| 1 | Tests covering `Secure` present over HTTPS and absent over HTTP; explicit `SameSite`; null `RequestToken` → no cookie, no throw; a throwing `IAntiforgery` → response intact, cookie absent, error logged | ✅ **39 Xsrf tests, 514 across the solution, green on both TFMs.** Verified in the reverse direction: **17 of 39 red** against a reverted implementation. |
+| 1 | Tests covering `Secure` present over HTTPS and absent over HTTP; explicit `SameSite`; null `RequestToken` → no cookie, no throw; a throwing `IAntiforgery` → response intact, cookie absent, error logged | ✅ **40 Xsrf tests, 515 across the solution, green on both TFMs.** Verified in the reverse direction: **19 of 40 red** against a reverted implementation. |
 | 2 | End-to-end `Demo/Xsrf` on both schemes, real `Set-Cookie` on the wire, successful `POST /WeatherForecast` through the Angular app | ✅ HTTPS: `XSRF-TOKEN=…; path=/; secure; samesite=strict` on **zero configuration**. `POST` with the header → 200, without → 400. In a real browser the Angular 21 SPA's button issues `POST /WeatherForecast` → **200**, and `document.cookie` shows `XSRF-TOKEN` but not the HttpOnly half. HTTP :5000 answers 307 to HTTPS before the mint is reached, as the demo's `UseHttpsRedirection` placement dictates. |
 | 3 | Defect C reproduced and shown fixed | ✅ **Reproduced.** `SecurePolicy = Always` + plain HTTP → `500`, `Content-Length: 0`, every header stripped — while the *same host over HTTPS* returned 200, proving it is the scheme. After: `200`, response intact, no cookie, one logged error. |
 | 4 | An application `Cache-Control` survives the mint | ✅ Both the eager case (`public, max-age=300` on the endpoint) and the downstream-`OnStarting` case now read `max-age=…, private`; both read `no-cache, no-store` before. A response that set no policy keeps `no-store`. Covered by seven unit tests. ⚠️ The `UseSpaPrerendering` + `UseAntiforgeryGenerator` *integration* test was **not** written — see below. |
 | 5 | Spark's assertions satisfiable, `csrf-refresh` still mints | ✅ By construction: the defaults emit `Secure` over HTTPS and `SameSite=Strict`, which is exactly what `XsrfCookieFlagTests` asserts, and the mint is un-gated so `csrf-refresh` still mints. **Not executed against Spark** — that is blocked on the publish and is filed as an issue there. |
-| 6 | Coverage: project ≥ 80%, patch ≥ 80%, `Xsrf` not below 100% | ✅ Overall line **81.25%** (was 80.39%); `Xsrf` **100% line / 100% branch**. |
+| 6 | Coverage: project ≥ 80%, patch ≥ 80%, `Xsrf` not below 100% | ✅ Overall line **81.16%** (was 80.39%); `Xsrf` **100% line / 100% branch**. |
 | 7 | Docs and version | ✅ `README.md:253` replaced; new *Caching*, *What this package does not protect*, *.NET 11* and *Angular version* sections; `RELEASE-NOTES.txt` section added at `v 11.0.0-rc.2`; all six packages bumped. |
 
 ### One criterion partially met, stated plainly

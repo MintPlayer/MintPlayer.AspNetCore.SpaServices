@@ -74,9 +74,9 @@ simultaneously without an override.
 | **1** | **Is defect 4 reproducible, and is it testable at all?** | Force a throw inside the callback and observe the real wire response under Kestrel. Confirm the bare 500 with stripped headers, confirm `UseExceptionHandler` cannot see it, and decide whether the repo takes on a real-Kestrel test host or accepts unit-level assertions on the *degradation* only. | `dotnet run --project Demo/Xsrf/XsrfDemo.csproj`, plus a throwing `IAntiforgery` registered over the real one |
 | **2** | **⚠️ Defect C, end to end** | `AddAntiforgery(o => o.Cookie.SecurePolicy = CookieSecurePolicy.Always)` + a plain-HTTP request. Confirm the `InvalidOperationException` → blank 500 → every header stripped, including `Set-Cookie`. This is the strongest evidence for the try/catch and belongs in the PR description. | `Demo/Xsrf` over `http://localhost:5000` |
 | **3** | **Cookie flags on the wire, both schemes** | Real `Set-Cookie` observed on `http://localhost:5000` and `https://localhost:5001`: does `SameAsRequest` behave as predicted, does `SameSite` land, does the Angular app's `POST /WeatherForecast` still succeed on both? Also settle E's unverified item — does a `__Host-` prefixed cookie survive on `http://localhost`? | `Demo/Xsrf` + `curl -i`, plus the `playwright_node` MCP for the Angular round trip |
-| **4** | **⚠️ Would a mint gate break Spark?** | `POST /spark/auth/csrf-refresh` returns a non-HTML `Results.Ok()` and depends on the mint. Establish whether *any* gate signal (`Sec-Fetch-Dest: document`, `Accept: text/html`, content type) keeps it working, or whether un-gated is the only safe default. Resolves Open decision 2. | Read-only analysis of `C:\Repos\MintPlayer.Spark` + a local run of Spark's `XsrfMintingPlacementTests` |
-| **5** | **The `Cache-Control` conflict, demonstrated** | Build the pipeline that exists nowhere today — `UseSpaPrerendering` **and** `UseAntiforgeryGenerator` in one app — and show the preserved `Cache-Control` being overwritten. Then verify the chosen repair (Open decision 4) does not leave a shared-cacheable response carrying `Set-Cookie`. | `PrerenderingHarness.Run(configureUpstream: …)` + `Demo/Prerendering/Demo.Web` with the middleware added |
-| **6** | **Options surface + AOT** | Settle the O3 shape: `UseAntiforgeryGenerator(Action<XsrfOptions>)` overload vs an `AddXsrf()` registration; whether `CookieBuilder.Build(httpContext)` is the right construction route; and that `<PublishAot>true</PublishAot>` still publishes clean. Resolves Open decision 3. | `dotnet publish -r win-x64 /p:PublishAot=true` on a scratch consumer |
+| **4** | **⚠️ Would a mint gate break Spark?** | `POST /spark/auth/csrf-refresh` returns a non-HTML `Results.Ok()` and depends on the mint. Establish whether *any* gate signal (`Sec-Fetch-Dest: document`, `Accept: text/html`, content type) keeps it working, or whether un-gated is the only safe default. Resolves Decision 2. | Read-only analysis of `C:\Repos\MintPlayer.Spark` + a local run of Spark's `XsrfMintingPlacementTests` |
+| **5** | **The `Cache-Control` conflict, demonstrated** | Build the pipeline that exists nowhere today — `UseSpaPrerendering` **and** `UseAntiforgeryGenerator` in one app — and show the preserved `Cache-Control` being overwritten. Then verify the chosen repair (Decision 4) does not leave a shared-cacheable response carrying `Set-Cookie`. | `PrerenderingHarness.Run(configureUpstream: …)` + `Demo/Prerendering/Demo.Web` with the middleware added |
+| **6** | **Options surface + AOT** | Settle the O3 shape: `UseAntiforgeryGenerator(Action<XsrfOptions>)` overload vs an `AddXsrf()` registration; whether `CookieBuilder.Build(httpContext)` is the right construction route; and that `<PublishAot>true</PublishAot>` still publishes clean. Resolves Decision 3. | `dotnet publish -r win-x64 /p:PublishAot=true` on a scratch consumer |
 | **7** | **LIFO test fidelity** | The Xsrf suite's `RunnableResponseFeature` fires **FIFO**; Kestrel and `PrerenderingTestContext.CallbackFiringResponseFeature` are **LIFO**. Confirm the Xsrf suite cannot observe the clobber today, and move it onto a LIFO fake. | `MintPlayer.AspNetCore.SpaServices.Tests/Xsrf/AntiforgeryMiddlewareTests.cs` |
 
 **Deliverable** ✅ — consolidated into one document rather than three:
@@ -97,7 +97,7 @@ rather than committed; `11.0.0-rc.2` across all six packages.
 
 ### M5 — Reproduction tests ✅ Complete
 
-**39 Xsrf tests, all green; 514 across the solution on both TFMs.**
+**40 Xsrf tests, all green; 515 across the solution on both TFMs.**
 
 The suite moved onto a LIFO response feature first (spike 7) — otherwise the cache-header tests
 would have passed for the wrong reason — and the stub `IAntiforgery` was rewritten to reproduce
@@ -109,7 +109,7 @@ so no assertion about the clobber could have meant anything. Both live in a new
 **Red verified in the reverse direction.** Rather than writing the tests against `master` — whose
 constructor signature the fix changes, so they could not compile there — the finished tests were run
 against a deliberately reverted implementation (`SameSite=Unspecified`, `SecurePolicy=None`,
-`CacheHeaders=NoStore`, `catch … when (false)`, null guard disabled): **17 of 39 failed**, spread
+`CacheHeaders=NoStore`, `catch … when (false)`, null guard disabled): **19 of 40 failed**, spread
 across all four defect classes. Restoring the implementation returned all 39 to green. The wire
 captures in the SOLUTION doc are the stronger evidence for the defects themselves.
 
@@ -117,10 +117,13 @@ One assertion was strengthened as a result: `Preserves_a_cache_control_set_by_th
 asserted only that `no-store` survived, which the clobbered `no-cache, no-store` also satisfies. It
 now also asserts the absence of `no-cache`.
 
-Two gaps that the coverage report caught, both now covered and both worth recording:
-`CookieBuilder.Name` rejects `""` itself, so the nameless-cookie test was passing on the framework's
-exception and never reaching the package's own validation (it now replaces the whole `CookieBuilder`,
-whose `Name` defaults to `null`); and neither `ForcePrivate` fallback branch was exercised.
+Two gaps the coverage report caught, both worth recording. Neither `ForcePrivate` fallback branch
+was exercised — now covered. And the nameless-cookie test was passing on `CookieBuilder`'s own
+exception rather than the package's validation, because `CookieBuilder.Name` rejects `""` itself:
+the same "passing for the wrong reason" pattern as the original suite. That test is gone entirely
+under decision 8 — with `Cookie` get-only the validation it covered is unreachable — replaced by
+`The_cookie_builder_cannot_be_replaced` and
+`Renaming_the_cookie_leaves_the_hardened_defaults_intact`.
 
 **Cookie attributes**
 
@@ -129,7 +132,7 @@ whose `Name` defaults to `null`); and neither `ForcePrivate` fallback branch was
 | 1 | **Headline.** HTTPS request | `Set-Cookie` contains `secure` |
 | 2 | Plain-HTTP request, default policy | no `secure` — plain-HTTP dev keeps working |
 | 3 | `SecurePolicy = Always`, plain-HTTP request | `secure` present |
-| 4 | **Headline.** Default configuration | explicit `samesite=` attribute present, matching Open decision 1 |
+| 4 | **Headline.** Default configuration | explicit `samesite=` attribute present, matching Decision 1 |
 | 5 | `SameSite` configured to a non-default | that value emitted |
 | 6 | Cookie name / path configured | honoured; defaults remain `XSRF-TOKEN` and `/` |
 | 7 | `UseCookiePolicy` with `Secure = Always` upstream | cookie upgraded to `secure` — proves the append still flows through `ResponseCookiesWrapper` |
@@ -150,7 +153,7 @@ whose `Name` defaults to `null`); and neither `ForcePrivate` fallback branch was
 | # | Case | Expected after fix |
 |---|---|---|
 | 14 | **Headline.** Upstream sets `Cache-Control: no-store` | survives the mint |
-| 15 | Upstream sets `Cache-Control: public, max-age=60` on a response that mints | per Open decision 4 — **not** restored verbatim; downgraded, never shared-cacheable alongside `Set-Cookie` |
+| 15 | Upstream sets `Cache-Control: public, max-age=60` on a response that mints | per Decision 4 — **not** restored verbatim; downgraded, never shared-cacheable alongside `Set-Cookie` |
 | 16 | Upstream sets `Pragma` | survives |
 | 17 | Nothing upstream sets either | unchanged from today's behaviour |
 | 18 | **Integration.** `UseSpaPrerendering` + `UseAntiforgeryGenerator` in one pipeline | the `Cache-Control` #83 preserves still reaches the client, **and** the cookie is present exactly once |
@@ -176,14 +179,21 @@ Branch `bugfix/xsrf-cookie-hardening`.
 - Null guard on `RequestToken`, with a comment recording that it is insurance against a replaced
   `IAntiforgery`, **not** a reachable framework behaviour — so nobody later "simplifies" it away on
   the grounds that the framework never returns null, and nobody cites it as a security fix.
-- Cookie built per Open decision 3, via `CookieBuilder.Build(httpContext)` if spike 6 confirms.
-- Cache-header handling per Open decisions 2 and 4.
+- Cookie built through `CookieBuilder.Build(httpContext)`, confirmed by spike 6, so the package
+  inherits the framework's exact `Secure` semantics instead of hand-rolling them and stays
+  compatible with `UseCookiePolicy`'s upgrade-only pass.
+- Cache-header snapshot and restore per decisions 2 and 4.
 - One-time warning when the cookie is written non-`Secure` on a non-development host, naming
   `UseForwardedHeaders` and `ASPNETCORE_FORWARDEDHEADERS_ENABLED`.
-- Method injection (`Invoke(HttpContext, IAntiforgery)`) if Open decision 5 says yes — which means
-  a hand-written constructor and dropping `[Inject]` for this type.
+- Method injection (`Invoke(HttpContext, IAntiforgery)`) per decision 5, which meant a hand-written
+  constructor and dropping `[Inject]` for this type.
 
-**`XsrfOptions`** (if Open decision 3 says yes) — plain POCO, no reflection binding, AOT-safe.
+**`XsrfOptions`** — plain POCO, no reflection binding, AOT-safe. `Cookie` is **get-only**
+(decision 8): the hardened defaults live in its initialiser, so allowing the builder to be replaced
+would have let `options.Cookie = new CookieBuilder { Name = "…" }` silently reset `SameSite` to
+`Unspecified` and reintroduce the defect this work fixes. Consequently there is no empty-name
+validation — `CookieBuilder.Name` rejects null and empty itself, so a guard would be unreachable
+rather than defensive, and a comment in `Validate` records that.
 
 ### M7 — Documentation ✅ Complete
 
@@ -199,16 +209,16 @@ Branch `bugfix/xsrf-cookie-hardening`.
 - **Angular version note.** ≤ 20.0.x skips *any* absolute URL, including same-origin;
   ≥ 21.0.x compares origins. "Use relative API URLs" is the only version-independent advice.
   `Demo/Xsrf/ClientApp` is Angular 21.
-- **`RELEASE-NOTES.txt`** — new section at the top for the shipping version (Open decision 7).
+- **`RELEASE-NOTES.txt`** — new section at the top for the shipping version (Decision 7).
 - **`<Version>`** bumped; `build-master` pushes with `--skip-duplicate`, so an unbumped package is
   silently skipped.
 
 ### M8 — Verify ✅ Complete
 
-- ✅ Full suite, both TFMs, one batched run: **514 passed, 0 failed** on `net10.0` and `net11.0`.
-- ✅ Coverage: overall line **81.25%** (was 80.39% on `master`), `Xsrf` assembly back to
+- ✅ Full suite, both TFMs, one batched run: **515 passed, 0 failed** on `net10.0` and `net11.0`.
+- ✅ Coverage: overall line **81.16%** (was 80.39% on `master`), `Xsrf` assembly back to
   **100% line / 100% branch** after two gaps the first run exposed.
-- ✅ Reverse check: 17 of 39 Xsrf tests red against a reverted implementation, all 39 green when
+- ✅ Reverse check: 19 of 40 Xsrf tests red against a reverted implementation, all 40 green when
   restored.
 - ✅ AOT/trim/single-file analyzers on the package: **zero IL warnings**. The pre-existing `CS8604`
   on the old cookie append is also gone.
@@ -239,14 +249,26 @@ deployment **today**, independently of the swap.
 - Update Spark's two written refusals (`docs/coverage-handoff-plan.md:667-678`,
   `docs/xsrf_minting_PRD.md` §4) to record that the package was hardened and adopted.
 
-### M10 — PR
+### M10 — PR ✅ Open
 
-Against `master`. Description leads with spike 2's reproduction — the blank 500 behind a proxy is
-the finding that justifies the whole change, and it is not in the issue.
+[PR #86](https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices/pull/86) against `master`,
+three commits: the PRD and plan, the implementation, and the get-only follow-up. The description
+leads with spike 2's reproduction — the blank 500 behind a proxy is the finding that justifies the
+whole change, and it is not in the issue.
+
+All five checks green: `pull-request`, `build-any`, `coverage/project`, `coverage/patch`,
+GitGuardian.
+
+Two things are carried in the PR body rather than left implicit, because they are the kind of thing
+a reviewer should not have to find: the missing prerendering + Xsrf integration test, and that the
+per-request error log will repeat on a misconfigured host.
 
 ## Decisions taken
 
-*(To be filled in during M4. The PRD's* Open decisions *table is the authoritative record.)*
+All eight are recorded, with their reasoning, in the PRD's
+[*Decisions taken*](./PRD-Xsrf-Cookie-Hardening.md#decisions-taken) table — that is the
+authoritative record. Seven were settled in a design interview after the spikes; decision 8
+(`XsrfOptions.Cookie` get-only) came out of reviewing the implementation before merge.
 
 ## Notes for whoever picks this up
 

@@ -162,7 +162,7 @@ With the three defaults reverted (`SameSite=Unspecified`, `SecurePolicy=None`,
 `CacheHeaders=NoStore`) and the guards disabled (`catch (Exception ex) when (false)`,
 `tokens.RequestToken is null && false`):
 
-**17 of 39 Xsrf tests fail**, spread across all four defect classes — cookie attributes, failure
+**19 of 40 Xsrf tests fail**, spread across all four defect classes — cookie attributes, failure
 degradation, error logging, and cache-header preservation. Restoring the implementation returns all
 39 to green.
 
@@ -174,7 +174,7 @@ also satisfies. It now additionally asserts the *absence* of `no-cache`.
 
 | | Before | After |
 |---|---|---|
-| Overall line | 80.39% | **81.25%** |
+| Overall line | 80.39% | **81.16%** |
 | `…SpaServices.Xsrf` line / branch | 100% / 100% | **100% / 100%** |
 
 The Xsrf assembly was already at 100% before this work — which is the point worth keeping. **Every
