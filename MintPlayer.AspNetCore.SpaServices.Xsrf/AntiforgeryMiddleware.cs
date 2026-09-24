@@ -252,8 +252,8 @@ public static class AntiforgeryExtensions
 	/// and stores it in a script-readable cookie, configured by <paramref name="configure"/>.
 	/// </summary>
 	/// <exception cref="ArgumentException">
-	/// The configured cookie could not work: it is <c>HttpOnly</c> (the SPA could not read it), it is
-	/// <c>SameSite=None</c> without <c>Secure</c> (browsers reject it), or it has no name.
+	/// The configured cookie could not work: it is <c>HttpOnly</c> (the SPA could not read it), or it
+	/// is <c>SameSite=None</c> without <c>Secure</c> (browsers reject it).
 	/// </exception>
 	public static IApplicationBuilder UseAntiforgeryGenerator(this IApplicationBuilder builder, Action<XsrfOptions> configure)
 	{
@@ -275,13 +275,9 @@ public static class AntiforgeryExtensions
 
 	private static void Validate(XsrfOptions options)
 	{
-		if (string.IsNullOrEmpty(options.Cookie.Name))
-		{
-			throw new ArgumentException(
-				"XsrfOptions.Cookie.Name must be set. Angular's HttpClient looks for 'XSRF-TOKEN' unless " +
-				"withXsrfConfiguration specifies otherwise.", ConfigureParameterName);
-		}
-
+		// The name needs no check. XsrfOptions.Cookie is get-only and starts out named, and
+		// CookieBuilder.Name rejects null and empty itself - so there is no way to reach this code
+		// with an unusable name, and a guard for it would be unreachable rather than defensive.
 		if (options.Cookie.HttpOnly)
 		{
 			throw new ArgumentException(

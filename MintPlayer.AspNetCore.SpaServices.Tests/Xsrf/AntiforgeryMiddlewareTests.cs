@@ -118,6 +118,20 @@ public class AntiforgeryMiddlewareTests
     }
 
     [Fact]
+    public async Task Renaming_the_cookie_leaves_the_hardened_defaults_intact()
+    {
+        // The regression guard for the get-only Cookie property: configuring one attribute must not
+        // cost the others. See The_cookie_builder_cannot_be_replaced.
+        var result = await XsrfTestHost.Run(https: true, configure: options => options.Cookie.Name = "CUSTOM-XSRF");
+
+        var cookie = Assert.Single(result.SetCookies, c => c.StartsWith("CUSTOM-XSRF=")).ToLowerInvariant();
+        Assert.Contains("samesite=strict", cookie);
+        Assert.Contains("secure", cookie);
+        Assert.Contains("path=/", cookie);
+        Assert.DoesNotContain("httponly", cookie);
+    }
+
+    [Fact]
     public async Task Calls_the_next_middleware()
     {
         var called = false;
@@ -442,17 +456,16 @@ public class AntiforgeryExtensionsTests
     }
 
     [Fact]
-    public void Rejects_a_nameless_cookie_at_startup()
+    public void The_cookie_builder_cannot_be_replaced()
     {
-        // Reached by replacing the whole CookieBuilder, whose Name defaults to null. Assigning ""
-        // to the existing builder would be rejected by CookieBuilder.Name itself, which is a
-        // different exception from a different type and would pass this test without ever running
-        // the package's own validation.
-        var builder = new ApplicationBuilder(XsrfTestHost.BuildServices());
+        // XsrfOptions.Cookie is get-only on purpose. The hardened defaults live in its initialiser,
+        // so `options.Cookie = new CookieBuilder { Name = "..." }` - the obvious-looking way to
+        // rename the cookie - would silently reset SameSite to Unspecified and hand the choice back
+        // to the browser, which is the defect #85 exists to fix. Making the property read-only is
+        // what stops that being expressible at all.
+        var property = typeof(XsrfOptions).GetProperty(nameof(XsrfOptions.Cookie));
 
-        var ex = Assert.Throws<ArgumentException>(
-            () => builder.UseAntiforgeryGenerator(options => options.Cookie = new CookieBuilder { HttpOnly = false }));
-
-        Assert.Contains("XsrfOptions.Cookie.Name", ex.Message);
+        Assert.NotNull(property);
+        Assert.False(property.CanWrite);
     }
 }

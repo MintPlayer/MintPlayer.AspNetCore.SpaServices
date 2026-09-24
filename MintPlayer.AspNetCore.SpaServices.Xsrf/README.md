@@ -35,12 +35,25 @@ The middleware only *issues* tokens. It never validates and never rejects a requ
 |--------|-------------|
 | `AntiforgeryExtensions.UseAntiforgeryGenerator(this IApplicationBuilder builder)` | Adds the middleware that generates an XSRF token for the current user and stores it in a cookie named `XSRF-TOKEN`. |
 | `AntiforgeryExtensions.UseAntiforgeryGenerator(this IApplicationBuilder builder, Action<XsrfOptions> configure)` | The same, with the cookie and the cache-header policy configured. |
-| `XsrfOptions` | `Cookie` (a `CookieBuilder`: name, path, `SameSite`, `SecurePolicy`, domain) and `CacheHeaders`. |
+| `XsrfOptions` | `Cookie` (a read-only `CookieBuilder`: name, path, `SameSite`, `SecurePolicy`, domain) and `CacheHeaders`. |
 | `XsrfCacheHeaderPolicy` | `PreservePrivate` (default) or `NoStore`. See [Caching](#caching). |
 
+```csharp
+app.UseAntiforgeryGenerator(options =>
+{
+    options.Cookie.Name = "CUSTOM-XSRF";                     // configure the properties
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // ...not the builder
+});
+```
+
+`Cookie` is deliberately **get-only**. The hardened defaults live in its initialiser, so assigning a
+fresh `CookieBuilder` — the obvious-looking way to rename the cookie — would silently reset
+`SameSite` to `Unspecified` and hand the choice back to the browser, which is the very defect this
+release fixes. Setting the properties keeps everything you did not mention.
+
 Configurations that cannot work are rejected at startup rather than left to be diagnosed from a 400
-much later: an `HttpOnly` cookie the SPA could not read, `SameSite=None` without `Secure`, or an
-empty cookie name each throw an `ArgumentException` from `UseAntiforgeryGenerator`.
+much later: an `HttpOnly` cookie the SPA could not read, or `SameSite=None` without `Secure`, each
+throw an `ArgumentException` from `UseAntiforgeryGenerator`.
 
 There is no `AddXsrf()` or other service-registration helper — the services you need are the framework's own `AddAntiforgery()`. The middleware resolves `IAntiforgery` from DI, so **`AddAntiforgery()` (or something that includes it, such as `AddControllersWithViews()`/`AddMvc()`/`AddRazorPages()`) must be registered**, otherwise the pipeline throws on the first request.
 

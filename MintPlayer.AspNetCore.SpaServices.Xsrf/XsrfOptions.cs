@@ -67,6 +67,14 @@ public sealed class XsrfOptions
 	/// rejects it at startup.
 	/// </para>
 	/// <para>
+	/// The property is deliberately get-only. The hardened defaults live in its initialiser, so
+	/// assigning a fresh <see cref="CookieBuilder"/> - the obvious-looking way to rename the cookie -
+	/// would silently reset <see cref="CookieBuilder.SameSite"/> to
+	/// <see cref="SameSiteMode.Unspecified"/> and hand the choice back to the browser, which is the
+	/// very defect this release fixes. Configure the properties instead:
+	/// <c>options.Cookie.Name = "CUSTOM-XSRF"</c>.
+	/// </para>
+	/// <para>
 	/// <see cref="CookieSecurePolicy.SameAsRequest"/> is the default because
 	/// <see cref="CookieSecurePolicy.Always"/> cannot be recovered from at runtime: a browser
 	/// refuses a <c>Secure</c> cookie from a plain-HTTP origin other than <c>localhost</c>, so it
@@ -77,7 +85,7 @@ public sealed class XsrfOptions
 	/// of Development.
 	/// </para>
 	/// </remarks>
-	public CookieBuilder Cookie { get; set; } = new()
+	public CookieBuilder Cookie { get; } = new()
 	{
 		Name = "XSRF-TOKEN",
 		Path = "/",

@@ -28,8 +28,10 @@ FIXES
 FEATURES
 - New overload UseAntiforgeryGenerator(Action<XsrfOptions>) configuring the cookie name, path,
   SameSite, SecurePolicy and the cache-header policy. Configurations that cannot work - an HttpOnly
-  cookie the SPA could not read, SameSite=None without Secure, an empty name - are rejected at
-  startup rather than diagnosed later from a 400.
+  cookie the SPA could not read, SameSite=None without Secure - are rejected at startup rather than
+  diagnosed later from a 400. XsrfOptions.Cookie is get-only by design: set its properties
+  (options.Cookie.Name = "...") rather than assigning a new CookieBuilder, which would silently
+  reset SameSite to Unspecified and reintroduce the defect this release fixes.
 DOCUMENTATION
 - The README claimed the cookie was written "without Secure or an explicit SameSite value, so the
   framework's cookie policy defaults apply". No cookie policy applies unless the application calls
