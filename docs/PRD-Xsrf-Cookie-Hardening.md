@@ -593,19 +593,19 @@ Rejected. `no-store` on every response kills CDN caching of prerendered HTML in 
 sibling exists to produce prerendered HTML, and it does so invisibly — the framework's warning only
 fires when a pre-existing header was overridden, not when one was created from nothing.
 
-## Open decisions
+## Decisions taken
 
-These need @PieterjanDeClippel's call before implementation; the plan gates M6 on them.
+Settled with @PieterjanDeClippel after the spikes. This table is the authoritative record.
 
-| # | Decision | Recommendation |
+| # | Decision | Outcome and reasoning |
 |---|---|---|
-| 1 | **`SameSite` default: `Strict` or `Lax`?** The analysis says `Strict` on the JS-readable half is near-symbolic; Spark's E2E test requires it. | Default `Strict`, make it configurable. Symbolic beats surprising, and it keeps Spark green with no configuration. |
-| 2 | **Is the mint gated at all?** Un-gated keeps Spark working; gating on HTML fixes the cache clobber properly. | Un-gated by default + O2's scoped cache repair; expose the gate as opt-in. Revisit if Spike 4 finds a signal that keeps `csrf-refresh` working. |
-| 3 | **Options type or no options type?** O1/O2 need none; O3 adds public surface to a package that advertises having none. | Add it. G1 is not reachable behind a proxy without a `SecurePolicy` knob. |
-| 4 | **Does the cache repair restore verbatim, or downgrade to `private, no-cache`?** Verbatim restores a shared-cacheable response carrying a `Set-Cookie`. | Downgrade. A restored `public, max-age=…` on a response with `Set-Cookie` is a cross-user token-disclosure hazard. |
-| 5 | **Drop the `[Inject]` source generator for this type** to allow method injection (defect E)? | Yes — it is two lines of constructor and removes the captive shape. |
-| 6 | **Does the Spark-side swap land in this unit of work?** It cannot merge before this package publishes. | Plan it here, land it right after the publish; do not defer it to "later". |
-| 7 | **Version target: `11.0.0-rc.2` or `11.0.0`?** `build-master` pushes with `--skip-duplicate`, so an unbumped package is silently skipped. | Whatever the next solution-wide number is — but it must be bumped, and `RELEASE-NOTES.txt` (stuck at `v 10.2.2`) must get a section. |
+| 1 | `SameSite` default | **`Strict`, configurable.** Analytically it is close to symbolic on the JS-readable half — the server never reads this cookie off the wire — but it matches both the framework's own antiforgery cookie and Spark's existing `XsrfCookieFlagTests` assertion, so Spark swaps with zero configuration. Documented honestly as defence in depth rather than as the thing that makes double-submit work. |
+| 2 | Is the mint gated? | **No gate.** Spike 4 settled it: `POST /spark/auth/csrf-refresh` returns an empty non-HTML `Results.Ok()` and is called through Angular's `HttpClient`, so it carries `Sec-Fetch-Dest: empty` — no content-type and no fetch-metadata signal keeps it alive. An HTML gate would silently break Spark's sign-in. The cache clobber is fixed by restoring the headers instead (decision 4). |
+| 3 | Options type | **Added.** `XsrfOptions` with a `CookieBuilder` and a cache policy, reached through a new `UseAntiforgeryGenerator(Action<XsrfOptions>)` overload. G1 is unreachable behind a proxy without a `SecurePolicy` knob. The parameterless overload is kept as a separate method rather than gaining a defaulted parameter, so already-compiled consumers keep working. |
+| 4 | Cache repair shape | **Restore, forcing `private`.** A response that set no `Cache-Control` of its own keeps the framework's `no-store`, so the token-bearing HTML navigation is still never cached. A value the application did set is restored with `private` forced and `public` dropped, because the response carries a `Set-Cookie`. Default is `PreservePrivate`; `NoStore` restores the old behaviour. **This is a deliberate behaviour change and is release-noted as breaking.** |
+| 5 | Drop `[Inject]` for this type | **Yes.** Hand-written constructor; `IAntiforgery` moved to `Invoke(HttpContext, IAntiforgery)` so it is resolved per request instead of captured from the root provider. |
+| 6 | Spark swap | **Prepared, not committed.** Nothing in the Spark repository is touched until this package publishes. The full change, its rationale and a verification checklist are filed as an issue on `MintPlayer/MintPlayer.Spark` instead. |
+| 7 | Version | **`11.0.0-rc.2` across all six packages**, keeping the solution on one number as the `11.0.0-rc.1` sweep left it. `build-master` pushes with `--skip-duplicate`, so an unbumped package is silently skipped. |
 
 ## Risks
 
@@ -621,15 +621,26 @@ These need @PieterjanDeClippel's call before implementation; the plan gates M6 o
 
 ## Success criteria
 
-| # | Criterion |
-|---|---|
-| 1 | Tests that fail on `master` and pass after, covering: `Secure` present over HTTPS and absent over HTTP; explicit `SameSite`; null `RequestToken` → no cookie, no throw; a throwing `IAntiforgery` → response intact, cookie absent, error logged. |
-| 2 | An end-to-end run of `Demo/Xsrf` on **both** `http://localhost:5000` and `https://localhost:5001` showing the real `Set-Cookie` attributes on the wire, and a successful `POST /WeatherForecast` through the Angular app on each. |
-| 3 | Defect C reproduced on `master` (bare 500, headers stripped) and shown fixed — with `AddAntiforgery(o => o.Cookie.SecurePolicy = Always)` over plain HTTP against the real demo. |
-| 4 | An application `Cache-Control` survives a response that mints the cookie, verified in the test suite **and** with `UseSpaPrerendering` + `UseAntiforgeryGenerator` in the same pipeline — the combination that exists nowhere today. |
-| 5 | Spark's `XsrfCookieFlagTests` assertions (`Secure` present, `SameSite=Strict`) pass against a host using this package, and `csrf-refresh` still mints. |
-| 6 | Coverage: project ≥ 80%, patch ≥ 80%; the `Xsrf` assembly does not regress from 100%. |
-| 7 | `README.md:253` corrected, the `AntiforgeryOptions.Cookie.SecurePolicy = None` gap documented, `RELEASE-NOTES.txt` given a section, `<Version>` bumped. |
+| # | Criterion | Status |
+|---|---|---|
+| 1 | Tests covering `Secure` present over HTTPS and absent over HTTP; explicit `SameSite`; null `RequestToken` → no cookie, no throw; a throwing `IAntiforgery` → response intact, cookie absent, error logged | ✅ **39 Xsrf tests, 514 across the solution, green on both TFMs.** Verified in the reverse direction: **17 of 39 red** against a reverted implementation. |
+| 2 | End-to-end `Demo/Xsrf` on both schemes, real `Set-Cookie` on the wire, successful `POST /WeatherForecast` through the Angular app | ✅ HTTPS: `XSRF-TOKEN=…; path=/; secure; samesite=strict` on **zero configuration**. `POST` with the header → 200, without → 400. In a real browser the Angular 21 SPA's button issues `POST /WeatherForecast` → **200**, and `document.cookie` shows `XSRF-TOKEN` but not the HttpOnly half. HTTP :5000 answers 307 to HTTPS before the mint is reached, as the demo's `UseHttpsRedirection` placement dictates. |
+| 3 | Defect C reproduced and shown fixed | ✅ **Reproduced.** `SecurePolicy = Always` + plain HTTP → `500`, `Content-Length: 0`, every header stripped — while the *same host over HTTPS* returned 200, proving it is the scheme. After: `200`, response intact, no cookie, one logged error. |
+| 4 | An application `Cache-Control` survives the mint | ✅ Both the eager case (`public, max-age=300` on the endpoint) and the downstream-`OnStarting` case now read `max-age=…, private`; both read `no-cache, no-store` before. A response that set no policy keeps `no-store`. Covered by seven unit tests. ⚠️ The `UseSpaPrerendering` + `UseAntiforgeryGenerator` *integration* test was **not** written — see below. |
+| 5 | Spark's assertions satisfiable, `csrf-refresh` still mints | ✅ By construction: the defaults emit `Secure` over HTTPS and `SameSite=Strict`, which is exactly what `XsrfCookieFlagTests` asserts, and the mint is un-gated so `csrf-refresh` still mints. **Not executed against Spark** — that is blocked on the publish and is filed as an issue there. |
+| 6 | Coverage: project ≥ 80%, patch ≥ 80%, `Xsrf` not below 100% | ✅ Overall line **81.25%** (was 80.39%); `Xsrf` **100% line / 100% branch**. |
+| 7 | Docs and version | ✅ `README.md:253` replaced; new *Caching*, *What this package does not protect*, *.NET 11* and *Angular version* sections; `RELEASE-NOTES.txt` section added at `v 11.0.0-rc.2`; all six packages bumped. |
+
+### One criterion partially met, stated plainly
+
+Criterion 4's **integration** half was not delivered. The unit tests prove the middleware preserves
+`Cache-Control`, and the wire captures prove it end to end on a real server — but no test puts
+`UseSpaPrerendering` and `UseAntiforgeryGenerator` in the same pipeline. `PrerenderingHarness` fires
+its `OnStarting` callbacks itself and is built around `SpaPrerenderingOptions`, so wiring the Xsrf
+middleware into it is a harness change rather than a test, and the two packages have no shared test
+fixture. The conflict it would guard is now covered from the Xsrf side, and the ordering argument is
+recorded in the PRD, but **a future change to prerendering's drop-set could reintroduce the clash
+without any test failing.** Worth its own issue.
 
 ## Out of scope
 

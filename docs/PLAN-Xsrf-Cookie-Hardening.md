@@ -40,7 +40,25 @@ Three findings that changed the framing, all unprompted:
 
 This document and the PRD.
 
-### M3 — Spikes ⬜
+### M3 — Spikes ✅ Complete
+
+All seven answered. Spikes 1, 2, 3 and 5 were run against a **real Kestrel host** over both
+`http://localhost:5310` and `https://localhost:5311` — a throwaway host in the scratchpad
+referencing the Xsrf project, with a scenario switch (`baseline`, `securealways`, `throwing`,
+`throwcrypto`, `nulltoken`) and an upstream middleware registered on each side of the mint to expose
+the LIFO ordering. Every scenario was captured before the fix and again after.
+
+| # | Spike | Answer |
+|---|---|---|
+| **1** | Throw in `OnStarting` | ✅ **Confirmed on the wire.** All three failure scenarios returned `HTTP/1.1 500`, `Content-Length: 0`, with **every** header stripped — no `Set-Cookie`, no `Content-Type`, neither upstream marker. Both predicted exception paths were observed in the host log: the direct `InvalidOperationException` out of `FireOnStarting`, and the secondary `ObjectDisposedException: The response has been aborted due to an unhandled application exception` wrapping it when the write happened inside the pipeline. **Not testable in-process** — the repo has no real-server harness and TestServer rethrows — so the unit tests assert the *degradation*, and this spike is the evidence for the 500. |
+| **2** | ⚠️ `CheckSSLConfig` behind a proxy | ✅ **Reproduced.** `AddAntiforgery(o => o.Cookie.SecurePolicy = Always)` + plain HTTP → bare 500 with all headers reset, on every request, while the **same host over HTTPS returned 200** — proving it is the scheme and not a misconfiguration. This is a live production failure against the shipped package. |
+| **3** | Cookie flags on the wire | ✅ Before: `XSRF-TOKEN=…; path=/` on **both** schemes — no `Secure` even over HTTPS. After: `path=/; secure; samesite=strict` on HTTPS and `path=/; samesite=strict` on HTTP. Also confirmed the framework's own cookie ships `samesite=strict; httponly` **without `secure`** over HTTPS, exactly as `AntiforgeryOptions.Cookie.SecurePolicy = None` predicts. `__Host-` was not pursued — it stays out of scope. |
+| **4** | ⚠️ Would a gate break Spark? | ✅ **Yes — no gate is viable.** `CsrfRefresh.HandleAsync` returns `Results.Ok()`; its own doc comment says the endpoint "reads no input, writes no state, and returns an empty 200". Angular calls it through `HttpClient`, so it carries `Sec-Fetch-Dest: empty`. Neither a content-type nor a fetch-metadata signal keeps it alive. **Decision 2: un-gated.** |
+| **5** | `Cache-Control` conflict | ✅ **Demonstrated both ways.** With an upstream writer registered *after* the mint (so it pops *first* under LIFO) and an endpoint setting `Cache-Control` *eagerly*, both were overwritten with `no-cache, no-store`. A writer registered *before* the mint survived — which is the LIFO relationship stated the wrong way round in the first draft of the spike, and corrected. Post-fix both read `max-age=…, private`. |
+| **6** | Options surface + AOT | ✅ Built with `EnableAotAnalyzer`, `EnableTrimAnalyzer` and `EnableSingleFileAnalyzer`: **zero IL2xxx/IL3xxx warnings** in this assembly. The only `CS1591` warnings come from pre-existing generated files, not from the new public surface. `CookieBuilder.Build(httpContext)` confirmed as the construction route. |
+| **7** | LIFO test fidelity | ✅ **Confirmed and fixed.** The old `RunnableResponseFeature` held callbacks in a `List` and iterated forward — FIFO, the reverse of Kestrel. It also used a stub `IAntiforgery` that touched no headers at all, so the suite could not have observed the clobber from either direction. Replaced with a `Stack`-based fake and a stub that reproduces `DefaultAntiforgery`'s real side effects. |
+
+#### Spike definitions, as written before they were run
 
 Seven. Each produces a written answer in the PRD or a `docs/SOLUTION-*.md`, plus whatever throwaway
 harness proves it. No production code until M6.
@@ -61,28 +79,48 @@ simultaneously without an override.
 | **6** | **Options surface + AOT** | Settle the O3 shape: `UseAntiforgeryGenerator(Action<XsrfOptions>)` overload vs an `AddXsrf()` registration; whether `CookieBuilder.Build(httpContext)` is the right construction route; and that `<PublishAot>true</PublishAot>` still publishes clean. Resolves Open decision 3. | `dotnet publish -r win-x64 /p:PublishAot=true` on a scratch consumer |
 | **7** | **LIFO test fidelity** | The Xsrf suite's `RunnableResponseFeature` fires **FIFO**; Kestrel and `PrerenderingTestContext.CallbackFiringResponseFeature` are **LIFO**. Confirm the Xsrf suite cannot observe the clobber today, and move it onto a LIFO fake. | `MintPlayer.AspNetCore.SpaServices.Tests/Xsrf/AntiforgeryMiddlewareTests.cs` |
 
-**Deliverable.** `docs/SOLUTION-xsrf-onstarting-failure.md` (spikes 1-2),
-`docs/SOLUTION-xsrf-cookie-policy.md` (spikes 3, 6), `docs/SOLUTION-xsrf-cache-headers.md`
-(spikes 4-5), and the answers written back into the PRD.
+**Deliverable** ✅ — consolidated into one document rather than three:
+[`SOLUTION-xsrf-cookie-hardening.md`](./SOLUTION-xsrf-cookie-hardening.md), carrying the measured
+before/after wire captures for spikes 1-5, the browser round trip, and the reverse check. Splitting
+the same evidence across three files would have separated captures that only make sense read
+together. The answers are also summarised in the table above and in the PRD.
 
-### M4 — Resolve the seven open decisions ⬜
+### M4 — Resolve the seven open decisions ✅ Complete
 
-A design interview with @PieterjanDeClippel, informed by M3. The PRD's *Open decisions* table is
-the authoritative record and gets filled in with the reasoning, exactly as
-`PLAN-Prerendering-Response-Headers.md` did for its four spikes.
+Settled with @PieterjanDeClippel in a design interview after the spikes. **All seven decisions and
+their reasoning are in the PRD's *Decisions taken* table** — that is the authoritative record.
 
-Gate: **no production code before decisions 1, 2, 3 and 4 are settled.** Decision 5 (drop the
-`[Inject]` generator) and 7 (version) can be settled during M6. Decision 6 (the Spark swap)
-determines whether M9 exists.
+In short: `SameSite=Strict` by default; no mint gate (spike 4 ruled it out); an options type is
+added; the cache repair restores and forces `private`; the `[Inject]` generator is dropped for this
+type in favour of per-request `IAntiforgery`; the Spark swap is filed as an issue on that repository
+rather than committed; `11.0.0-rc.2` across all six packages.
 
-### M5 — Reproduction tests, red before green ⬜
+### M5 — Reproduction tests ✅ Complete
 
-Written against current code and **verified red** before any fix lands. Extends
-`MintPlayer.AspNetCore.SpaServices.Tests/Xsrf/AntiforgeryMiddlewareTests.cs`. Record the failing
-count before M6 and the passing count after — red-before-fix verified, not assumed.
+**39 Xsrf tests, all green; 514 across the solution on both TFMs.**
 
-First, **move the suite onto a LIFO response feature** (spike 7), or tests 9-11 pass for the wrong
-reason.
+The suite moved onto a LIFO response feature first (spike 7) — otherwise the cache-header tests
+would have passed for the wrong reason — and the stub `IAntiforgery` was rewritten to reproduce
+`DefaultAntiforgery`'s actual side effects (the HttpOnly cookie half, `X-Frame-Options`, and the
+`Cache-Control`/`Pragma` stamping guarded by `HasStarted`). The old stub touched no headers at all,
+so no assertion about the clobber could have meant anything. Both live in a new
+`Xsrf/XsrfTestHost.cs`.
+
+**Red verified in the reverse direction.** Rather than writing the tests against `master` — whose
+constructor signature the fix changes, so they could not compile there — the finished tests were run
+against a deliberately reverted implementation (`SameSite=Unspecified`, `SecurePolicy=None`,
+`CacheHeaders=NoStore`, `catch … when (false)`, null guard disabled): **17 of 39 failed**, spread
+across all four defect classes. Restoring the implementation returned all 39 to green. The wire
+captures in the SOLUTION doc are the stronger evidence for the defects themselves.
+
+One assertion was strengthened as a result: `Preserves_a_cache_control_set_by_the_application` had
+asserted only that `no-store` survived, which the clobbered `no-cache, no-store` also satisfies. It
+now also asserts the absence of `no-cache`.
+
+Two gaps that the coverage report caught, both now covered and both worth recording:
+`CookieBuilder.Name` rejects `""` itself, so the nameless-cookie test was passing on the framework's
+exception and never reaching the package's own validation (it now replaces the whole `CookieBuilder`,
+whose `Name` defaults to `null`); and neither `ForcePrivate` fallback branch was exercised.
 
 **Cookie attributes**
 
@@ -126,7 +164,7 @@ reason.
 | `Writes_no_cookie_until_the_response_starts` | keep verbatim — it pins the placement that is the package's whole advantage over Spark |
 | `UseAntiforgeryGenerator_registers_the_middleware` | extend to actually run a request through the built pipeline, so `UseMiddleware`'s DI path is exercised (it is not today) |
 
-### M6 — Implementation ⬜
+### M6 — Implementation ✅ Complete
 
 Branch `bugfix/xsrf-cookie-hardening`.
 
@@ -147,7 +185,7 @@ Branch `bugfix/xsrf-cookie-hardening`.
 
 **`XsrfOptions`** (if Open decision 3 says yes) — plain POCO, no reflection binding, AOT-safe.
 
-### M7 — Documentation ⬜
+### M7 — Documentation ✅ Complete
 
 - **`README.md:253`** — replace the "framework's cookie policy defaults apply" sentence. Nothing
   applies unless the app calls `UseCookiePolicy`.
@@ -165,18 +203,30 @@ Branch `bugfix/xsrf-cookie-hardening`.
 - **`<Version>`** bumped; `build-master` pushes with `--skip-duplicate`, so an unbumped package is
   silently skipped.
 
-### M8 — Verify ⬜
+### M8 — Verify ✅ Complete
 
-- Full suite, both TFMs, batched: `dotnet test --settings coverlet.runsettings --collect:"XPlat Code
-  Coverage"`, redirected to a log file rather than piped.
-- Coverage: project ≥ 80%, patch ≥ 80%, `Xsrf` assembly not below 100%.
-- **Reverse check** — revert the fix and confirm the M5 tests go red, so the suite is a real
-  regression guard and not a restatement of the implementation.
-- Success criteria 2 and 3 re-run against the real demo on both schemes.
+- ✅ Full suite, both TFMs, one batched run: **514 passed, 0 failed** on `net10.0` and `net11.0`.
+- ✅ Coverage: overall line **81.25%** (was 80.39% on `master`), `Xsrf` assembly back to
+  **100% line / 100% branch** after two gaps the first run exposed.
+- ✅ Reverse check: 17 of 39 Xsrf tests red against a reverted implementation, all 39 green when
+  restored.
+- ✅ AOT/trim/single-file analyzers on the package: **zero IL warnings**. The pre-existing `CS8604`
+  on the old cookie append is also gone.
+- ✅ Success criteria 2 and 3 against the real `Demo/Xsrf`, both schemes, plus a real-browser
+  Angular round trip. See [`SOLUTION-xsrf-cookie-hardening.md`](./SOLUTION-xsrf-cookie-hardening.md).
 
-### M9 — Spark swap ⬜ *(gated on Open decision 6 and on the publish)*
+### M9 — Spark ✅ Filed as an issue, not committed
 
-Cannot merge before this package publishes. Planned here, landed immediately after — not deferred.
+Per decision 6, **nothing in the Spark repository is touched.** The change cannot compile there
+until `11.0.0-rc.2` is on nuget.org, and a branch that is red until then is worse than a written
+plan. The full change, its rationale and the verification checklist below are filed as an issue on
+`MintPlayer/MintPlayer.Spark` instead.
+
+The issue also carries two things Spark needs and did not ask for: the warning that **no gate may be
+added** (spike 4 — `csrf-refresh` returns a non-HTML 200 and would break), and the observation that
+`apps/CodeCoverage/docker-compose.yml` serves plain HTTP behind Traefik with no `UseForwardedHeaders`
+anywhere in the repository, so Spark is likely emitting a non-`Secure` XSRF cookie in that
+deployment **today**, independently of the swap.
 
 - Delete the mint at `SparkMiddleware.cs:348-369`; call `UseAntiforgeryGenerator()` in its place,
   at the same pipeline position.
@@ -189,7 +239,7 @@ Cannot merge before this package publishes. Planned here, landed immediately aft
 - Update Spark's two written refusals (`docs/coverage-handoff-plan.md:667-678`,
   `docs/xsrf_minting_PRD.md` §4) to record that the package was hardened and adopted.
 
-### M10 — PR ⬜
+### M10 — PR
 
 Against `master`. Description leads with spike 2's reproduction — the blank 500 behind a proxy is
 the finding that justifies the whole change, and it is not in the issue.
