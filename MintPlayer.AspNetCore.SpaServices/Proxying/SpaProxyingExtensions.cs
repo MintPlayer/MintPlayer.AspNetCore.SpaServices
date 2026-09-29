@@ -68,7 +68,7 @@ public static class SpaProxyingExtensions
 		// Proxy all requests to the SPA development server
 		applicationBuilder.Run(async (context) =>
 		{
-			var didProxyRequest = await SpaProxy.PerformProxyRequest(
+			await SpaProxy.PerformProxyRequest(
 				context, neverTimeOutHttpClient, baseUriTaskFactory(), applicationStoppingToken,
 				proxy404s: true);
 		});

@@ -255,6 +255,11 @@ is already passed. The server side needs a fake `IHttpWebSocketFeature` added to
 Makes the sub-protocol forwarding, the `NotForwardedWebSocketHeaders` filter, the swallowed
 `ArgumentException` and the `WebSocketException → 400` path assertable.
 
+> **Correction (see [PLAN-Coverage-95.md](./PLAN-Coverage-95.md) M5).** As shipped, the connector
+> reached `AcceptProxyWebSocketRequest` only. `PerformProxyRequest` still constructed the real
+> `ClientWebSocketConnector`, so its websocket branch stayed dark. The internal overload that
+> actually threads the connector through landed with the 95% work.
+
 ### M7 — Inject the runner into the two callers ✅
 
 `AngularCliMiddleware` and `AngularPrerendererBuilder` both `new` a concrete `NodeScriptRunner`. Route
@@ -268,6 +273,11 @@ to `internal static` and **is** covered; only the spawning wrapper around it is 
 already own a reusable `StubHandler`. Note it loops `while(true)` with `Task.Delay(500)` and no
 cancellation, so a test must inject a handler that succeeds, or it hangs the run (the existing PRD
 flags this exact hazard).
+
+> **Correction (see [PLAN-Coverage-95.md](./PLAN-Coverage-95.md) M5).** As shipped, only
+> `AngularCliMiddleware` was routed through the seam. `AngularPrerendererBuilder.Build` still called
+> the public, real-process `NodeScriptRunner` constructor, so it stayed dark. It gained its internal
+> `ProcessLauncher` with the 95% work.
 
 ### M8 — Gate ✅
 

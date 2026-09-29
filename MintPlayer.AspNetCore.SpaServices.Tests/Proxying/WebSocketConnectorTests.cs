@@ -118,6 +118,77 @@ public class WebSocketConnectorTests
 			() => SpaProxy.AcceptProxyWebSocketRequest(context, null!, CancellationToken.None, new FakeConnector(Closed())));
 	}
 
+	[Fact]
+	public async Task The_real_connector_skips_a_header_it_cannot_set_and_rethrows_a_failed_connect()
+	{
+		// A pre-cancelled token makes ClientWebSocket give up before it dials, so nothing leaves the
+		// process. The header with a space in its name is rejected by the client options; that has to
+		// be skipped, or the ArgumentException would surface here instead of the cancellation.
+		using var cts = new CancellationTokenSource();
+		cts.Cancel();
+		KeyValuePair<string, StringValues>[] headers = [new("Bad Header", "x"), new("X-Ok", "y")];
+
+		await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ClientWebSocketConnector.Instance.ConnectAsync(
+			new Uri("ws://127.0.0.1:9/"), ["sockjs"], headers, cts.Token));
+	}
+
+	[Fact]
+	public async Task A_websocket_request_that_is_aborted_before_the_upstream_connects_counts_as_handled()
+	{
+		// Goes through PerformProxyRequest and the shipped connector. The client has already gone, so
+		// the connect is cancelled before it dials and the proxy reports the request as handled.
+		using var aborted = new CancellationTokenSource();
+		aborted.Cancel();
+		var context = CreateWebSocketContext(Closed(), requestAborted: aborted.Token);
+
+		var proxied = await SpaProxy.PerformProxyRequest(
+			context,
+			new HttpClient(new TestHelpers.StubHandler()),
+			Task.FromResult(new Uri("http://127.0.0.1:9/")),
+			CancellationToken.None,
+			proxy404s: false);
+
+		Assert.True(proxied);
+	}
+
+	[Fact]
+	public async Task PerformProxyRequest_hands_a_websocket_upgrade_to_the_connector()
+	{
+		var connector = new FakeConnector(Closed());
+		var context = CreateWebSocketContext(Closed(), path: "/path", queryString: "?q");
+
+		var proxied = await SpaProxy.PerformProxyRequest(
+			context,
+			new HttpClient(new TestHelpers.StubHandler()),
+			Task.FromResult(new Uri("http://localhost:4200/")),
+			CancellationToken.None,
+			proxy404s: false,
+			connector);
+
+		Assert.True(proxied);
+		Assert.Equal(new Uri("ws://localhost:4200/path?q"), connector.LastDestination);
+	}
+
+	[Fact]
+	public async Task PerformProxyRequest_reports_a_refused_upgrade_as_not_proxied()
+	{
+		// The 400 means nothing was proxied. That result used to be dropped, so the caller was told
+		// the request had been proxied regardless.
+		var connector = new FakeConnector(new WebSocketException("refused"));
+		var context = CreateWebSocketContext(Closed());
+
+		var proxied = await SpaProxy.PerformProxyRequest(
+			context,
+			new HttpClient(new TestHelpers.StubHandler()),
+			Task.FromResult(new Uri("http://localhost:4200/")),
+			CancellationToken.None,
+			proxy404s: false,
+			connector);
+
+		Assert.False(proxied);
+		Assert.Equal(400, context.Response.StatusCode);
+	}
+
 	private static WebSocketProxyTests.FakeWebSocket Closed()
 	{
 		var socket = new WebSocketProxyTests.FakeWebSocket();
@@ -125,7 +196,7 @@ public class WebSocketConnectorTests
 		return socket;
 	}
 
-	private static DefaultHttpContext CreateWebSocketContext(WebSocket accepted, string[]? subProtocols = null)
+	private static DefaultHttpContext CreateWebSocketContext(WebSocket accepted, string[]? subProtocols = null, CancellationToken requestAborted = default, string path = "/", string queryString = "")
 	{
 		var requestHeaders = new HeaderDictionary();
 		if (subProtocols is { Length: > 0 })
@@ -136,10 +207,11 @@ public class WebSocketConnectorTests
 		}
 
 		var features = new FeatureCollection();
-		features.Set<IHttpRequestFeature>(new HttpRequestFeature { Method = "GET", Path = "/", Scheme = "http", Headers = requestHeaders });
+		features.Set<IHttpRequestFeature>(new HttpRequestFeature { Method = "GET", Path = path, QueryString = queryString, Scheme = "http", Headers = requestHeaders });
 		features.Set<IHttpResponseFeature>(new HttpResponseFeature());
 		features.Set<IHttpResponseBodyFeature>(new StreamResponseBodyFeature(new MemoryStream()));
 		features.Set<IHttpWebSocketFeature>(new FakeWebSocketFeature(accepted, subProtocols ?? []));
+		features.Set<IHttpRequestLifetimeFeature>(new HttpRequestLifetimeFeature { RequestAborted = requestAborted });
 
 		return new DefaultHttpContext(features);
 	}

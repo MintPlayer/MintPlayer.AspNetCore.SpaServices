@@ -119,6 +119,93 @@ public class WebSocketProxyTests
 		Assert.Empty(destination.Sent);
 	}
 
+	[Fact]
+	public async Task Polls_a_receive_that_is_still_pending_until_it_completes()
+	{
+		// A real socket's receive stays outstanding until a frame arrives, so the pump has to poll it.
+		// This pays the pump's own 100 ms back-off once; the test itself never sleeps.
+		using var source = new PendingReceiveWebSocket();
+		using var destination = new FakeWebSocket();
+
+		var pumping = SpaProxy.PumpWebSocket(source, destination, 1024, CancellationToken.None);
+		Assert.False(pumping.IsCompleted);
+
+		source.Deliver("late frame");
+		await pumping.WaitAsync(TimeSpan.FromSeconds(10));
+
+		Assert.Equal(["late frame"], destination.Sent);
+		Assert.True(destination.CloseOutputCalled);
+	}
+
+	[Fact]
+	public async Task Returns_quietly_when_cancelled_during_the_poll_delay()
+	{
+		// The receive never completes, so the pump is parked in its poll delay by the time it hands
+		// its task back. Cancelling there used to throw TaskCanceledException, whereas a cancellation
+		// seen at the check returned quietly.
+		using var source = new PendingReceiveWebSocket();
+		using var destination = new FakeWebSocket();
+		using var cts = new CancellationTokenSource();
+
+		var pumping = SpaProxy.PumpWebSocket(source, destination, 1024, cts.Token);
+		Assert.False(pumping.IsCompleted);
+		await cts.CancelAsync();
+
+		await pumping.WaitAsync(TimeSpan.FromSeconds(10));
+
+		Assert.Empty(destination.Sent);
+	}
+
+	/// <summary>
+	/// A <see cref="WebSocket"/> whose first receive stays pending until <see cref="Deliver"/> is
+	/// called, and whose next receive is a close. Never delivering models a quiet connection.
+	/// </summary>
+	internal sealed class PendingReceiveWebSocket : WebSocket
+	{
+		private readonly TaskCompletionSource<WebSocketReceiveResult> pending = new();
+		private ArraySegment<byte> pendingBuffer;
+		private int receives;
+
+		public void Deliver(string text)
+		{
+			var payload = Encoding.UTF8.GetBytes(text);
+			payload.CopyTo(pendingBuffer.Array!, pendingBuffer.Offset);
+			pending.SetResult(new WebSocketReceiveResult(payload.Length, WebSocketMessageType.Text, true));
+		}
+
+		public override Task<WebSocketReceiveResult> ReceiveAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken)
+		{
+			if (receives++ == 0)
+			{
+				pendingBuffer = buffer;
+				return pending.Task;
+			}
+
+			return Task.FromResult(new WebSocketReceiveResult(0, WebSocketMessageType.Close, true, WebSocketCloseStatus.NormalClosure, null));
+		}
+
+		public override Task SendAsync(ArraySegment<byte> buffer, WebSocketMessageType messageType, bool endOfMessage, CancellationToken cancellationToken)
+			=> Task.CompletedTask;
+
+		public override Task CloseOutputAsync(WebSocketCloseStatus closeStatus, string? statusDescription, CancellationToken cancellationToken)
+			=> Task.CompletedTask;
+
+		public override Task CloseAsync(WebSocketCloseStatus closeStatus, string? statusDescription, CancellationToken cancellationToken)
+			=> Task.CompletedTask;
+
+		public override WebSocketCloseStatus? CloseStatus => receives > 1 ? WebSocketCloseStatus.NormalClosure : null;
+
+		public override string? CloseStatusDescription => null;
+
+		public override WebSocketState State => WebSocketState.Open;
+
+		public override string? SubProtocol => null;
+
+		public override void Abort() { }
+
+		public override void Dispose() { }
+	}
+
 	/// <summary>
 	/// A <see cref="WebSocket"/> that replays a scripted sequence of frames and records what was sent
 	/// to it. Receives complete synchronously, so the pump's polling loop never actually waits.

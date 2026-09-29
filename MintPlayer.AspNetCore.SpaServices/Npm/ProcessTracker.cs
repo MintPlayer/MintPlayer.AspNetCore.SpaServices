@@ -49,20 +49,59 @@ internal static class ProcessTracker
 		AppDomain.CurrentDomain.ProcessExit += (_, _) => KillTrackedProcesses();
 	}
 
+	/// <summary>
+	/// Tracks <paramref name="process"/> until it exits. The caller must have set
+	/// <see cref="Process.EnableRaisingEvents"/>, which is what lets it be forgotten again.
+	/// </summary>
+	/// <remarks>
+	/// Processes used to be added and never removed, so the list grew for the life of the host with
+	/// every dev-server or build restart, and kept each <see cref="Process"/> alive with it.
+	/// </remarks>
 	public static void AddProcess(Process process)
 	{
-		if (OperatingSystem.IsWindows() && s_jobHandle != nint.Zero)
+		if (OperatingSystem.IsWindows() && s_jobHandle != nint.Zero && !AssignProcessToJobObject(s_jobHandle, process.Handle))
 		{
-			AssignProcessToJobObject(s_jobHandle, process.Handle);
+			// Not fatal: the ProcessExit fallback below still applies. But the child will then
+			// survive an abrupt end of this process, which is worth being able to diagnose.
+			Trace.TraceWarning($"Could not assign process {process.Id} to the kill-on-close job object (Win32 error {Marshal.GetLastWin32Error()}). It may outlive this process if it is terminated abruptly.");
 		}
 
 		lock (s_trackedProcesses)
 		{
 			s_trackedProcesses.Add(process);
 		}
+
+		process.Exited += (_, _) => RemoveProcess(process);
+
+		// It may have exited before the handler was attached, in which case Exited has already fired.
+		if (process.HasExited)
+		{
+			RemoveProcess(process);
+		}
 	}
 
-	private static void KillTrackedProcesses()
+	/// <summary>Stops tracking <paramref name="process"/>. Safe to call more than once.</summary>
+	public static void RemoveProcess(Process process)
+	{
+		lock (s_trackedProcesses)
+		{
+			s_trackedProcesses.Remove(process);
+		}
+	}
+
+	internal static bool IsTracked(Process process)
+	{
+		lock (s_trackedProcesses)
+		{
+			return s_trackedProcesses.Contains(process);
+		}
+	}
+
+	/// <summary>
+	/// Kills every tracked process. Internal rather than private only so a test can call it: in
+	/// production it runs only from <see cref="AppDomain.ProcessExit"/>, too late for any test to observe.
+	/// </summary>
+	internal static void KillTrackedProcesses()
 	{
 		lock (s_trackedProcesses)
 		{

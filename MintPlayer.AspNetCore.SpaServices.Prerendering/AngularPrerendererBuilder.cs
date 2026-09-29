@@ -37,6 +37,12 @@ public class AngularPrerendererBuilder : Abstractions.ISpaPrerendererBuilder
 		this.finishedRegexIndex = finishedRegexNumber;
 	}
 
+	/// <summary>
+	/// Starts the build script. The real process launcher by default; a test sets a fake so that
+	/// <see cref="Build"/> can run end to end without npm.
+	/// </summary>
+	internal Npm.IProcessLauncher ProcessLauncher { get; init; } = Npm.SystemProcessLauncher.Instance;
+
 	/// <inheritdoc />
 	public async Task Build(Abstractions.ISpaBuilder spaBuilder)
 	{
@@ -58,22 +64,34 @@ public class AngularPrerendererBuilder : Abstractions.ISpaPrerendererBuilder
 			null,
 			pkgManagerCommand,
 			diagnosticSource,
-			applicationStoppingToken);
+			applicationStoppingToken,
+			ProcessLauncher);
 		scriptRunner.AttachToLogger(logger);
 
 		using (var stdOutReader = new Utils.EventedStreamStringReader(scriptRunner.StdOut))
 		using (var stdErrReader = new Utils.EventedStreamStringReader(scriptRunner.StdErr))
 		{
-			await WaitForBuildToFinish(
-				scriptRunner.StdOut,
-				finishedRegex,
-				finishedRegexIndex,
-				spaBuilder.Options.StartupTimeout,
-				applicationStoppingToken,
-				pkgManagerCommand,
-				npmScript,
-				stdOutReader,
-				stdErrReader);
+			try
+			{
+				await WaitForBuildToFinish(
+					scriptRunner.StdOut,
+					finishedRegex,
+					finishedRegexIndex,
+					spaBuilder.Options.StartupTimeout,
+					applicationStoppingToken,
+					pkgManagerCommand,
+					npmScript,
+					stdOutReader,
+					stdErrReader);
+			}
+			catch
+			{
+				// A failed or timed-out build is final (see UseSpaPrerendering), so nothing will
+				// ever use this --watch process. It used to keep running until the host stopped.
+				// On success it is deliberately left running: it is what rebuilds the bundle.
+				((IDisposable)scriptRunner).Dispose();
+				throw;
+			}
 		}
 	}
 

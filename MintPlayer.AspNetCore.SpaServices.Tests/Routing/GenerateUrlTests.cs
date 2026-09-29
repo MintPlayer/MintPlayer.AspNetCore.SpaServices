@@ -121,6 +121,20 @@ public class GenerateUrlTests
     }
 
     [Fact]
+    public async Task Prefixes_scheme_host_and_path_base_from_an_HttpContext_for_an_anonymous_object()
+    {
+        var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);
+        var context = HttpContextFactory.WithRawTarget("/");
+        context.Request.Scheme = "https";
+        context.Request.Host = new Microsoft.AspNetCore.Http.HostString("localhost:5001");
+        context.Request.PathBase = "/app";
+
+        var url = await service.GenerateUrl("person-edit", new { personid = 5 }, context);
+
+        Assert.Equal("https://localhost:5001/app/person/5/edit", url);
+    }
+
+    [Fact]
     public async Task Prefixes_an_explicit_protocol_and_host_without_a_path_base()
     {
         var service = SpaRouteTestHost.Create(SpaRouteTestHost.DemoRoutes);

@@ -530,12 +530,12 @@ public static class SpaPrerenderingExtensions
 	/// Decodes the captured response body into the HTML template handed to the prerenderer.
 	/// </summary>
 	/// <remarks>
-	/// Reads through <see cref="MemoryStream.TryGetBuffer"/> rather than
-	/// <see cref="MemoryStream.GetBuffer"/>: the latter returns the whole internal array, whose
-	/// length is the stream's <c>Capacity</c>, so decoding it without bounds appended however many
-	/// bytes the stream had grown but never used - thousands of NUL characters on a response over
-	/// 16 KB. <c>TryGetBuffer</c> hands back offset *and* count, so there is no arithmetic here to
-	/// get wrong, and unlike <c>ToArray()</c> it does not copy the page on every request.
+	/// <see cref="MemoryStream.GetBuffer"/> returns the whole internal array, whose length is the
+	/// stream's <c>Capacity</c>, so it is always bounded by <see cref="MemoryStream.Length"/> here.
+	/// Decoding it without that bound once appended however many bytes the stream had grown but
+	/// never used - thousands of NUL characters on a response over 16 KB. Unlike <c>ToArray()</c>
+	/// it does not copy the page on every request. The only buffer this is ever handed is the
+	/// middleware's own <c>new MemoryStream()</c>, which is publicly visible and starts at offset 0.
 	/// A UTF-8 byte order mark is skipped, because <see cref="Encoding.UTF8"/> decodes it into a
 	/// leading U+FEFF that would sit in front of the doctype.
 	/// UTF-8 is assumed rather than read from the response's charset: the write side of this
@@ -543,18 +543,7 @@ public static class SpaPrerenderingExtensions
 	/// would turn visible mojibake into silently wrong bytes on the wire.
 	/// </remarks>
 	private static string ReadCapturedHtml(MemoryStream outputBuffer)
-	{
-		if (!outputBuffer.TryGetBuffer(out var buffer))
-		{
-			// Only reachable for a MemoryStream constructed to hide its buffer, which this
-			// middleware never does. Falling back to a copy is still better than returning
-			// nothing, which would look exactly like the empty-template defect.
-			var copy = outputBuffer.ToArray();
-			return DecodeSkippingBom(copy, 0, copy.Length);
-		}
-
-		return DecodeSkippingBom(buffer.Array!, buffer.Offset, buffer.Count);
-	}
+		=> DecodeSkippingBom(outputBuffer.GetBuffer(), 0, (int)outputBuffer.Length);
 
 	private static string DecodeSkippingBom(byte[] bytes, int offset, int count)
 	{
@@ -614,14 +603,7 @@ public static class SpaPrerenderingExtensions
 	/// Whether the captured bytes are valid UTF-8, checked without decoding them.
 	/// </summary>
 	private static bool IsValidUtf8(MemoryStream outputBuffer)
-	{
-		if (!outputBuffer.TryGetBuffer(out var buffer))
-		{
-			return System.Text.Unicode.Utf8.IsValid(outputBuffer.ToArray());
-		}
-
-		return System.Text.Unicode.Utf8.IsValid(buffer.AsSpan());
-	}
+		=> System.Text.Unicode.Utf8.IsValid(outputBuffer.GetBuffer().AsSpan(0, (int)outputBuffer.Length));
 
 	/// <summary>
 	/// Whether the template looks like a complete HTML document. A heuristic, used only to decide

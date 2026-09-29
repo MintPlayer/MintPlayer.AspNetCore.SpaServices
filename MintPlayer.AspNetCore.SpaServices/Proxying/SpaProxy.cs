@@ -53,12 +53,26 @@ internal static class SpaProxy
 			Timeout = requestTimeout
 		};
 
-	public static async Task<bool> PerformProxyRequest(
+	public static Task<bool> PerformProxyRequest(
 		HttpContext context,
 		HttpClient httpClient,
 		Task<Uri> baseUriTask,
 		CancellationToken applicationStoppingToken,
 		bool proxy404s)
+		=> PerformProxyRequest(context, httpClient, baseUriTask, applicationStoppingToken, proxy404s, webSocketConnector: null);
+
+	/// <summary>
+	/// Takes the connector that opens the upstream half of a proxied websocket. Null in production,
+	/// which means the shipped <see cref="ClientWebSocketConnector"/>; a test passes a fake so the
+	/// websocket branch can be driven without a dev server.
+	/// </summary>
+	internal static async Task<bool> PerformProxyRequest(
+		HttpContext context,
+		HttpClient httpClient,
+		Task<Uri> baseUriTask,
+		CancellationToken applicationStoppingToken,
+		bool proxy404s,
+		IWebSocketConnector? webSocketConnector)
 	{
 		// Stop proxying if either the server or client wants to disconnect.
 		// The source is disposed rather than discarded: keeping only its Token left a registration
@@ -83,8 +97,9 @@ internal static class SpaProxy
 		{
 			if (context.WebSockets.IsWebSocketRequest)
 			{
-				await AcceptProxyWebSocketRequest(context, ToWebSocketScheme(targetUri), proxyCancellationToken);
-				return true;
+				// False means the upstream refused the upgrade and a 400 has been written. That used
+				// to be discarded, so the caller was always told the request had been proxied.
+				return await AcceptProxyWebSocketRequest(context, ToWebSocketScheme(targetUri), proxyCancellationToken, webSocketConnector);
 			}
 			else
 			{
@@ -289,7 +304,16 @@ internal static class SpaProxy
 					break;
 				}
 
-				await Task.Delay(100, cancellationToken);
+				try
+				{
+					await Task.Delay(100, cancellationToken);
+				}
+				catch (OperationCanceledException)
+				{
+					// The same outcome as the check above. A cancellation that happened to land
+					// during the delay used to throw instead of returning quietly.
+					return;
+				}
 			}
 
 			var result = resultTask.Result; // We know it's completed already

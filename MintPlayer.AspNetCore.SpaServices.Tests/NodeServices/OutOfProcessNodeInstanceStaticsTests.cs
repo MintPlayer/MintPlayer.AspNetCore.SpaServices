@@ -155,3 +155,29 @@ public class OutOfProcessNodeInstanceStaticsTests
 		Assert.False(info.Environment.ContainsKey("FOO") && info.Environment["FOO"] is not null);
 	}
 }
+
+/// <summary>
+/// The NODE_PATH composition when the host already has one. Setting a process environment variable is
+/// global state, so this runs outside the parallel collections.
+/// </summary>
+[Collection(NodeServicesGlobalStateCollection.Name)]
+public class OutOfProcessNodeInstanceNodePathTests
+{
+	[Fact]
+	public void BuildNodeProcessStartInfo_keeps_an_existing_NODE_PATH_ahead_of_the_project()
+	{
+		var original = Environment.GetEnvironmentVariable("NODE_PATH");
+		Environment.SetEnvironmentVariable("NODE_PATH", "/shared/modules");
+		try
+		{
+			var info = OutOfProcessNodeInstance.BuildNodeProcessStartInfo(
+				"entry.js", "/app", "", null!, launchWithDebugging: false, debuggingPort: 0, nodePath: "node");
+
+			Assert.Equal("/shared/modules" + Path.PathSeparator + Path.Combine("/app", "node_modules"), info.Environment["NODE_PATH"]);
+		}
+		finally
+		{
+			Environment.SetEnvironmentVariable("NODE_PATH", original);
+		}
+	}
+}

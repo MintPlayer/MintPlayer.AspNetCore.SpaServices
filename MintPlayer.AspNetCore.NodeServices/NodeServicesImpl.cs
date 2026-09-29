@@ -20,11 +20,22 @@ namespace MintPlayer.AspNetCore.NodeServices;
 /// <seealso cref="MintPlayer.AspNetCore.NodeServices.INodeServices" />
 internal partial class NodeServicesImpl : INodeServices
 {
-	private static readonly TimeSpan ConnectionDrainingTimespan = TimeSpan.FromSeconds(15);
+	private static readonly TimeSpan DefaultConnectionDrainingTimespan = TimeSpan.FromSeconds(15);
 	[Inject] private readonly Func<INodeInstance> _nodeInstanceFactory;
+	private readonly TimeSpan _connectionDrainingTimespan = DefaultConnectionDrainingTimespan;
 	private INodeInstance _currentNodeInstance;
 	private readonly Lock _currentNodeInstanceAccessLock = new();
 	private Exception _instanceDelayedDisposalException;
+
+	/// <summary>
+	/// Internal so a test can shorten the draining period; otherwise the delayed disposal would only
+	/// finish after the test had ended.
+	/// </summary>
+	internal NodeServicesImpl(Func<INodeInstance> nodeInstanceFactory, TimeSpan connectionDrainingTimespan)
+		: this(nodeInstanceFactory)
+	{
+		_connectionDrainingTimespan = connectionDrainingTimespan;
+	}
 
 	public Task<T> InvokeAsync<T>(string moduleName, params object[] args)
 	{
@@ -68,7 +79,7 @@ internal partial class NodeServicesImpl : INodeServices
 				{
 					if (_currentNodeInstance == nodeInstance)
 					{
-						var disposalDelay = ex.AllowConnectionDraining ? ConnectionDrainingTimespan : TimeSpan.Zero;
+						var disposalDelay = ex.AllowConnectionDraining ? _connectionDrainingTimespan : TimeSpan.Zero;
 						DisposeNodeInstance(_currentNodeInstance, disposalDelay);
 						_currentNodeInstance = null;
 					}

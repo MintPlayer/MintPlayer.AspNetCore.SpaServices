@@ -1,10 +1,9 @@
 using System.Diagnostics;
 using System.Net;
-using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using MintPlayer.AspNetCore.SpaServices.AngularCli;
-using MintPlayer.AspNetCore.SpaServices.Npm;
 using MintPlayer.AspNetCore.SpaServices.Tests.TestHelpers;
 using Xunit;
 
@@ -28,14 +27,14 @@ public class AngularCliMiddlewareTests
 {
 	private static readonly Regex DefaultRegex = new("open your browser on (?<openbrowser>http\\S+)");
 
-	private static Task<Uri> Start(string stdOut, string stdErr = "", Regex[]? regexes = null, HttpMessageHandler? readiness = null, CancellationToken stoppingToken = default, int port = 4200, ScriptedLauncher? launcher = null)
+	private static Task<Uri> Start(string stdOut, string stdErr = "", Regex[]? regexes = null, HttpMessageHandler? readiness = null, CancellationToken stoppingToken = default, int port = 4200, ScriptedLauncher? launcher = null, ILogger? logger = null)
 		=> AngularCliMiddleware.StartAngularCliServerAsync(
 			"C:/app",
 			"start",
 			"npm",
 			port,
 			regexes ?? [DefaultRegex],
-			NullLogger.Instance,
+			logger ?? NullLogger.Instance,
 			new DiagnosticListener("test"),
 			stoppingToken,
 			launcher ?? new ScriptedLauncher(stdOut, stdErr),
@@ -161,28 +160,69 @@ public class AngularCliMiddlewareTests
 		await Assert.ThrowsAnyAsync<OperationCanceledException>(() => starting);
 	}
 
-	/// <summary>Replays a fixed stdout/stderr script as if it were a package-manager process.</summary>
-	private sealed class ScriptedLauncher(string stdOut, string stdErr) : IProcessLauncher
+	[Fact]
+	public async Task Retries_the_readiness_probe_after_a_failed_attempt()
 	{
-		public ProcessStartInfo? LastStartInfo { get; private set; }
+		// The CLI prints its URL a moment before it actually accepts connections. A refused first
+		// probe must lead to a second one, not to a failure. This pays the 500 ms back-off once.
+		var attempts = 0;
+		using var handler = new StubHandler(_ => ++attempts == 1
+			? throw new HttpRequestException("connection refused")
+			: new HttpResponseMessage(HttpStatusCode.NotFound));
 
-		public IChildProcess Start(ProcessStartInfo startInfo)
+		var uri = await Start("open your browser on http://localhost:4200/\n", readiness: handler)
+			.WaitAsync(TimeSpan.FromSeconds(10));
+
+		Assert.Equal(new Uri("http://localhost:4200/"), uri);
+		Assert.Equal(2, handler.RequestCount);
+	}
+
+	[Fact]
+	public async Task Logs_the_port_it_starts_on()
+	{
+		var logs = new Prerendering.PrerenderingHarness.CollectingLoggerProvider();
+
+		await Start("open your browser on http://localhost:4200/\n", port: 4321, logger: logs.CreateLogger("test"));
+
+		lock (logs.Entries)
 		{
-			LastStartInfo = startInfo;
-			return new ScriptedChild(stdOut, stdErr);
+			Assert.Contains(logs.Entries, e => e.Level == LogLevel.Information && e.Message.Contains("Starting @angular/cli on port 4321"));
 		}
+	}
 
-		private sealed class ScriptedChild(string stdOut, string stdErr) : IChildProcess
-		{
-			public StreamReader StandardOutput { get; } = new(new MemoryStream(Encoding.UTF8.GetBytes(stdOut)));
+	[Fact]
+	public async Task Keeps_the_announced_url_when_a_later_regex_leaves_its_openbrowser_group_unmatched()
+	{
+		// The second regex declares an optional openbrowser group that this output does not fill.
+		// A declared group is always in Groups, so checking for its presence rather than its success
+		// overwrote the good URL with "" - and new Uri("") threw UriFormatException.
+		var uri = await Start(
+			"open your browser on http://localhost:4200/\ncompiled successfully\n",
+			regexes: [DefaultRegex, new Regex(@"compiled(?: at (?<openbrowser>\S+))? successfully")]);
 
-			public StreamReader StandardError { get; } = new(new MemoryStream(Encoding.UTF8.GetBytes(stdErr)));
+		Assert.Equal(new Uri("http://localhost:4200/"), uri);
+	}
 
-			public bool HasExited => true;
+	[Fact]
+	public void Keeps_the_match_timeout_a_caller_gave_its_regex()
+	{
+		var regex = new Regex("ready", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(250));
 
-			public void Kill(bool entireProcessTree) { }
+		var bounded = AngularCliMiddleware.WithMatchTimeout(regex);
 
-			public void Dispose() { }
-		}
+		// Rebuilding it used to replace the caller's timeout with a hard-coded 5 seconds.
+		Assert.Equal(TimeSpan.FromMilliseconds(250), bounded.MatchTimeout);
+		Assert.Equal(RegexOptions.IgnoreCase, bounded.Options);
+		Assert.Equal("ready", bounded.ToString());
+	}
+
+	[Fact]
+	public void Bounds_a_regex_that_has_no_match_timeout()
+	{
+		var bounded = AngularCliMiddleware.WithMatchTimeout(new Regex("ready", RegexOptions.IgnoreCase));
+
+		Assert.Equal(TimeSpan.FromSeconds(5), bounded.MatchTimeout);
+		Assert.Equal(RegexOptions.IgnoreCase, bounded.Options);
+		Assert.Equal("ready", bounded.ToString());
 	}
 }

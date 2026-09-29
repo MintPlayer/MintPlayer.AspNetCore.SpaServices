@@ -128,8 +128,23 @@ internal sealed class NodeScriptRunner : IDisposable
 			}
 		};
 
+		// Whether the stderr line in progress has already been partly echoed to the console. Both
+		// handlers run on the reader's loop, one after the other, so no lock is needed.
+		var echoedPartialLine = false;
+
 		StdErr.OnReceivedLine += line =>
 		{
+			if (echoedPartialLine)
+			{
+				// The start of this line already went to the console as progress output. End that
+				// console line so the next output does not run onto it. The full line is still logged
+				// below: the logger may not be the console, and a long error line routinely arrives in
+				// more than one read, so skipping the log would drop real errors to avoid a cosmetic
+				// duplicate on the console.
+				echoedPartialLine = false;
+				Console.WriteLine();
+			}
+
 			if (!string.IsNullOrWhiteSpace(line))
 			{
 				logger.LogError(StripAnsiColors(line));
@@ -147,6 +162,7 @@ internal sealed class NodeScriptRunner : IDisposable
 			if (!containsNewline)
 			{
 				Console.Write(chunk.Array, chunk.Offset, chunk.Count);
+				echoedPartialLine = true;
 			}
 		};
 	}
@@ -163,21 +179,40 @@ internal sealed class NodeScriptRunner : IDisposable
 		}
 		catch (Exception ex)
 		{
-			var message = $"Failed to start '{commandName}'. To resolve this:.\n\n"
+			// The PATH itself is deliberately not included: it is long, it ends up in logs and error
+			// pages, and it can reveal the layout of the machine.
+			var message = $"Failed to start '{commandName}'. To resolve this:\n\n"
 						+ $"[1] Ensure that '{commandName}' is installed and can be found in one of the PATH directories.\n"
-						+ $"    Current PATH enviroment variable is: {Environment.GetEnvironmentVariable("PATH")}\n"
 						+ "    Make sure the executable is in one of those directories, or update your PATH.\n\n"
 						+ "[2] See the InnerException for further details of the cause.";
 			throw new InvalidOperationException(message, ex);
 		}
 	}
 
+	/// <remarks>
+	/// Runs from the application-stopping callback as well as from an explicit dispose, possibly at
+	/// the same time. Taking the process out of the field atomically means exactly one caller kills
+	/// and disposes it; any other returns. The process used to be killed but never disposed, and two
+	/// racing callers could both pass the <c>HasExited</c> check.
+	/// </remarks>
 	void IDisposable.Dispose()
 	{
-		if (_npmProcess != null && !_npmProcess.HasExited)
+		var process = Interlocked.Exchange(ref _npmProcess, null);
+		if (process == null)
 		{
-			_npmProcess.Kill(entireProcessTree: true);
-			_npmProcess = null;
+			return;
+		}
+
+		try
+		{
+			if (!process.HasExited)
+			{
+				process.Kill(entireProcessTree: true);
+			}
+		}
+		finally
+		{
+			process.Dispose();
 		}
 	}
 }

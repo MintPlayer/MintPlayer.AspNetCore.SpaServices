@@ -8,8 +8,8 @@ using Xunit;
 namespace MintPlayer.AspNetCore.SpaServices.Tests.AngularCli;
 
 /// <summary>
-/// The guards on <c>UseAngularCliServer</c>. Only the rejection paths are covered: past them the
-/// method attaches the middleware, which launches the Angular CLI.
+/// The guards on <c>UseAngularCliServer</c>. Past them the method attaches the middleware, which
+/// launches the Angular CLI; that path is in <see cref="AngularCliAttachTests"/>.
 /// </summary>
 public class AngularCliMiddlewareExtensionsTests
 {

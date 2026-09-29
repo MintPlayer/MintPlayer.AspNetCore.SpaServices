@@ -59,6 +59,23 @@ public class ConditionalProxyForwardingTests
 		Assert.Equal(0, handler.RequestCount);
 	}
 
+	[Theory]
+	[InlineData("/api/x", true)]
+	[InlineData("/apix", false)]
+	public async Task Normalises_a_prefix_without_a_leading_slash(string path, bool expectProxied)
+	{
+		// "api" becomes "/api", and the match stays segment-wise: "/apix" is not under it.
+		using var handler = new StubHandler();
+		var nextWasCalled = false;
+		var middleware = CreateMiddleware("api", handler, _ => { nextWasCalled = true; return Task.CompletedTask; });
+		var context = PerformProxyRequestTests.CreateContext(path: path);
+
+		await middleware.Invoke(context);
+
+		Assert.Equal(expectProxied ? 1 : 0, handler.RequestCount);
+		Assert.Equal(!expectProxied, nextWasCalled);
+	}
+
 	private static ConditionalProxyMiddleware CreateMiddleware(string pathPrefix, HttpMessageHandler handler, Microsoft.AspNetCore.Http.RequestDelegate next)
 		=> new(
 			next,

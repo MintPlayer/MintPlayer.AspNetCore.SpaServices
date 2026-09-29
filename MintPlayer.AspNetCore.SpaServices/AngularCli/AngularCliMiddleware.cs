@@ -15,16 +15,11 @@ internal static class AngularCliMiddleware
 	public static void Attach(Abstractions.ISpaBuilder spaBuilder, string? scriptName = null, Regex[]? cliRegexes = null)
 	{
 		var pkgManagerCommand = spaBuilder.Options.PackageManagerCommand;
-		var sourcePath = spaBuilder.Options.SourcePath;
+		// The only caller, UseAngularCliServer, has already rejected an empty SourcePath.
+		var sourcePath = spaBuilder.Options.SourcePath!;
 		var devServerPort = spaBuilder.Options.DevServerPort;
-		if (string.IsNullOrEmpty(sourcePath))
-		{
-			throw new ArgumentException("Property 'SourcePath' cannot be null or empty", nameof(spaBuilder));
-		}
-
 		if (string.IsNullOrEmpty(scriptName)) scriptName = "start";
-		if (cliRegexes == null || cliRegexes.Length == 0)
-			cliRegexes = [new Regex("open your browser on (?<openbrowser>http\\S+)", RegexOptions.None, RegexMatchTimeout)];
+		// A null or empty cliRegexes is replaced by the default inside StartAngularCliServerAsync.
 
 		// Start Angular CLI and attach to middleware pipeline
 		var appBuilder = spaBuilder.ApplicationBuilder;
@@ -32,6 +27,16 @@ internal static class AngularCliMiddleware
 		var logger = LoggerFinder.GetOrCreateLogger(appBuilder, LogCategoryName);
 		var diagnosticSource = appBuilder.ApplicationServices.GetRequiredService<DiagnosticSource>();
 		var angularCliServerInfoTask = StartAngularCliServerAsync(sourcePath, scriptName, pkgManagerCommand, devServerPort, cliRegexes, logger, diagnosticSource, applicationStoppingToken);
+
+		// Nothing awaits the start until the first request arrives. Without this, a dev server that
+		// failed to start was never reported at all if no request came in - and its fault went
+		// unobserved. A shutdown cancels the task rather than faulting it, so it is not logged.
+		_ = angularCliServerInfoTask.ContinueWith(
+			static (task, state) => ((ILogger)state!).LogError(task.Exception!.InnerException, "The Angular CLI dev server failed to start."),
+			logger,
+			CancellationToken.None,
+			TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+			TaskScheduler.Default);
 
         Extensions.SpaProxyingExtensions.UseProxyToSpaDevelopmentServer(spaBuilder, () =>
 		{
@@ -93,8 +98,11 @@ internal static class AngularCliMiddleware
 
 				foreach (var finishedRegex in finishedRegexes)
 				{
-					var m = await scriptRunner.StdOut.WaitForMatch(new Regex(finishedRegex.ToString(), finishedRegex.Options, RegexMatchTimeout));
-					if (m.Groups.ContainsKey("openbrowser"))
+					var m = await scriptRunner.StdOut.WaitForMatch(WithMatchTimeout(finishedRegex));
+					// Success, not ContainsKey: a declared group is always present in Groups, even
+					// when it took no part in the match. An optional group that did not match used
+					// to overwrite a good URL with "", which new Uri() then rejected.
+					if (m.Groups["openbrowser"].Success)
 					{
 						openBrowserUrl = m.Groups["openbrowser"].Value;
 					}
@@ -126,6 +134,15 @@ internal static class AngularCliMiddleware
 
 		return uri;
 	}
+
+	/// <summary>
+	/// Bounds a caller-supplied regex. A regex that already has a timeout is used as-is; rebuilding
+	/// every regex used to swap a caller's own <see cref="Regex.MatchTimeout"/> for the default.
+	/// </summary>
+	internal static Regex WithMatchTimeout(Regex regex)
+		=> regex.MatchTimeout == Regex.InfiniteMatchTimeout
+			? new Regex(regex.ToString(), regex.Options, RegexMatchTimeout)
+			: regex;
 
 	/// <summary>
 	/// Polls the dev server until it answers.
