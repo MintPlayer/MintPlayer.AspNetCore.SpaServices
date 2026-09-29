@@ -28,6 +28,16 @@ internal static class AngularCliMiddleware
 		var diagnosticSource = appBuilder.ApplicationServices.GetRequiredService<DiagnosticSource>();
 		var angularCliServerInfoTask = StartAngularCliServerAsync(sourcePath, scriptName, pkgManagerCommand, devServerPort, cliRegexes, logger, diagnosticSource, applicationStoppingToken);
 
+		// Nothing awaits the start until the first request arrives. Without this, a dev server that
+		// failed to start was never reported at all if no request came in - and its fault went
+		// unobserved. A shutdown cancels the task rather than faulting it, so it is not logged.
+		_ = angularCliServerInfoTask.ContinueWith(
+			static (task, state) => ((ILogger)state!).LogError(task.Exception!.InnerException, "The Angular CLI dev server failed to start."),
+			logger,
+			CancellationToken.None,
+			TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+			TaskScheduler.Default);
+
         Extensions.SpaProxyingExtensions.UseProxyToSpaDevelopmentServer(spaBuilder, () =>
 		{
 			// On each request, we create a separate startup task with its own timeout. That way, even if
@@ -88,8 +98,11 @@ internal static class AngularCliMiddleware
 
 				foreach (var finishedRegex in finishedRegexes)
 				{
-					var m = await scriptRunner.StdOut.WaitForMatch(new Regex(finishedRegex.ToString(), finishedRegex.Options, RegexMatchTimeout));
-					if (m.Groups.ContainsKey("openbrowser"))
+					var m = await scriptRunner.StdOut.WaitForMatch(WithMatchTimeout(finishedRegex));
+					// Success, not ContainsKey: a declared group is always present in Groups, even
+					// when it took no part in the match. An optional group that did not match used
+					// to overwrite a good URL with "", which new Uri() then rejected.
+					if (m.Groups["openbrowser"].Success)
 					{
 						openBrowserUrl = m.Groups["openbrowser"].Value;
 					}
@@ -121,6 +134,15 @@ internal static class AngularCliMiddleware
 
 		return uri;
 	}
+
+	/// <summary>
+	/// Bounds a caller-supplied regex. A regex that already has a timeout is used as-is; rebuilding
+	/// every regex used to swap a caller's own <see cref="Regex.MatchTimeout"/> for the default.
+	/// </summary>
+	internal static Regex WithMatchTimeout(Regex regex)
+		=> regex.MatchTimeout == Regex.InfiniteMatchTimeout
+			? new Regex(regex.ToString(), regex.Options, RegexMatchTimeout)
+			: regex;
 
 	/// <summary>
 	/// Polls the dev server until it answers.
