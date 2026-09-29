@@ -12,13 +12,15 @@ gate:
   # Compare against a fixed target rather than ratcheting against the base commit.
   projectMode: fixed
 
-  # Require 80% overall line coverage. The baseline when this gate was written was 64.4%; the plan
-  # in docs/PLAN-Coverage-Raise.md reaches roughly 86%, so this is deliberately set to a number the
-  # repository does not yet meet - the gate is red until that work lands.
-  projectTarget: 80
+  # Require 95% overall line coverage. Raised from 80% by docs/PLAN-Coverage-95.md, whose baseline
+  # was 81.4% and which lands at roughly 96-97% on the Linux CI run. The remainder is mostly the
+  # Windows-only Job Object branch in ProcessTracker, which Linux CI can never execute, and the thin
+  # SystemNodeProcess adapter that only real node would drive. Because this file is read from the
+  # base ref, the new target first applies to the PR after the one that raises it.
+  projectTarget: 95
 
   # Tolerance BELOW the target, in percentage points. The rule is: head >= projectTarget -
-  # projectThreshold. Zero makes it a strict >= 80%.
+  # projectThreshold. Zero makes it a strict >= 95%.
   projectThreshold: 0
 
   # Only consulted for builds the uploader declares partial, which this repository never does - the
@@ -27,9 +29,10 @@ gate:
   # whole-workspace projection.
   projectBasis: scoped
 
-  # Added or changed lines must be 80% covered. This is what actually keeps the number climbing:
-  # it stops new uncovered code arriving, rather than relying on one-off pushes.
-  patchTarget: 80
+  # Added or changed lines must be 90% covered. This is what actually keeps the number climbing:
+  # it stops new uncovered code arriving, rather than relying on one-off pushes. Below the project
+  # target on purpose: a small patch touching one platform-specific line would otherwise fail.
+  patchTarget: 90
   patchThreshold: 0
 
   # Failed checks turn red. With this off, both checks post the same numbers but always conclude
