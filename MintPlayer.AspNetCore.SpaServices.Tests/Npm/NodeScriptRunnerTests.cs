@@ -64,6 +64,49 @@ public class NodeScriptRunnerTests
 	}
 
 	[Fact]
+	public void The_launch_failure_message_reads_cleanly_and_does_not_embed_the_PATH()
+	{
+		var launcher = new FakeLauncher { ThrowOnStart = new InvalidOperationException("no such file") };
+
+		var ex = Assert.Throws<InvalidOperationException>(() => Create(launcher));
+
+		// It used to read "To resolve this:." and "enviroment", and to paste the whole PATH into
+		// every log and error page that showed it.
+		Assert.StartsWith("Failed to start 'npm'. To resolve this:\n\n[1] Ensure that 'npm' is installed", ex.Message);
+		Assert.DoesNotContain("enviroment", ex.Message);
+		Assert.DoesNotContain("Current PATH", ex.Message);
+	}
+
+	[Fact]
+	public void A_racing_second_dispose_neither_kills_again_nor_throws()
+	{
+		// The stopping-token callback and an explicit dispose can run at the same time. The second
+		// is made to arrive while the first is still inside Kill, which is the window in which both
+		// used to pass the HasExited check.
+		var launcher = new FakeLauncher();
+		var runner = (IDisposable)Create(launcher);
+		launcher.Child.DuringFirstKill = runner.Dispose;
+
+		runner.Dispose();
+		runner.Dispose();
+
+		Assert.Equal(1, launcher.Child.KillCount);
+		// The process handle used to be dropped without ever being disposed.
+		Assert.Equal(1, launcher.Child.DisposeCount);
+	}
+
+	[Fact]
+	public void Disposes_a_process_that_already_exited()
+	{
+		var launcher = new FakeLauncher();
+		launcher.Child.HasExited = true;
+
+		((IDisposable)Create(launcher)).Dispose();
+
+		Assert.Equal(1, launcher.Child.DisposeCount);
+	}
+
+	[Fact]
 	public void Kills_the_whole_process_tree_on_dispose()
 	{
 		var launcher = new FakeLauncher();
@@ -173,9 +216,16 @@ public class NodeScriptRunnerTests
 		Assert.Equal(expected, NodeScriptRunner.StripAnsiColors(input));
 	}
 
-	private sealed class FakeLauncher(string stdOut = "", string stdErr = "") : IProcessLauncher
+	internal sealed class FakeLauncher : IProcessLauncher
 	{
-		public FakeChildProcess Child { get; } = new(stdOut, stdErr);
+		public FakeLauncher(string stdOut = "", string stdErr = "")
+			: this(new FakeChildProcess([stdOut], [stdErr]))
+		{
+		}
+
+		public FakeLauncher(FakeChildProcess child) => Child = child;
+
+		public FakeChildProcess Child { get; }
 
 		public ProcessStartInfo? LastStartInfo { get; private set; }
 
@@ -191,15 +241,21 @@ public class NodeScriptRunnerTests
 		}
 	}
 
-	private sealed class FakeChildProcess : IChildProcess
+	/// <summary>
+	/// A child whose output is scripted read by read, so a test can split a line across two reads the
+	/// way a pipe does.
+	/// </summary>
+	internal sealed class FakeChildProcess : IChildProcess
 	{
-		private readonly GatedStream outStream;
-		private readonly GatedStream errStream;
+		private readonly GatedChunkedStream outStream;
+		private readonly GatedChunkedStream errStream;
+		private int killCount;
+		private int disposeCount;
 
-		public FakeChildProcess(string stdOut, string stdErr)
+		public FakeChildProcess(string[] stdOutReads, string[] stdErrReads)
 		{
-			outStream = new GatedStream(stdOut);
-			errStream = new GatedStream(stdErr);
+			outStream = new GatedChunkedStream(stdOutReads);
+			errStream = new GatedChunkedStream(stdErrReads);
 			StandardOutput = new StreamReader(outStream);
 			StandardError = new StreamReader(errStream);
 		}
@@ -210,9 +266,19 @@ public class NodeScriptRunnerTests
 
 		public bool HasExited { get; set; }
 
-		public bool Killed { get; private set; }
+		public bool Killed => KillCount > 0;
 
 		public bool KilledEntireTree { get; private set; }
+
+		public int KillCount => Volatile.Read(ref killCount);
+
+		public int DisposeCount => Volatile.Read(ref disposeCount);
+
+		/// <summary>
+		/// Runs inside the first <see cref="Kill"/>, while it is still in progress - which is where a
+		/// second, racing dispose has to be turned away.
+		/// </summary>
+		public Action? DuringFirstKill { get; set; }
 
 		/// <summary>Lets the readers start, once the test has attached its handlers.</summary>
 		public void Release()
@@ -223,11 +289,14 @@ public class NodeScriptRunnerTests
 
 		public void Kill(bool entireProcessTree)
 		{
-			Killed = true;
 			KilledEntireTree = entireProcessTree;
+			if (Interlocked.Increment(ref killCount) == 1)
+			{
+				DuringFirstKill?.Invoke();
+			}
 		}
 
-		public void Dispose() { }
+		public void Dispose() => Interlocked.Increment(ref disposeCount);
 	}
 
 	private sealed class CollectingLogger : ILogger

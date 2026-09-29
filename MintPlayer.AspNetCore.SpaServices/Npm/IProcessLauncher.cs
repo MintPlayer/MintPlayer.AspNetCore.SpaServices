@@ -57,6 +57,11 @@ internal sealed class SystemProcessLauncher : IProcessLauncher
 
 		public void Kill(bool entireProcessTree) => process.Kill(entireProcessTree);
 
-		public void Dispose() => process.Dispose();
+		public void Dispose()
+		{
+			// A disposed Process no longer raises Exited, so it would otherwise stay tracked forever.
+			ProcessTracker.RemoveProcess(process);
+			process.Dispose();
+		}
 	}
 }
