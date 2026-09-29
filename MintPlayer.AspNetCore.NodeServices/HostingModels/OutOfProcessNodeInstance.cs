@@ -67,9 +67,20 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		_invocationTimeoutMilliseconds = invocationTimeoutMilliseconds;
 		_launchWithDebugging = launchWithDebugging;
 
-		var startInfo = PrepareNodeProcessStartInfo(_entryPointScript.FileName, projectPath, commandLineArguments,
-			environmentVars, _launchWithDebugging, debuggingPort, nodePath);
-		_nodeProcess = LaunchNodeProcess(startInfo);
+		try
+		{
+			var startInfo = PrepareNodeProcessStartInfo(_entryPointScript.FileName, projectPath, commandLineArguments,
+				environmentVars, _launchWithDebugging, debuggingPort, nodePath);
+			_nodeProcess = LaunchNodeProcess(startInfo);
+		}
+		catch
+		{
+			// Nobody gets a reference to a half-constructed instance, so nobody can dispose it. Without this
+			// the temp file would stay on disk, and registered on the stopping token, until the host stops.
+			_entryPointScript.Dispose();
+			throw;
+		}
+
 		_watchFileExtensions = watchFileExtensions;
 		_fileSystemWatcher = BeginFileWatcher(projectPath);
 		ConnectToInputOutputStreams();
