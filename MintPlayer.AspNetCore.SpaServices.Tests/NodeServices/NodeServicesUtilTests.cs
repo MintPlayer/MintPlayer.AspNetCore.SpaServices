@@ -357,6 +357,35 @@ public class NodeServicesUtilTests
         Assert.Equal(42, await wrapped);
     }
 
+    [Fact]
+    public async Task A_pending_task_that_faults_surfaces_its_own_exception()
+    {
+        // The wrapper used to be "_ => { }", which turned the fault into success - so a Node process that
+        // died before it was listening (B1) let the waiting invocation carry on as if it were connected.
+        var source = new TaskCompletionSource();
+        using var cts = new CancellationTokenSource();
+        var failure = new InvalidOperationException("faulted");
+
+        var wrapped = source.Task.OrThrowOnCancellation(cts.Token);
+        source.SetException(failure);
+
+        Assert.Same(failure, await Assert.ThrowsAsync<InvalidOperationException>(() => wrapped));
+    }
+
+    [Fact]
+    public async Task A_pending_task_with_a_result_that_faults_surfaces_its_own_exception()
+    {
+        // "t => t.Result" wrapped the fault in an AggregateException.
+        var source = new TaskCompletionSource<int>();
+        using var cts = new CancellationTokenSource();
+        var failure = new IOException("faulted");
+
+        var wrapped = source.Task.OrThrowOnCancellation(cts.Token);
+        source.SetException(failure);
+
+        Assert.Same(failure, await Assert.ThrowsAsync<IOException>(() => wrapped));
+    }
+
     #endregion
 
     #region EmbeddedResourceReader
