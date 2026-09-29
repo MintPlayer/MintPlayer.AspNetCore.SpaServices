@@ -128,20 +128,21 @@ internal sealed class NodeScriptRunner : IDisposable
 			}
 		};
 
-		// How much of the stderr line in progress has already been echoed to the console. Both
+		// Whether the stderr line in progress has already been partly echoed to the console. Both
 		// handlers run on the reader's loop, one after the other, so no lock is needed.
-		var echoedLength = 0;
+		var echoedPartialLine = false;
 
 		StdErr.OnReceivedLine += line =>
 		{
-			if (echoedLength > 0)
+			if (echoedPartialLine)
 			{
-				// The start of this line already went to the console as progress output. Logging the
-				// whole line as well would write that part twice, so finish the console line instead.
-				var alreadyEchoed = Math.Min(echoedLength, line.Length);
-				echoedLength = 0;
-				Console.Write(line[alreadyEchoed..]);
-				return;
+				// The start of this line already went to the console as progress output. End that
+				// console line so the next output does not run onto it. The full line is still logged
+				// below: the logger may not be the console, and a long error line routinely arrives in
+				// more than one read, so skipping the log would drop real errors to avoid a cosmetic
+				// duplicate on the console.
+				echoedPartialLine = false;
+				Console.WriteLine();
 			}
 
 			if (!string.IsNullOrWhiteSpace(line))
@@ -161,7 +162,7 @@ internal sealed class NodeScriptRunner : IDisposable
 			if (!containsNewline)
 			{
 				Console.Write(chunk.Array, chunk.Offset, chunk.Count);
-				echoedLength += chunk.Count;
+				echoedPartialLine = true;
 			}
 		};
 	}

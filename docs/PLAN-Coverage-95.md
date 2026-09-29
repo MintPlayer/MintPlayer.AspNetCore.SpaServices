@@ -35,7 +35,7 @@ still 95.4%. **M8 is on the critical path. Without it the target cannot be reach
 Per the batching rule, tests run once, at the end (Verification). Check each milestone with
 `dotnet build -c Release` plus a read-through. A commit per milestone is fine.
 
-### M1: Cheap wins, no seams
+### M1: Cheap wins, no seams ✅
 
 New tests. There are no production changes except where noted.
 
@@ -56,7 +56,7 @@ New tests. There are no production changes except where noted.
 - `EventedStreamReader`: 1200 lines. The newest line matches. A line trimmed from the 1000-line
   history throws `EndOfStreamException` and is not replayed (:225-227).
 
-### M2: Delete dead or duplicated code
+### M2: Delete dead or duplicated code ✅
 
 - `AngularCliMiddleware.cs:20-23`: the unreachable `SourcePath` guard.
 - `AngularCliMiddleware.cs:26-27`: the default regex, duplicated at :89-92. Keep one copy.
@@ -64,7 +64,7 @@ New tests. There are no production changes except where noted.
   `GetBuffer()` / `Length` on the known `MemoryStream`.
 - `SpaProxyingExtensions.cs:71`: unused `didProxyRequest`.
 
-### M3: AngularCli
+### M3: AngularCli ✅
 
 - Move the private `ScriptedLauncher` (`AngularCliMiddlewareTests.cs:165`) into `TestHelpers`, because
   M5 reuses it.
@@ -84,7 +84,7 @@ New tests. There are no production changes except where noted.
 - **B13**: observe the fire-and-forget start task and log its fault. Test: a startup failure is logged
   without any request arriving.
 
-### M4: Npm
+### M4: Npm ✅
 
 - `SystemProcessLauncher_starts_kills_and_disposes_a_real_process`: `cmd.exe` on Windows, otherwise
   `cat`, with stdin blocked. Poll `HasExited` with a deadline of 10 s or less.
@@ -103,7 +103,7 @@ New tests. There are no production changes except where noted.
 - **B10**: fix the message typos and drop the embedded `PATH` from the message. Test: assert the
   message text.
 
-### M5: Prerenderer launcher and proxy connector (make PLAN-Coverage-Raise M6/M7 true)
+### M5: Prerenderer launcher and proxy connector (make PLAN-Coverage-Raise M6/M7 true) ✅
 
 - `AngularPrerendererBuilder`: add `internal IProcessLauncher ProcessLauncher { get; init; } =
   SystemProcessLauncher.Instance;` and route it to the internal runner ctor.
@@ -117,7 +117,7 @@ New tests. There are no production changes except where noted.
 - **B16**: make cancellation during the pump delay return quietly, the same as at the check. Test: a
   pump cancelled mid-delay completes without an exception.
 
-### M6: NodeServices without a seam
+### M6: NodeServices without a seam ✅
 
 - `OutOfProcessNodeInstance`: a test subclass with `nodePath: "no-such-node-" + Guid` gets
   `InvalidOperationException("Failed to start Node process")`, with and without `launchWithDebugging`.
@@ -130,7 +130,7 @@ New tests. There are no production changes except where noted.
 - **B2**: dispose the entry-point temp file when the launch throws. Test: after the failed ctor above,
   the file is gone.
 
-### M7: S2 extraction and draining delay
+### M7: S2 extraction and draining delay ✅
 
 - `HttpNodeInstance`: extract `internal static string? ParseEndpoint(string line)` (:115-123) and
   `internal static Task<T> ReadResponseAsync<T>(HttpResponseMessage, CancellationToken)` (:65-105).
@@ -145,7 +145,7 @@ New tests. There are no production changes except where noted.
 - `NodeServicesImpl`: add an internal ctor parameter `TimeSpan drainingDelay` (default 15 s). Test:
   `Delayed_dispose_exception_is_rethrown_on_next_call` with a 10 ms delay (:114-122).
 
-### M8: S1 `INodeProcess` seam (critical path)
+### M8: S1 `INodeProcess` seam (critical path) ✅
 
 - Add internal `INodeProcess` with `HasExited`, `Kill()`, `Exited` and
   `BeginReadLines(Action<string?> stdout, Action<string?> stderr)`, plus `SystemNodeProcess`, a thin
@@ -178,13 +178,37 @@ New tests. There are no production changes except where noted.
 
   Test: after `Dispose`, the fake records the tree kill and its own disposal.
 
-### M9: Gate and documentation
+### M9: Gate and documentation ✅
 
 - `coverage.yml`: `projectTarget: 95`, `patchTarget: 90`. Update the comment block with the baseline
   (81.4%) and a pointer to this plan. Because the file is read from the base ref, the new gate first
   applies to the PR after this one.
 - `PLAN-Coverage-Raise.md` M6/M7: correct them to say what actually shipped, and point to this plan.
 - Mark the milestones ✅ here, and record the measured outcome next to the estimates.
+
+## Deviations from the plan, as implemented
+
+- **B1 needed a second fix.** `TaskExtensions.OrThrowOnCancellation` swallowed a faulted task in its
+  non-generic form, and wrapped the fault in an `AggregateException` in its generic form. Both now
+  rethrow the original exception. Without this, faulting the ready source still would not reach
+  callers.
+- **`SystemNodeProcess` is covered after all.** The PLAN expected it to stay dark. OS built-ins stand
+  in for node through both public constructors: `cmd`/`sh` echo, a blocked `cmd`/`cat` that is killed,
+  and `whoami.exe`/`cat`, which reject node's arguments and exit.
+- **B9 is narrower than first written.** A stderr line that arrives in two reads is still logged in
+  full. The console's partial progress line is now ended before the entry is logged. An earlier version
+  sent the rest of the line to the console only, which traded a cosmetic duplicate for losing errors
+  from non-console loggers.
+- **B15 has a side effect.** `ConditionalProxyMiddleware` now passes a refused websocket upgrade (400
+  already set) on to the next middleware, because `PerformProxyRequest` reports `false` for it.
+- **The pre-cancelled `ClientWebSocket` route worked.** A loopback listener received nothing, so the
+  non-`ws` fallback was not needed.
+- **There are two non-parallel test collections,** `NodeServicesGlobalStateCollection` and
+  `ProcessGlobalStateCollection`, from the two parallel work streams. Each covers its own area, so
+  both are kept.
+- **Known uncovered lines:**
+  - `IWebSocketConnector.cs:64,71`: the successful-connect path, which needs a real socket.
+  - On Linux, the Windows Job Object block in `ProcessTracker` and its new warning line.
 
 ## Verification
 

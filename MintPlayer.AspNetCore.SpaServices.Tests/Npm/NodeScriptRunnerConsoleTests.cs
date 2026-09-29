@@ -31,16 +31,18 @@ public class NodeScriptRunnerConsoleTests
 	}
 
 	[Fact]
-	public async Task Writes_a_line_split_across_two_reads_to_the_console_once()
+	public async Task Logs_a_line_split_across_two_reads_in_full_and_ends_the_console_line()
 	{
 		// The first read is echoed as progress output. When the rest of the line arrives, the whole
-		// line used to be logged as well - and with a console logger the echoed part appeared twice.
+		// line must still reach the logger - it may not be the console, and dropping it would lose a
+		// real error - and the echoed progress text must be ended, so the log entry starts on a line
+		// of its own instead of being glued onto the partial chunk.
 		var token = Guid.NewGuid().ToString("n");
 
 		var console = await RunWithConsole(["compiling " + token, " done\n"], "done");
 
-		Assert.Equal(1, Regex.Matches(console, token).Count);
-		Assert.Contains("compiling " + token + " done", console);
+		Assert.Contains("Error: compiling " + token + " done", console);
+		Assert.Contains("compiling " + token + Environment.NewLine + "Error: ", console);
 	}
 
 	/// <summary>
