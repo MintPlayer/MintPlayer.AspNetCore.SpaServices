@@ -30,7 +30,7 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 
 	private readonly HttpClient _client;
 	private bool _disposed;
-	private string _endpoint;
+	private string? _endpoint;
 
 	public HttpNodeInstance(NodeServicesOptions options, int port = 0)
 	: base(
@@ -62,65 +62,135 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 		var payload = new StringContent(payloadJson, Encoding.UTF8, "application/json");
 		var response = await _client.PostAsync(_endpoint, payload, cancellationToken);
 
-		if (!response.IsSuccessStatusCode)
-		{
-			// Unfortunately there's no true way to cancel ReadAsStringAsync calls, hence AbandonIfCancelled
-			var responseJson = await response.Content.ReadAsStringAsync().OrThrowOnCancellation(cancellationToken);
-			var responseError = JsonConvert.DeserializeObject<RpcJsonResponse>(responseJson, jsonSerializerSettings);
+		return await ReadResponseAsync<T>(response, cancellationToken);
+	}
 
-			throw new NodeInvocationException(responseError.ErrorMessage, responseError.ErrorDetails);
+	/// <summary>
+	/// Turns the Node entry point's HTTP response into the invocation result, or into the exception it describes.
+	/// <para>
+	/// Internal so the content-type contract with entrypoint-http.js can be tested without node. The response is
+	/// disposed here, except when its body is handed to the caller as a <see cref="Stream"/>.
+	/// </para>
+	/// </summary>
+	internal static async Task<T> ReadResponseAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
+	{
+		var responseIsOwnedByCaller = false;
+		try
+		{
+			if (!response.IsSuccessStatusCode)
+			{
+				// Unfortunately there's no true way to cancel ReadAsStringAsync calls, hence AbandonIfCancelled
+				var responseBody = await response.Content.ReadAsStringAsync().OrThrowOnCancellation(cancellationToken);
+				throw CreateErrorResponseException(response, responseBody);
+			}
+
+			var mediaType = response.Content.Headers.ContentType?.MediaType;
+			if (mediaType == null)
+			{
+				throw new InvalidOperationException(
+					"Node responded without a Content-Type, so the response cannot be converted to " + typeof(T).FullName + ".");
+			}
+
+			switch (mediaType)
+			{
+				case "text/plain":
+					// String responses can skip JSON encoding/decoding
+					if (typeof(T) != typeof(string))
+					{
+						throw new ArgumentException(
+							"Node module responded with non-JSON string. This cannot be converted to the requested generic type: " +
+							typeof(T).FullName);
+					}
+
+					var responseString = await response.Content.ReadAsStringAsync().OrThrowOnCancellation(cancellationToken);
+					return (T)(object)responseString;
+
+				case "application/json":
+					var responseJson = await response.Content.ReadAsStringAsync().OrThrowOnCancellation(cancellationToken);
+					return JsonConvert.DeserializeObject<T>(responseJson, jsonSerializerSettings)!;
+
+				case "application/octet-stream":
+					// Streamed responses have to be received as System.IO.Stream instances
+					if (typeof(T) != typeof(Stream) && typeof(T) != typeof(object))
+					{
+						throw new ArgumentException(
+							"Node module responded with binary stream. This cannot be converted to the requested generic type: " +
+							typeof(T).FullName + ". Instead you must use the generic type System.IO.Stream.");
+					}
+
+					var responseStream = await response.Content.ReadAsStreamAsync().OrThrowOnCancellation(cancellationToken);
+					responseIsOwnedByCaller = true;
+					return (T)(object)responseStream;
+
+				default:
+					throw new InvalidOperationException("Unexpected response content type: " + mediaType);
+			}
+		}
+		finally
+		{
+			if (!responseIsOwnedByCaller)
+			{
+				response.Dispose();
+			}
+		}
+	}
+
+	private static NodeInvocationException CreateErrorResponseException(HttpResponseMessage response, string responseBody)
+	{
+		RpcJsonResponse? responseError = null;
+		try
+		{
+			responseError = JsonConvert.DeserializeObject<RpcJsonResponse>(responseBody, jsonSerializerSettings);
+		}
+		catch (JsonException)
+		{
+			// Not the error body the Node entry point writes - e.g. an HTML error page from something in between.
 		}
 
-		var responseContentType = response.Content.Headers.ContentType;
-		switch (responseContentType.MediaType)
+		if (responseError?.ErrorMessage != null)
 		{
-			case "text/plain":
-				// String responses can skip JSON encoding/decoding
-				if (typeof(T) != typeof(string))
-				{
-					throw new ArgumentException(
-						"Node module responded with non-JSON string. This cannot be converted to the requested generic type: " +
-						typeof(T).FullName);
-				}
-
-				var responseString = await response.Content.ReadAsStringAsync().OrThrowOnCancellation(cancellationToken);
-				return (T)(object)responseString;
-
-			case "application/json":
-				var responseJson = await response.Content.ReadAsStringAsync().OrThrowOnCancellation(cancellationToken);
-				return JsonConvert.DeserializeObject<T>(responseJson, jsonSerializerSettings);
-
-			case "application/octet-stream":
-				// Streamed responses have to be received as System.IO.Stream instances
-				if (typeof(T) != typeof(Stream) && typeof(T) != typeof(object))
-				{
-					throw new ArgumentException(
-						"Node module responded with binary stream. This cannot be converted to the requested generic type: " +
-						typeof(T).FullName + ". Instead you must use the generic type System.IO.Stream.");
-				}
-
-				return (T)(object)(await response.Content.ReadAsStreamAsync().OrThrowOnCancellation(cancellationToken));
-
-			default:
-				throw new InvalidOperationException("Unexpected response content type: " + responseContentType.MediaType);
+			return new NodeInvocationException(responseError.ErrorMessage, responseError.ErrorDetails);
 		}
+
+		return new NodeInvocationException(
+			$"Node responded with HTTP {(int)response.StatusCode} ({response.ReasonPhrase}) and no error description.",
+			responseBody);
+	}
+
+	/// <summary>
+	/// Reads the endpoint out of the entry point's "Listening on {address} port N" line, or returns null for any other line.
+	/// </summary>
+	/// <remarks>Internal so the stdout contract with entrypoint-http.js can be tested without node.</remarks>
+	internal static string? ParseEndpoint(string line)
+	{
+		var match = EndpointMessageRegex.Match(line);
+		if (!match.Success)
+		{
+			return null;
+		}
+
+		var port = int.Parse(match.Groups[2].Captures[0].Value);
+		var resolvedIpAddress = match.Groups[1].Captures[0].Value;
+
+		// IPv6 must be wrapped with [] brackets. Node reports every address without them, not only ::1.
+		if (resolvedIpAddress.Contains(':'))
+		{
+			resolvedIpAddress = $"[{resolvedIpAddress}]";
+		}
+
+		return $"http://{resolvedIpAddress}:{port}";
 	}
 
 	protected override void OnOutputDataReceived(string outputData)
 	{
-		// Watch for "port selected" messages, and when observed, 
+		// Watch for "port selected" messages, and when observed,
 		// store the IP (IPv4/IPv6) and port number
 		// so we can use it when making HTTP requests. The child process will always send
 		// one of these messages before it sends a "ready for connections" message.
-		var match = string.IsNullOrEmpty(_endpoint) ? EndpointMessageRegex.Match(outputData) : null;
-		if (match != null && match.Success)
+		var endpoint = string.IsNullOrEmpty(_endpoint) ? ParseEndpoint(outputData) : null;
+		if (endpoint != null)
 		{
-			var port = int.Parse(match.Groups[2].Captures[0].Value);
-			var resolvedIpAddress = match.Groups[1].Captures[0].Value;
-
-			//IPv6 must be wrapped with [] brackets
-			resolvedIpAddress = resolvedIpAddress == "::1" ? $"[{resolvedIpAddress}]" : resolvedIpAddress;
-			_endpoint = $"http://{resolvedIpAddress}:{port}";
+			_endpoint = endpoint;
 		}
 		else
 		{

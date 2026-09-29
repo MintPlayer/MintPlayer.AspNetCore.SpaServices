@@ -157,6 +157,73 @@ public class NodeServicesImplTests
     }
 
     [Fact]
+    public async Task Disposes_the_drained_instance_once_the_draining_period_ends()
+    {
+        FakeNodeInstance? first = null;
+        var factory = new CountingFactory(index =>
+        {
+            if (index == 0)
+                return first = new FakeNodeInstance(_ => throw Unavailable(allowConnectionDraining: true));
+            return new FakeNodeInstance(_ => Task.FromResult<object>("second"));
+        });
+        using var services = new NodeServicesImpl(factory.Create, TimeSpan.FromMilliseconds(10));
+
+        Assert.Equal("second", await services.InvokeAsync<string>("module"));
+
+        Assert.True(await PollAsync(() => first!.Disposed), "The drained instance was never disposed.");
+    }
+
+    [Fact]
+    public async Task Delayed_dispose_exception_is_rethrown_on_next_call()
+    {
+        var disposeFailure = new InvalidOperationException("dispose failed");
+        var factory = new CountingFactory(index =>
+        {
+            if (index == 0)
+                return new FakeNodeInstance(_ => throw Unavailable(allowConnectionDraining: true), disposeFailure);
+            return new FakeNodeInstance(_ => Task.FromResult<object>("second"));
+        });
+        using var services = new NodeServicesImpl(factory.Create, TimeSpan.FromMilliseconds(10));
+
+        Assert.Equal("second", await services.InvokeAsync<string>("module"));
+
+        // Nothing awaits the delayed disposal, so the only place its failure can surface is a later call.
+        AggregateException? rethrown = null;
+        Assert.True(await PollAsync(async () =>
+        {
+            try
+            {
+                await services.InvokeAsync<string>("module");
+                return false;
+            }
+            catch (AggregateException ex)
+            {
+                rethrown = ex;
+                return true;
+            }
+        }), "The delayed disposal failure was never rethrown.");
+
+        Assert.Same(disposeFailure, rethrown!.InnerException);
+
+        // Rethrown once, then cleared.
+        Assert.Equal("second", await services.InvokeAsync<string>("module"));
+    }
+
+    private static Task<bool> PollAsync(Func<bool> condition) => PollAsync(() => Task.FromResult(condition()));
+
+    private static async Task<bool> PollAsync(Func<Task<bool>> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (await condition())
+                return true;
+            await Task.Delay(10);
+        }
+        return await condition();
+    }
+
+    [Fact]
     public async Task Disposes_the_current_instance_on_dispose()
     {
         FakeNodeInstance? instance = null;
@@ -189,9 +256,11 @@ public class NodeServicesImplTests
         public INodeInstance Create() => create(Interlocked.Increment(ref createCount) - 1);
     }
 
-    private sealed class FakeNodeInstance(Func<NodeInvocationInfo, Task<object>> invoke) : INodeInstance
+    private sealed class FakeNodeInstance(Func<NodeInvocationInfo, Task<object>> invoke, Exception? disposeFailure = null) : INodeInstance
     {
-        public bool Disposed { get; private set; }
+        private volatile bool disposed;
+
+        public bool Disposed => disposed;
 
         public async Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string exportNameOrNull, params object[] args)
         {
@@ -204,6 +273,11 @@ public class NodeServicesImplTests
             return (T)result;
         }
 
-        public void Dispose() => Disposed = true;
+        public void Dispose()
+        {
+            disposed = true;
+            if (disposeFailure != null)
+                throw disposeFailure;
+        }
     }
 }
