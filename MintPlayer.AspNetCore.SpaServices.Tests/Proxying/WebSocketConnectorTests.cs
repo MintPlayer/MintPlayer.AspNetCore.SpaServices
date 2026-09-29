@@ -151,6 +151,44 @@ public class WebSocketConnectorTests
 		Assert.True(proxied);
 	}
 
+	[Fact]
+	public async Task PerformProxyRequest_hands_a_websocket_upgrade_to_the_connector()
+	{
+		var connector = new FakeConnector(Closed());
+		var context = CreateWebSocketContext(Closed(), path: "/path", queryString: "?q");
+
+		var proxied = await SpaProxy.PerformProxyRequest(
+			context,
+			new HttpClient(new TestHelpers.StubHandler()),
+			Task.FromResult(new Uri("http://localhost:4200/")),
+			CancellationToken.None,
+			proxy404s: false,
+			connector);
+
+		Assert.True(proxied);
+		Assert.Equal(new Uri("ws://localhost:4200/path?q"), connector.LastDestination);
+	}
+
+	[Fact]
+	public async Task PerformProxyRequest_reports_a_refused_upgrade_as_not_proxied()
+	{
+		// The 400 means nothing was proxied. That result used to be dropped, so the caller was told
+		// the request had been proxied regardless.
+		var connector = new FakeConnector(new WebSocketException("refused"));
+		var context = CreateWebSocketContext(Closed());
+
+		var proxied = await SpaProxy.PerformProxyRequest(
+			context,
+			new HttpClient(new TestHelpers.StubHandler()),
+			Task.FromResult(new Uri("http://localhost:4200/")),
+			CancellationToken.None,
+			proxy404s: false,
+			connector);
+
+		Assert.False(proxied);
+		Assert.Equal(400, context.Response.StatusCode);
+	}
+
 	private static WebSocketProxyTests.FakeWebSocket Closed()
 	{
 		var socket = new WebSocketProxyTests.FakeWebSocket();
@@ -158,7 +196,7 @@ public class WebSocketConnectorTests
 		return socket;
 	}
 
-	private static DefaultHttpContext CreateWebSocketContext(WebSocket accepted, string[]? subProtocols = null, CancellationToken requestAborted = default)
+	private static DefaultHttpContext CreateWebSocketContext(WebSocket accepted, string[]? subProtocols = null, CancellationToken requestAborted = default, string path = "/", string queryString = "")
 	{
 		var requestHeaders = new HeaderDictionary();
 		if (subProtocols is { Length: > 0 })
@@ -169,7 +207,7 @@ public class WebSocketConnectorTests
 		}
 
 		var features = new FeatureCollection();
-		features.Set<IHttpRequestFeature>(new HttpRequestFeature { Method = "GET", Path = "/", Scheme = "http", Headers = requestHeaders });
+		features.Set<IHttpRequestFeature>(new HttpRequestFeature { Method = "GET", Path = path, QueryString = queryString, Scheme = "http", Headers = requestHeaders });
 		features.Set<IHttpResponseFeature>(new HttpResponseFeature());
 		features.Set<IHttpResponseBodyFeature>(new StreamResponseBodyFeature(new MemoryStream()));
 		features.Set<IHttpWebSocketFeature>(new FakeWebSocketFeature(accepted, subProtocols ?? []));

@@ -137,6 +137,25 @@ public class WebSocketProxyTests
 		Assert.True(destination.CloseOutputCalled);
 	}
 
+	[Fact]
+	public async Task Returns_quietly_when_cancelled_during_the_poll_delay()
+	{
+		// The receive never completes, so the pump is parked in its poll delay by the time it hands
+		// its task back. Cancelling there used to throw TaskCanceledException, whereas a cancellation
+		// seen at the check returned quietly.
+		using var source = new PendingReceiveWebSocket();
+		using var destination = new FakeWebSocket();
+		using var cts = new CancellationTokenSource();
+
+		var pumping = SpaProxy.PumpWebSocket(source, destination, 1024, cts.Token);
+		Assert.False(pumping.IsCompleted);
+		await cts.CancelAsync();
+
+		await pumping.WaitAsync(TimeSpan.FromSeconds(10));
+
+		Assert.Empty(destination.Sent);
+	}
+
 	/// <summary>
 	/// A <see cref="WebSocket"/> whose first receive stays pending until <see cref="Deliver"/> is
 	/// called, and whose next receive is a close. Never delivering models a quiet connection.
