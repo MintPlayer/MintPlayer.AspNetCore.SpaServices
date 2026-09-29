@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
@@ -33,6 +34,19 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 	private string? _endpoint;
 
 	public HttpNodeInstance(NodeServicesOptions options, int port = 0)
+		: this(options, port, SystemNodeProcess.Start, httpMessageHandler: null)
+	{
+	}
+
+	/// <summary>
+	/// The constructor behind the public one, with the Node process and the HTTP transport as seams so that
+	/// tests need neither node nor a socket. A null <paramref name="httpMessageHandler"/> means the default one.
+	/// </summary>
+	internal HttpNodeInstance(
+		NodeServicesOptions options,
+		int port,
+		Func<ProcessStartInfo, INodeProcess> startNodeProcess,
+		HttpMessageHandler? httpMessageHandler)
 	: base(
 			EmbeddedResourceReader.Read(typeof(HttpNodeInstance), "/Content/Node/entrypoint-http.js"),
 			options.ProjectPath,
@@ -44,9 +58,10 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 			options.InvocationTimeoutMilliseconds,
 			options.LaunchWithDebugging,
 			options.DebuggingPort,
-			options.NodePath)
+			options.NodePath,
+			startNodeProcess)
 	{
-		_client = new HttpClient();
+		_client = httpMessageHandler == null ? new HttpClient() : new HttpClient(httpMessageHandler);
 		_client.Timeout = TimeSpan.FromMilliseconds(options.InvocationTimeoutMilliseconds + 1000);
 	}
 

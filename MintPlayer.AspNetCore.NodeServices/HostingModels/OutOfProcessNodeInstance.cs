@@ -23,13 +23,15 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 	protected readonly ILogger OutputLogger;
 
 	private const string ConnectionEstablishedMessage = "[MintPlayer.AspNetCore.NodeServices:Listening]";
-	private readonly TaskCompletionSource<object> _connectionIsReadySource = new TaskCompletionSource<object>();
+	// Completed from node's stdout reader thread. RunContinuationsAsynchronously keeps the waiting invocations
+	// off that thread, which would otherwise stop reading node's output until the first of them yielded.
+	private readonly TaskCompletionSource _connectionIsReadySource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 	private bool _disposed;
 	private readonly StringAsTempFile _entryPointScript;
 	private FileSystemWatcher? _fileSystemWatcher;
 	private int _invocationTimeoutMilliseconds;
 	private bool _launchWithDebugging;
-	private readonly Process _nodeProcess;
+	private readonly INodeProcess _nodeProcess;
 	private int? _nodeDebuggingPort;
 	private bool _nodeProcessNeedsRestart;
 	private readonly string[] _watchFileExtensions;
@@ -59,6 +61,29 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		bool launchWithDebugging,
 		int debuggingPort,
 		string nodePath)
+		: this(entryPointScript, projectPath, watchFileExtensions, commandLineArguments, applicationStoppingToken,
+			nodeOutputLogger, environmentVars, invocationTimeoutMilliseconds, launchWithDebugging, debuggingPort, nodePath,
+			SystemNodeProcess.Start)
+	{
+	}
+
+	/// <summary>
+	/// The constructor behind the public one, with the process launch as a seam so that tests can hand in a
+	/// fake Node process instead of starting node.
+	/// </summary>
+	internal OutOfProcessNodeInstance(
+		string entryPointScript,
+		string projectPath,
+		string[] watchFileExtensions,
+		string commandLineArguments,
+		CancellationToken applicationStoppingToken,
+		ILogger nodeOutputLogger,
+		IDictionary<string, string> environmentVars,
+		int invocationTimeoutMilliseconds,
+		bool launchWithDebugging,
+		int debuggingPort,
+		string nodePath,
+		Func<ProcessStartInfo, INodeProcess> startNodeProcess)
 	{
 		ArgumentNullException.ThrowIfNull(nodeOutputLogger);
 
@@ -71,7 +96,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		{
 			var startInfo = PrepareNodeProcessStartInfo(_entryPointScript.FileName, projectPath, commandLineArguments,
 				environmentVars, _launchWithDebugging, debuggingPort, nodePath);
-			_nodeProcess = LaunchNodeProcess(startInfo);
+			_nodeProcess = LaunchNodeProcess(startInfo, startNodeProcess);
 		}
 		catch
 		{
@@ -328,9 +353,18 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 
 			// Make sure the Node process is finished
 			// TODO: Is there a more graceful way to end it? Or does this still let it perform any cleanup?
-			if (_nodeProcess != null && !_nodeProcess.HasExited)
+			if (_nodeProcess != null)
 			{
-				_nodeProcess.Kill();
+				if (!_nodeProcess.HasExited)
+				{
+					// The whole tree: whatever node itself started would otherwise outlive it.
+					_nodeProcess.Kill(entireProcessTree: true);
+				}
+
+				if (disposing)
+				{
+					_nodeProcess.Dispose();
+				}
 			}
 
 			_disposed = true;
@@ -351,21 +385,11 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		startInfo.Environment[name] = value;
 	}
 
-	private static Process LaunchNodeProcess(ProcessStartInfo startInfo)
+	private static INodeProcess LaunchNodeProcess(ProcessStartInfo startInfo, Func<ProcessStartInfo, INodeProcess> startNodeProcess)
 	{
 		try
 		{
-			var process = Process.Start(startInfo);
-
-			// On Mac at least, a killed child process is left open as a zombie until the parent
-			// captures its exit code. We don't need the exit code for this process, and don't want
-			// to use process.WaitForExit() explicitly (we'd have to block the thread until it really
-			// has exited), but we don't want to leave zombies lying around either. It's sufficient
-			// to use process.EnableRaisingEvents so that .NET will grab the exit code and let the
-			// zombie be cleaned away without having to block our thread.
-			process.EnableRaisingEvents = true;
-
-			return process;
+			return startNodeProcess(startInfo);
 		}
 		catch (Exception ex)
 		{
@@ -395,36 +419,43 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 	{
 		var initializationIsCompleted = false;
 
-		_nodeProcess.OutputDataReceived += (sender, evt) =>
-		{
-			if (evt.Data == ConnectionEstablishedMessage && !initializationIsCompleted)
-			{
-				_connectionIsReadySource.SetResult(null);
-				initializationIsCompleted = true;
-			}
-			else if (evt.Data != null)
-			{
-				OnOutputDataReceived(UnencodeNewlines(evt.Data));
-			}
-		};
+		// If node dies before it is listening (a syntax error in the entry point, a missing module, ...), it
+		// never will be. Without this, every waiting invocation would sit out the whole invocation timeout and
+		// then report a misleading "timed out" - or, with no timeout configured, wait forever. A no-op once
+		// the connection is established.
+		_nodeProcess.Exited += (sender, evt) => _connectionIsReadySource.TrySetException(new NodeInvocationException(
+			"Node process exited before it was ready to accept invocations.",
+			"See the Node output logged before this for the cause.",
+			nodeInstanceUnavailable: true,
+			allowConnectionDraining: false));
 
-		_nodeProcess.ErrorDataReceived += (sender, evt) =>
-		{
-			if (evt.Data != null)
+		_nodeProcess.BeginReadLines(
+			data =>
 			{
-				if (_launchWithDebugging && IsDebuggerMessage(evt.Data))
+				if (data == ConnectionEstablishedMessage && !initializationIsCompleted)
 				{
-					OutputLogger.LogWarning(evt.Data);
+					_connectionIsReadySource.TrySetResult();
+					initializationIsCompleted = true;
 				}
-				else
+				else if (data != null)
 				{
-					OnErrorDataReceived(UnencodeNewlines(evt.Data));
+					OnOutputDataReceived(UnencodeNewlines(data));
 				}
-			}
-		};
-
-		_nodeProcess.BeginOutputReadLine();
-		_nodeProcess.BeginErrorReadLine();
+			},
+			data =>
+			{
+				if (data != null)
+				{
+					if (_launchWithDebugging && IsDebuggerMessage(data))
+					{
+						OutputLogger.LogWarning(data);
+					}
+					else
+					{
+						OnErrorDataReceived(UnencodeNewlines(data));
+					}
+				}
+			});
 	}
 
 	/// <summary>Internal so the debugger-noise filter can be tested without launching node under a debugger.</summary>
