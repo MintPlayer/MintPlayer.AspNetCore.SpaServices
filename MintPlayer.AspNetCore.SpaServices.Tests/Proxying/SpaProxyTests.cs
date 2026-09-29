@@ -595,6 +595,29 @@ public class SpaProxyingExtensionsTests
     }
 
     [Fact]
+    public async Task Asks_the_factory_for_the_base_uri_on_every_request()
+    {
+        // The factory is per request on purpose: the Angular CLI wraps its startup task in a fresh
+        // timeout each time, so a request after a timed-out one can still succeed.
+        var spaBuilder = CreateSpaBuilder();
+        var factoryCalls = 0;
+        spaBuilder.UseProxyToSpaDevelopmentServer(() =>
+        {
+            factoryCalls++;
+            return Task.FromResult(new Uri("http://127.0.0.1:9/"));
+        });
+        var pipeline = ((IApplicationBuilder)spaBuilder.ApplicationBuilder).Build();
+
+        // Already aborted, so the outbound request is cancelled before anything is dialled.
+        using var aborted = new CancellationTokenSource();
+        aborted.Cancel();
+        await pipeline(PerformProxyRequestTests.CreateContext(requestAborted: aborted.Token));
+        await pipeline(PerformProxyRequestTests.CreateContext(requestAborted: aborted.Token));
+
+        Assert.Equal(2, factoryCalls);
+    }
+
+    [Fact]
     public void Rejects_a_null_base_uri_string()
     {
         // The Uri constructor is what guards here - the overload has no explicit argument check - so

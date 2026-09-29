@@ -118,6 +118,39 @@ public class WebSocketConnectorTests
 			() => SpaProxy.AcceptProxyWebSocketRequest(context, null!, CancellationToken.None, new FakeConnector(Closed())));
 	}
 
+	[Fact]
+	public async Task The_real_connector_skips_a_header_it_cannot_set_and_rethrows_a_failed_connect()
+	{
+		// A pre-cancelled token makes ClientWebSocket give up before it dials, so nothing leaves the
+		// process. The header with a space in its name is rejected by the client options; that has to
+		// be skipped, or the ArgumentException would surface here instead of the cancellation.
+		using var cts = new CancellationTokenSource();
+		cts.Cancel();
+		KeyValuePair<string, StringValues>[] headers = [new("Bad Header", "x"), new("X-Ok", "y")];
+
+		await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ClientWebSocketConnector.Instance.ConnectAsync(
+			new Uri("ws://127.0.0.1:9/"), ["sockjs"], headers, cts.Token));
+	}
+
+	[Fact]
+	public async Task A_websocket_request_that_is_aborted_before_the_upstream_connects_counts_as_handled()
+	{
+		// Goes through PerformProxyRequest and the shipped connector. The client has already gone, so
+		// the connect is cancelled before it dials and the proxy reports the request as handled.
+		using var aborted = new CancellationTokenSource();
+		aborted.Cancel();
+		var context = CreateWebSocketContext(Closed(), requestAborted: aborted.Token);
+
+		var proxied = await SpaProxy.PerformProxyRequest(
+			context,
+			new HttpClient(new TestHelpers.StubHandler()),
+			Task.FromResult(new Uri("http://127.0.0.1:9/")),
+			CancellationToken.None,
+			proxy404s: false);
+
+		Assert.True(proxied);
+	}
+
 	private static WebSocketProxyTests.FakeWebSocket Closed()
 	{
 		var socket = new WebSocketProxyTests.FakeWebSocket();
@@ -125,7 +158,7 @@ public class WebSocketConnectorTests
 		return socket;
 	}
 
-	private static DefaultHttpContext CreateWebSocketContext(WebSocket accepted, string[]? subProtocols = null)
+	private static DefaultHttpContext CreateWebSocketContext(WebSocket accepted, string[]? subProtocols = null, CancellationToken requestAborted = default)
 	{
 		var requestHeaders = new HeaderDictionary();
 		if (subProtocols is { Length: > 0 })
@@ -140,6 +173,7 @@ public class WebSocketConnectorTests
 		features.Set<IHttpResponseFeature>(new HttpResponseFeature());
 		features.Set<IHttpResponseBodyFeature>(new StreamResponseBodyFeature(new MemoryStream()));
 		features.Set<IHttpWebSocketFeature>(new FakeWebSocketFeature(accepted, subProtocols ?? []));
+		features.Set<IHttpRequestLifetimeFeature>(new HttpRequestLifetimeFeature { RequestAborted = requestAborted });
 
 		return new DefaultHttpContext(features);
 	}

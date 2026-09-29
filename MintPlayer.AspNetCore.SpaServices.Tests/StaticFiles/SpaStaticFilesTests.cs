@@ -178,6 +178,16 @@ public class SpaStaticFilesTests
     }
 
     [Fact]
+    public void The_parameterless_overload_serves_through_the_registered_service()
+    {
+        var app = new CountingApplicationBuilder(NewApplicationBuilder(new StubSpaStaticFileProvider(new NullFileProvider())));
+
+        app.UseSpaStaticFilesImproved();
+
+        Assert.Equal(1, app.UseCount);
+    }
+
+    [Fact]
     public void Falls_back_on_the_web_root_when_the_caller_allows_it()
     {
         // The fallback leaves FileProvider null so that UseStaticFiles resolves the web root itself.

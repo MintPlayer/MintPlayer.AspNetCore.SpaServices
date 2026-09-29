@@ -128,6 +128,26 @@ public class EventedStreamReaderTests
     }
 
     [Fact]
+    public async Task WaitForMatch_does_not_replay_a_line_trimmed_from_the_history()
+    {
+        // The history keeps the newest thousand lines. Line 5 of 1200 has been trimmed, so it must
+        // not match - and because the stream has closed, the wait fails instead of hanging.
+        var content = string.Concat(Enumerable.Range(0, 1200).Select(i => $"line {i}\n"));
+        var closed = new TaskCompletionSource();
+        using var stream = new GatedStream(content);
+        var reader = new EventedStreamReader(new StreamReader(stream));
+        reader.OnStreamClosed += () => closed.TrySetResult();
+        stream.Release();
+        await closed.Task.WaitAsync(Timeout);
+
+        await Assert.ThrowsAsync<EndOfStreamException>(() => reader.WaitForMatch(new Regex("^line 5$")));
+
+        // The newest line is still inside the window.
+        var match = await reader.WaitForMatch(new Regex("^line 1199$")).WaitAsync(Timeout);
+        Assert.Equal("line 1199", match.Value);
+    }
+
+    [Fact]
     public void Rejects_a_null_stream_reader()
     {
         Assert.Throws<ArgumentNullException>(() => new EventedStreamReader(null!));
