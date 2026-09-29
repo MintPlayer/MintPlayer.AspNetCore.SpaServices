@@ -94,11 +94,31 @@ public class WaitForMatchSequenceTests
 		await Assert.ThrowsAsync<EndOfStreamException>(() => pending);
 	}
 
+	[Fact]
+	public async Task Ends_the_read_loop_when_a_read_in_flight_is_cancelled()
+	{
+		// Unlike the test above, this waits until the loop is actually parked in a read before
+		// cancelling, so it is the read's own cancellation that ends the loop - and the wait with it.
+		using var cts = new CancellationTokenSource();
+		var stream = new NeverEndingStream();
+		var reader = new EventedStreamReader(new StreamReader(stream), cts.Token);
+		var pending = reader.WaitForMatch(new Regex("never appears"));
+
+		await stream.ReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+		await cts.CancelAsync();
+
+		await Assert.ThrowsAsync<EndOfStreamException>(() => pending.WaitAsync(TimeSpan.FromSeconds(10)));
+	}
+
 	/// <summary>A stream that blocks until cancelled, standing in for a live dev server's stdout.</summary>
 	private sealed class NeverEndingStream : Stream
 	{
+		/// <summary>Completes once the reader is parked in its first read.</summary>
+		public TaskCompletionSource ReadStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
 		public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
 		{
+			ReadStarted.TrySetResult();
 			await Task.Delay(Timeout.Infinite, cancellationToken);
 			return 0;
 		}

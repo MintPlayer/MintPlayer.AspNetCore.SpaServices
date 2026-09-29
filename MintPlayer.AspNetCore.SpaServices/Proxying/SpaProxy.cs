@@ -61,11 +61,11 @@ internal static class SpaProxy
 		bool proxy404s)
 		=> PerformProxyRequest(context, httpClient, baseUriTask, applicationStoppingToken, proxy404s, webSocketConnector: null);
 
-	/// <param name="webSocketConnector">
-	/// Opens the upstream half of a proxied websocket. Null in production, which means the shipped
-	/// <see cref="ClientWebSocketConnector"/>; a test passes a fake so the websocket branch can be
-	/// driven without a dev server.
-	/// </param>
+	/// <summary>
+	/// Takes the connector that opens the upstream half of a proxied websocket. Null in production,
+	/// which means the shipped <see cref="ClientWebSocketConnector"/>; a test passes a fake so the
+	/// websocket branch can be driven without a dev server.
+	/// </summary>
 	internal static async Task<bool> PerformProxyRequest(
 		HttpContext context,
 		HttpClient httpClient,
