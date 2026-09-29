@@ -15,16 +15,11 @@ internal static class AngularCliMiddleware
 	public static void Attach(Abstractions.ISpaBuilder spaBuilder, string? scriptName = null, Regex[]? cliRegexes = null)
 	{
 		var pkgManagerCommand = spaBuilder.Options.PackageManagerCommand;
-		var sourcePath = spaBuilder.Options.SourcePath;
+		// The only caller, UseAngularCliServer, has already rejected an empty SourcePath.
+		var sourcePath = spaBuilder.Options.SourcePath!;
 		var devServerPort = spaBuilder.Options.DevServerPort;
-		if (string.IsNullOrEmpty(sourcePath))
-		{
-			throw new ArgumentException("Property 'SourcePath' cannot be null or empty", nameof(spaBuilder));
-		}
-
 		if (string.IsNullOrEmpty(scriptName)) scriptName = "start";
-		if (cliRegexes == null || cliRegexes.Length == 0)
-			cliRegexes = [new Regex("open your browser on (?<openbrowser>http\\S+)", RegexOptions.None, RegexMatchTimeout)];
+		// A null or empty cliRegexes is replaced by the default inside StartAngularCliServerAsync.
 
 		// Start Angular CLI and attach to middleware pipeline
 		var appBuilder = spaBuilder.ApplicationBuilder;
