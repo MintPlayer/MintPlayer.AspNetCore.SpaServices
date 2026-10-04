@@ -336,10 +336,17 @@ app.MapGet("/badge/{id}", GetBadge)
    .RequireRateLimiting("per-ip");          // still runs
 
 var feeds = app.MapGroup("/feeds").SkipXsrfToken();   // every endpoint in the group
+feeds.MapGet("/subscribe", Subscribe).SkipXsrfToken(false);   // ...except this one
 
 [SkipXsrfToken]                             // a controller, or a single action
-public class OgImageController : ControllerBase { /* ... */ }
+public class OgImageController : ControllerBase
+{
+    [SkipXsrfToken(false)]                  // the one action that still mints
+    public IActionResult Editor() { /* ... */ }
+}
 ```
+
+The most specific metadata wins, as with the framework's `[RequireAntiforgeryToken(false)]`: an action's attribute beats its controller's, and an endpoint's convention beats its group's. Custom metadata can implement `ISkipXsrfTokenMetadata` and its `Skip` property.
 
 The check runs when the response starts, after routing has matched, so it works **whether the generator is registered above or below `UseRouting()`**, and every other middleware still runs. Measured on Kestrel, with the generator above `UseRouting()` and an endpoint declaring `public, max-age=300` with a 1-request rate limit:
 
@@ -361,7 +368,7 @@ For responses that have no endpoint, such as a custom middleware serving media o
 app.UseAntiforgeryGenerator(o => o.ShouldIssue = ctx => !ctx.Request.Path.StartsWithSegments("/media"));
 ```
 
-A predicate that throws is logged at Error, and that response goes out without a token. Prefer the endpoint metadata where an endpoint exists, because it sits next to what it describes and does not drift when a route moves. Before 11.0.0-rc.3 the only alternative was `app.UseWhen(ctx => ..., b => b.UseAntiforgeryGenerator())`.
+A predicate that throws is logged at Error, and the token **is issued**. Failing open is the safe side: wrongly minting costs a `private` downgrade, while wrongly skipping the entry point breaks the SPA. Prefer the endpoint metadata where an endpoint exists, because it sits next to what it describes and does not drift when a route moves. Before 11.0.0-rc.3 the only alternative was `app.UseWhen(ctx => ..., b => b.UseAntiforgeryGenerator())`.
 
 > ⚠️ **Never skip the SPA's HTML entry point, or an endpoint the SPA calls to refresh its token.** The SPA then has no token to send, and every mutating request after it is rejected. That is why skipping is never automatic, not even for a response the application declared `public`: prerendered HTML can legitimately be `public`, and only the application can tell it apart from a badge.
 

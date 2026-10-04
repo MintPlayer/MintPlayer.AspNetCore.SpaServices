@@ -76,7 +76,6 @@ The check must therefore run inside the callback, and a null endpoint must mean 
 - Changing the unconditional-mint default (#86 recorded why).
 - Skipping automatically on `Cache-Control: public` (see Decisions, D9).
 - Turning off antiforgery **validation**. That is `DisableAntiforgery()` / `[RequireAntiforgeryToken(false)]`.
-- An "un-skip" for one endpoint inside a skipped group. Put that endpoint outside the group.
 
 ## Candidate solutions
 
@@ -106,10 +105,10 @@ The authoritative record.
 | # | Decision | Outcome and reasoning |
 |---|---|---|
 | D1 | Name | `SkipXsrfToken`. It ties the opt-out to this package's cookie and does not echo `DisableAntiforgery`, which turns off *validation*. The XML docs say explicitly that validation is unaffected. |
-| D2 | Metadata shape | Marker interface `ISkipXsrfTokenMetadata` + sealed `SkipXsrfTokenAttribute` (class or method) + `SkipXsrfToken<TBuilder>()` on `IEndpointConventionBuilder`. Matching on the interface lets applications supply their own metadata type. |
+| D2 | Metadata shape | `ISkipXsrfTokenMetadata { bool Skip { get; } }` + sealed `SkipXsrfTokenAttribute(bool skip = true)` (class or method) + `SkipXsrfToken<TBuilder>(bool skip = true)` on `IEndpointConventionBuilder`. Resolved last-wins through `GetMetadata<T>()`, which follows the framework's `IAntiforgeryMetadata.RequiresValidation` pattern, so an action or endpoint can re-enable the mint inside a skipped controller or group. *Revised in PR review: the first cut was a marker interface.* Adding a member to a public interface after GA would be breaking, so the bool is in place before rc.3. Matching on the interface also lets applications supply their own metadata type. |
 | D3 | Where the check runs | Inside the `OnStarting` callback, before the snapshot or any header is touched. A skipped response is byte-for-byte what the application produced. |
 | D4 | Order of checks | Metadata first, then `ShouldIssue`. The predicate can still see the endpoint. |
-| D5 | A throwing `ShouldIssue` | Logged at Error with its own message, and the response is **not** minted. The callback must never throw (class remarks). Of the two non-throwing outcomes, "no token on this response" is the one the existing failure path already produces. |
+| D5 | A throwing `ShouldIssue` | Logged at Error with its own message, and the token **is issued** (fail open). *Revised in PR review: the first cut failed closed.* The two mistakes are not symmetric. Wrongly minting costs a `Set-Cookie` and a `private` downgrade, which is exactly the pre-rc.3 behaviour. Wrongly skipping the SPA's entry point or refresh endpoint breaks every mutation that follows. A buggy predicate throws on precisely the requests its author did not anticipate. |
 | D6 | Failure path after hiding | When the mint throws, the hidden headers come back **verbatim**, with no `TryMakePrivate`, because no token reached the client. **Exception:** if the failed mint left a `Set-Cookie` behind (possible with a replaced `IAntiforgery`), the private-forcing restore runs instead, because a per-user cookie is now on the response. The added `Set-Cookie` is detected by count, which is cheap. |
 | D7 | Unparseable `Cache-Control` | Behaviour unchanged: the mint's `no-cache, no-store` + `Pragma: no-cache` stay. New: one package Warning naming the dropped value, logged once per middleware instance, which in practice is once per process. This is the same mechanism as the insecure-cookie warning. |
 | D8 | `NoStore` | Untouched. The framework's warning is true there and stays. |
@@ -139,7 +138,8 @@ The authoritative record.
 | S6 | The S5 tests pass with the generator registered **above** `UseRouting()`. |
 | S7 | A skipped endpoint behind `UseRateLimiter` still gets 429 over the limit, and behind `UseAuthorization` still gets 401. |
 | S8 | A neighbouring non-skipped endpoint and an unmatched (404) request still mint. |
-| S9 | `ShouldIssue` returning false skips. A throwing `ShouldIssue` is logged and the response survives. |
+| S9 | `ShouldIssue` returning false skips. A throwing `ShouldIssue` is logged, the token is issued, and the response survives. |
+| S9a | `[SkipXsrfToken(false)]` on an action inside a skipped controller, and `.SkipXsrfToken(false)` on an endpoint inside a skipped group, both mint. |
 | S10 | Reverse check: the S1 and S5–S7 tests fail against rc.2's implementation. |
 | S11 | Full suite green on net10.0 and net11.0. Xsrf keeps 100% line and branch coverage. |
 | S12 | A real-Kestrel before/after capture is in `docs/SOLUTION-xsrf-skip-token.md`. |

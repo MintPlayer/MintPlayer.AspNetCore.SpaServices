@@ -15,7 +15,10 @@ namespace MintPlayer.AspNetCore.SpaServices.Tests.Xsrf;
 /// </summary>
 public class XsrfSkipTokenTests
 {
-    private sealed class OwnSkipMetadata : ISkipXsrfTokenMetadata;
+    private sealed class OwnSkipMetadata : ISkipXsrfTokenMetadata
+    {
+        public bool Skip => true;
+    }
 
     private static void SetEndpoint(HttpContext context, params object[] metadata)
         => context.SetEndpoint(new Endpoint(_ => Task.CompletedTask, new EndpointMetadataCollection(metadata), "test"));
@@ -134,17 +137,56 @@ public class XsrfSkipTokenTests
     }
 
     [Fact]
-    public async Task A_throwing_ShouldIssue_is_logged_and_does_not_take_the_response_down()
+    public async Task A_throwing_ShouldIssue_is_logged_and_fails_open_by_issuing_the_token()
     {
+        // Wrongly minting costs a private downgrade; wrongly skipping the SPA's entry point breaks
+        // every mutation after it. So a broken predicate mints.
         var result = await XsrfTestHost.Run(
             configure: options => options.ShouldIssue = _ => throw new InvalidOperationException("predicate bug"),
             configureContext: context => context.Response.Headers.CacheControl = "public, max-age=300");
 
-        result.SetCookies.Should().BeEmpty();
-        result.Context.Response.Headers.CacheControl.ToString().Should().Be("public, max-age=300");
+        result.XsrfCookie.Should().StartWith($"XSRF-TOKEN={XsrfTestHost.RequestToken}");
+        result.Context.Response.Headers.CacheControl.ToString().Should().Be("max-age=300, private");
         var error = result.Logs.Should().ContainSingle(l => l.Level == LogLevel.Error).Which;
         error.Exception.Should().BeOfType<InvalidOperationException>();
         error.Message.Should().Contain(nameof(XsrfOptions.ShouldIssue));
+    }
+
+    [Fact]
+    public async Task The_most_specific_metadata_wins_so_Skip_false_re_enables_the_mint()
+    {
+        // Metadata is ordered least to most specific: the group's (or controller's) first, then
+        // the endpoint's (or action's) own.
+        var result = await RunWithEndpoint(metadata: [new SkipXsrfTokenAttribute(), new SkipXsrfTokenAttribute(skip: false)]);
+
+        result.XsrfCookie.Should().StartWith($"XSRF-TOKEN={XsrfTestHost.RequestToken}");
+    }
+
+    [Fact]
+    public async Task A_more_specific_skip_overrides_an_outer_re_enable()
+    {
+        var result = await RunWithEndpoint(metadata: [new SkipXsrfTokenAttribute(skip: false), new SkipXsrfTokenAttribute()]);
+
+        result.SetCookies.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Explicit_Skip_false_metadata_mints_without_consulting_ShouldIssue()
+    {
+        var called = false;
+        var result = await RunWithEndpoint(
+            configure: options => options.ShouldIssue = _ => !(called = true),
+            metadata: new SkipXsrfTokenAttribute(skip: false));
+
+        result.XsrfCookie.Should().StartWith($"XSRF-TOKEN={XsrfTestHost.RequestToken}");
+        called.Should().BeFalse();
+    }
+
+    [Fact]
+    public void The_attribute_skips_by_default()
+    {
+        new SkipXsrfTokenAttribute().Skip.Should().BeTrue();
+        new SkipXsrfTokenAttribute(skip: false).Skip.Should().BeFalse();
     }
 
     [Fact]
@@ -165,7 +207,19 @@ public class XsrfSkipTokenTests
             convention(endpointBuilder);
         }
 
-        endpointBuilder.Metadata.Should().Contain(m => m is SkipXsrfTokenAttribute);
+        endpointBuilder.Metadata.Should().Contain(m => m is SkipXsrfTokenAttribute { Skip: true });
+    }
+
+    [Fact]
+    public void SkipXsrfToken_false_adds_a_re_enabling_attribute()
+    {
+        var builder = new TestConventionBuilder();
+
+        builder.SkipXsrfToken(skip: false);
+
+        var endpointBuilder = new RouteEndpointBuilder(_ => Task.CompletedTask, RoutePatternFactory.Parse("/"), 0);
+        builder.Conventions.Single()(endpointBuilder);
+        endpointBuilder.Metadata.Should().Contain(m => m is SkipXsrfTokenAttribute { Skip: false });
     }
 
     [Fact]

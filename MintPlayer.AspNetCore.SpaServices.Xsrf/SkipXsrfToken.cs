@@ -12,12 +12,23 @@ namespace MintPlayer.AspNetCore.SpaServices.Xsrf;
 /// endpoint carrying both this metadata and a validation requirement still validates.
 /// </para>
 /// <para>
+/// Resolved like the framework's <c>IAntiforgeryMetadata</c>: the most specific entry wins, so an
+/// action's <c>[SkipXsrfToken(false)]</c> re-enables the mint inside a controller marked
+/// <c>[SkipXsrfToken]</c>, and an endpoint's <c>.SkipXsrfToken(false)</c> does the same inside a
+/// skipped route group.
+/// </para>
+/// <para>
 /// Implement it on your own metadata type, or use <see cref="SkipXsrfTokenAttribute"/> /
-/// <see cref="SkipXsrfTokenExtensions.SkipXsrfToken{TBuilder}(TBuilder)"/>.
+/// <see cref="SkipXsrfTokenExtensions.SkipXsrfToken{TBuilder}(TBuilder, bool)"/>.
 /// </para>
 /// </remarks>
 public interface ISkipXsrfTokenMetadata
 {
+	/// <summary>
+	/// <see langword="true"/> to issue no token for this endpoint; <see langword="false"/> to issue
+	/// one even though a less specific entry (its controller or group) said to skip.
+	/// </summary>
+	bool Skip { get; }
 }
 
 /// <summary>
@@ -41,8 +52,10 @@ public interface ISkipXsrfTokenMetadata
 /// </para>
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-public sealed class SkipXsrfTokenAttribute : Attribute, ISkipXsrfTokenMetadata
+public sealed class SkipXsrfTokenAttribute(bool skip = true) : Attribute, ISkipXsrfTokenMetadata
 {
+	/// <inheritdoc/>
+	public bool Skip { get; } = skip;
 }
 
 /// <summary>
@@ -55,9 +68,13 @@ public static class SkipXsrfTokenExtensions
 	/// unaffected. See <see cref="SkipXsrfTokenAttribute"/> for what skipping drops and where it must
 	/// not be used.
 	/// </summary>
-	public static TBuilder SkipXsrfToken<TBuilder>(this TBuilder builder) where TBuilder : IEndpointConventionBuilder
+	/// <param name="builder">The endpoint or group.</param>
+	/// <param name="skip">
+	/// <see langword="false"/> re-enables the mint for an endpoint inside a skipped group.
+	/// </param>
+	public static TBuilder SkipXsrfToken<TBuilder>(this TBuilder builder, bool skip = true) where TBuilder : IEndpointConventionBuilder
 	{
 		ArgumentNullException.ThrowIfNull(builder);
-		return builder.WithMetadata(new SkipXsrfTokenAttribute());
+		return builder.WithMetadata(new SkipXsrfTokenAttribute(skip));
 	}
 }

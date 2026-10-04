@@ -60,6 +60,9 @@ public class XsrfSkipTokenPipelineTests(XsrfSkipTokenPipelineTests.Server server
     [Theory]
     [InlineData("/minted")]
     [InlineData("/controller/plain-action")]
+    // Re-enabled inside a skipped group / controller: the most specific metadata wins.
+    [InlineData("/public/page")]
+    [InlineData("/skipped-controller/page")]
     public async Task A_neighbouring_endpoint_still_mints(string path)
     {
         using var response = await server.Client.GetAsync(path);
@@ -152,7 +155,9 @@ public class XsrfSkipTokenPipelineTests(XsrfSkipTokenPipelineTests.Server server
             app.UseAuthorization();
 
             app.MapGet("/badge", PublicResponse).SkipXsrfToken();
-            app.MapGroup("/public").SkipXsrfToken().MapGet("/feed", PublicResponse);
+            var group = app.MapGroup("/public").SkipXsrfToken();
+            group.MapGet("/feed", PublicResponse);
+            group.MapGet("/page", PublicResponse).SkipXsrfToken(skip: false);
             app.MapGet("/minted", PublicResponse);
             app.MapGet("/limited", PublicResponse).SkipXsrfToken().RequireRateLimiting("one");
             app.MapGet("/secured", PublicResponse).SkipXsrfToken().RequireAuthorization();
@@ -193,6 +198,15 @@ public sealed class SkippedXsrfController : ControllerBase
 {
     [HttpGet("index")]
     public IActionResult Index()
+    {
+        Response.Headers.CacheControl = "public, max-age=300";
+        return Content("ok");
+    }
+
+    /// <summary>The one exception in an otherwise skipped controller.</summary>
+    [SkipXsrfToken(false)]
+    [HttpGet("page")]
+    public IActionResult Page()
     {
         Response.Headers.CacheControl = "public, max-age=300";
         return Content("ok");

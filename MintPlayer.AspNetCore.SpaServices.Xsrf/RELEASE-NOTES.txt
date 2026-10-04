@@ -18,11 +18,13 @@ FEATURES
   change to Cache-Control or Pragma, no X-Frame-Options. Unlike ShortCircuit(), authentication,
   authorization, CORS, rate limiting and every other middleware still run. The metadata is read
   when the response starts, so it works whether the generator is registered above or below
-  UseRouting(). Custom metadata can implement ISkipXsrfTokenMetadata. This turns off issuing a
+  UseRouting(). The most specific metadata wins, so [SkipXsrfToken(false)] on an action, or
+  .SkipXsrfToken(false) on an endpoint, re-enables the mint inside a skipped controller or group.
+  Custom metadata can implement ISkipXsrfTokenMetadata (bool Skip). This turns off issuing a
   token, not validating one. Never apply it to the SPA's HTML entry point or token-refresh endpoint.
 - XsrfOptions.ShouldIssue (Func<HttpContext, bool>?, default null = always) does the same per
-  response for responses with no endpoint. A predicate that throws is logged, and that response
-  goes out without a token.
+  response for responses with no endpoint. A predicate that throws is logged at Error and fails
+  open: the token is issued, because wrongly skipping the SPA's entry point is the costlier mistake.
 DOCUMENTATION
 - New README section "Keeping an endpoint out of the mint". "Endpoint-routed static assets" now
   recommends MapStaticAssets().SkipXsrfToken() and lists what ShortCircuit() additionally skips.

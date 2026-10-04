@@ -63,7 +63,8 @@ The PRD's Decisions table (D1–D11) is the record.
   - endpoint with `SkipXsrfTokenAttribute` → no cookie, headers untouched, no `X-Frame-Options`
   - an application-supplied `ISkipXsrfTokenMetadata` also skips
   - endpoint without it, and no endpoint → mint
-  - `ShouldIssue` false → skip; true → mint; throws → Error logged, no cookie, the response survives
+  - `ShouldIssue` false → skip; true → mint; throws → Error logged, token issued (fail open), the response survives
+  - most specific metadata wins: `Skip = false` after `Skip = true` mints, and the reverse skips
   - `SkipXsrfToken()` on a builder adds the attribute and returns the builder; null builder throws
 - Part 2, real Kestrel (`XsrfSkipTokenPipelineTests`, generator **above** `UseRouting()`):
   - `MapGet(...).SkipXsrfToken()`, a `MapGroup(...).SkipXsrfToken()` child, `[SkipXsrfToken]` on a controller and on an action
@@ -105,7 +106,17 @@ The PRD's Decisions table (D1–D11) is the record.
 - ✅ Real-Kestrel before (nuget rc.2) and after (project ref) capture → `docs/SOLUTION-xsrf-skip-token.md`.
 - New tests use [MintPlayer.Assertions](https://www.nuget.org/packages/MintPlayer.Assertions) (`11.0.0-rc.5`), at the maintainer's request. Existing test files are unchanged.
 
-### M9 — PR
+### M9 — PR ✅
+
+[#89](https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices/pull/89).
+
+### M10 — Review feedback ✅
+
+From the [review comment](https://github.com/MintPlayer/MintPlayer.AspNetCore.SpaServices/pull/89#issuecomment-5981490505):
+
+1. **`ShouldIssue` now fails open.** A throwing predicate is logged and the token is issued (PRD D5).
+2. **`ISkipXsrfTokenMetadata.Skip`, resolved last-wins** (PRD D2). `[SkipXsrfToken(false)]` and `.SkipXsrfToken(false)` re-enable the mint inside a skipped controller or group. Covered by unit tests and by Kestrel tests (`/public/page`, `/skipped-controller/page`).
+3. **Capture provenance.** `docs/SOLUTION-xsrf-skip-token.md` was re-run against the committed PR head rather than a working tree.
 
 ## Decisions taken
 

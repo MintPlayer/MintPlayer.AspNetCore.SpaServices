@@ -163,9 +163,11 @@ internal sealed class Antiforgery
 	/// </remarks>
 	private bool ShouldIssue(HttpContext httpContext)
 	{
-		if (httpContext.GetEndpoint()?.Metadata.GetMetadata<ISkipXsrfTokenMetadata>() is not null)
+		// The most specific entry wins - the action over its controller, the endpoint over its
+		// group - so an explicit Skip = false re-enables the mint and leaves ShouldIssue out of it.
+		if (httpContext.GetEndpoint()?.Metadata.GetMetadata<ISkipXsrfTokenMetadata>() is { } metadata)
 		{
-			return false;
+			return !metadata.Skip;
 		}
 
 		if (options.ShouldIssue is not { } predicate)
@@ -179,15 +181,15 @@ internal sealed class Antiforgery
 		}
 		catch (Exception ex)
 		{
-			// Caught here rather than by WriteCookie's handler only for the message. Either way the
-			// callback must not throw (see the class remarks), and of the two non-throwing outcomes,
-			// "no token on this response" is the one every other failure here already produces.
+			// Fails open: the token is issued. Wrongly minting costs a Set-Cookie and a private
+			// downgrade - exactly what every response got before ShouldIssue existed. Wrongly skipping
+			// on the SPA's entry point or refresh endpoint breaks every mutating request after it, and
+			// a buggy predicate throws on precisely the requests its author did not anticipate.
 			logger.LogError(ex,
-				"XsrfOptions.ShouldIssue threw, so no {CookieName} cookie was written on this response. " +
-				"The rest of the response is unaffected. Fix the predicate; until then, every response it throws " +
-				"for goes out without a token.",
+				"XsrfOptions.ShouldIssue threw, so the {CookieName} cookie was issued on this response as if it had " +
+				"returned true. Fix the predicate; until then, every response it throws for is minted.",
 				options.Cookie.Name);
-			return false;
+			return true;
 		}
 	}
 
