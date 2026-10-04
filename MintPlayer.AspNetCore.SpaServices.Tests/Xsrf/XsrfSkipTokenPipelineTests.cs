@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -128,6 +129,9 @@ public class XsrfSkipTokenPipelineTests(XsrfSkipTokenPipelineTests.Server server
             builder.Logging.ClearProviders().AddProvider(Logs).SetMinimumLevel(LogLevel.Information);
 
             builder.Services.AddAntiforgery();
+            // In-memory keys, as in XsrfTestHost.BuildServices: no key files on the runner, and no
+            // "No XML encryptor configured" warning on Linux.
+            builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
             builder.Services.AddControllers().AddApplicationPart(typeof(XsrfSkipTokenPipelineTests).Assembly);
             builder.Services.AddRateLimiter(options =>
             {

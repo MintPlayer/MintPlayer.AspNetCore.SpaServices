@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
@@ -92,6 +93,11 @@ internal static class XsrfTestHost
             })
             .AddAntiforgery()
             .AddSingleton<IHostEnvironment>(new StubHostEnvironment(Environments.Development))
+            // An in-memory key ring. The default persists keys to disk, and on Linux - where there is
+            // no DPAPI to encrypt them - creating the first key logs "No XML encryptor configured" at
+            // Warning. Whichever "no Warning from any category" test happened to run first failed on
+            // CI and never on Windows. The assertion stays strong; the environment noise goes.
+            .AddDataProtection().UseEphemeralDataProtectionProvider().Services
             .BuildServiceProvider();
 
     public static DefaultHttpContext CreateContext(IServiceProvider services, bool https = false)
