@@ -39,6 +39,9 @@ internal sealed class Antiforgery
 	/// <summary>0 until the insecure-cookie warning has been logged; see <see cref="WarnOnceIfInsecure"/>.</summary>
 	private int insecureWarningLogged;
 
+	/// <summary>0 until the dropped-policy warning has been logged; see <see cref="WarnOnceIfPolicyDropped"/>.</summary>
+	private int policyDroppedWarningLogged;
+
 	public Antiforgery(RequestDelegate next, XsrfOptions options, IHostEnvironment environment, ILoggerFactory loggerFactory)
 	{
 		this.next = next;
@@ -70,23 +73,45 @@ internal sealed class Antiforgery
 	{
 		try
 		{
+			if (!ShouldIssue(httpContext))
+			{
+				return;
+			}
+
 			var response = httpContext.Response;
-			var restore = CacheHeaderSnapshot.Capture(response, options.CacheHeaders);
+			var snapshot = CacheHeaderSnapshot.Capture(response, options.CacheHeaders);
+
+			// Hidden, not merely restored afterwards. DefaultAntiforgery logs "the 'Cache-Control' and
+			// 'Pragma' headers have been overridden" (EventId 8) before overwriting a policy it finds,
+			// once per request - and under PreservePrivate that policy is put straight back, so the
+			// warning would describe headers the client never receives. With nothing to inspect, the
+			// framework stays silent. Under NoStore nothing is hidden: the override is real there,
+			// and so is the warning.
+			snapshot.Hide(response);
 
 			// Issues the request token and writes the framework's own HttpOnly cookie half. Called
 			// unconditionally: the token is bound to the current principal, so skipping the mint
 			// when a cookie already exists leaves a stale token in place across a sign-in and
 			// breaks every mutating call that follows it.
-			var tokens = antiforgery.GetAndStoreTokens(httpContext);
+			AntiforgeryTokenSet tokens;
+			try
+			{
+				tokens = antiforgery.GetAndStoreTokens(httpContext);
+			}
+			catch
+			{
+				// The application's headers were hidden, so a throw would otherwise leave the response
+				// with neither. They come back verbatim - no TryMakePrivate - because no token reached
+				// the client: forcing private over a response with nothing to protect would downgrade
+				// its shared-cacheability for no reason. See RestoreAfterFailedMint for the exception.
+				snapshot.RestoreAfterFailedMint(response);
+				throw;
+			}
 
-			// Sequential, deliberately not a finally. This depends on SetDoNotCacheHeaders being the
-			// last thing GetAndStoreTokens does, so a throw leaves the application's headers
-			// untouched and there is nothing to restore - but the dependency buys something rather
-			// than merely costing something. On the failure path no token cookie is written, so a
-			// finally would run TryMakePrivate over a response that has nothing to protect and
-			// downgrade its shared-cacheability for no reason. Leaving the application's value
-			// exactly as it set it is the correct outcome precisely because the mint failed.
-			restore.Apply(response);
+			if (!snapshot.Apply(response))
+			{
+				WarnOnceIfPolicyDropped(response, snapshot.CacheControl);
+			}
 
 			// Unreachable with the framework's DefaultAntiforgery, whose serializer is declared to
 			// return a non-null string - the nullability comes from the internal feature type it
@@ -127,6 +152,66 @@ internal sealed class Antiforgery
 	}
 
 	/// <summary>
+	/// Whether this response gets a token: not when its endpoint opted out through
+	/// <see cref="ISkipXsrfTokenMetadata"/>, nor when <see cref="XsrfOptions.ShouldIssue"/> says no.
+	/// </summary>
+	/// <remarks>
+	/// Read here, when the response starts, rather than in <see cref="Invoke"/>. The middleware is
+	/// documented to sit early - above <c>UseRouting()</c> - where no endpoint has been selected
+	/// yet. By the time the response starts, routing has run. A response with no endpoint at all
+	/// (unmatched, or started before routing) is minted, as before.
+	/// </remarks>
+	private bool ShouldIssue(HttpContext httpContext)
+	{
+		if (httpContext.GetEndpoint()?.Metadata.GetMetadata<ISkipXsrfTokenMetadata>() is not null)
+		{
+			return false;
+		}
+
+		if (options.ShouldIssue is not { } predicate)
+		{
+			return true;
+		}
+
+		try
+		{
+			return predicate(httpContext);
+		}
+		catch (Exception ex)
+		{
+			// Caught here rather than by WriteCookie's handler only for the message. Either way the
+			// callback must not throw (see the class remarks), and of the two non-throwing outcomes,
+			// "no token on this response" is the one every other failure here already produces.
+			logger.LogError(ex,
+				"XsrfOptions.ShouldIssue threw, so no {CookieName} cookie was written on this response. " +
+				"The rest of the response is unaffected. Fix the predicate; until then, every response it throws " +
+				"for goes out without a token.",
+				options.Cookie.Name);
+			return false;
+		}
+	}
+
+	/// <summary>
+	/// Logs once when the application's <c>Cache-Control</c> could not be parsed, and was therefore
+	/// replaced by <c>no-cache, no-store</c> rather than restored. The antiforgery system is silent
+	/// about a value it cannot parse, so without this the application's policy vanishes unreported.
+	/// </summary>
+	private void WarnOnceIfPolicyDropped(HttpResponse response, string cacheControl)
+	{
+		if (Interlocked.Exchange(ref policyDroppedWarningLogged, 1) != 0)
+		{
+			return;
+		}
+
+		logger.LogWarning(
+			"The application set Cache-Control: {CacheControl} on {Path}, which cannot be parsed. A response carrying " +
+			"the {CookieName} cookie must not be shared-cacheable, and a value that cannot be parsed cannot be made " +
+			"private reliably, so it was replaced with no-cache, no-store. Fix the header value to have it preserved " +
+			"(as private). This is logged once per process.",
+			cacheControl, response.HttpContext.Request.Path, options.Cookie.Name);
+	}
+
+	/// <summary>
 	/// Logs once when the cookie is about to go out without <c>Secure</c> on what does not look like
 	/// a development host - the silent half of <see cref="CookieSecurePolicy.SameAsRequest"/>.
 	/// </summary>
@@ -163,15 +248,20 @@ internal sealed class Antiforgery
 		private readonly bool hadCacheControl;
 		private readonly StringValues pragma;
 		private readonly bool hadPragma;
+		private readonly int setCookieCount;
 
-		private CacheHeaderSnapshot(bool active, StringValues cacheControl, bool hadCacheControl, StringValues pragma, bool hadPragma)
+		private CacheHeaderSnapshot(bool active, StringValues cacheControl, bool hadCacheControl, StringValues pragma, bool hadPragma, int setCookieCount)
 		{
 			this.active = active;
 			this.cacheControl = cacheControl;
 			this.hadCacheControl = hadCacheControl;
 			this.pragma = pragma;
 			this.hadPragma = hadPragma;
+			this.setCookieCount = setCookieCount;
 		}
+
+		/// <summary>The application's <c>Cache-Control</c>, as it set it.</summary>
+		public string CacheControl => cacheControl.ToString();
 
 		public static CacheHeaderSnapshot Capture(HttpResponse response, XsrfCacheHeaderPolicy policy)
 		{
@@ -183,25 +273,83 @@ internal sealed class Antiforgery
 			var hadCacheControl = response.Headers.TryGetValue(HeaderNames.CacheControl, out var cacheControl);
 			var hadPragma = response.Headers.TryGetValue(HeaderNames.Pragma, out var pragma);
 
-			return new CacheHeaderSnapshot(true, cacheControl, hadCacheControl, pragma, hadPragma);
+			return new CacheHeaderSnapshot(true, cacheControl, hadCacheControl, pragma, hadPragma, response.Headers.SetCookie.Count);
 		}
 
-		public void Apply(HttpResponse response)
+		/// <summary>
+		/// Removes the application's headers for the duration of the mint, so the antiforgery system
+		/// finds no policy to warn about overriding.
+		/// </summary>
+		public void Hide(HttpResponse response)
+		{
+			if (!active)
+			{
+				return;
+			}
+
+			response.Headers.Remove(HeaderNames.CacheControl);
+			response.Headers.Remove(HeaderNames.Pragma);
+		}
+
+		/// <summary>
+		/// Puts the hidden headers back after the mint threw: verbatim, because no token reached the
+		/// client and there is nothing to make private.
+		/// </summary>
+		/// <remarks>
+		/// The exception is a failed mint that still left a <c>Set-Cookie</c> behind - which
+		/// <c>DefaultAntiforgery</c> does not do, since everything that can throw precedes its cookie
+		/// write, but a replaced <see cref="IAntiforgery"/> may. A per-user cookie is then on the
+		/// response, so the private-forcing <see cref="Apply"/> runs instead of a verbatim restore.
+		/// </remarks>
+		public void RestoreAfterFailedMint(HttpResponse response)
+		{
+			if (!active)
+			{
+				return;
+			}
+
+			if (response.Headers.SetCookie.Count != setCookieCount)
+			{
+				Apply(response);
+				return;
+			}
+
+			if (hadCacheControl)
+			{
+				response.Headers[HeaderNames.CacheControl] = cacheControl;
+			}
+
+			if (hadPragma)
+			{
+				response.Headers[HeaderNames.Pragma] = pragma;
+			}
+		}
+
+		/// <summary>
+		/// Restores the application's policy after a successful mint, forced <c>private</c>.
+		/// Returns <see langword="false"/> when its <c>Cache-Control</c> could not be made safe and
+		/// <c>no-cache, no-store</c> was written in its place.
+		/// </summary>
+		public bool Apply(HttpResponse response)
 		{
 			// "The application expressed a caching policy" means it set either header. A response
 			// that expressed none keeps the antiforgery system's no-store, untouched.
 			if (!active || (!hadCacheControl && !hadPragma))
 			{
-				return;
+				return true;
 			}
 
 			if (hadCacheControl)
 			{
 				if (!TryMakePrivate(cacheControl, out var restored))
 				{
-					// The value cannot be made safe, so nothing is restored - not even the Pragma,
-					// which would leave the pair inconsistent. See TryMakePrivate.
-					return;
+					// The value cannot be made safe, so nothing of the application's is restored - not
+					// even the Pragma, which would leave the pair inconsistent. See TryMakePrivate.
+					// Written explicitly rather than left to the mint: the headers were hidden, and a
+					// replaced IAntiforgery need not stamp anything in their place.
+					response.Headers[HeaderNames.CacheControl] = "no-cache, no-store";
+					response.Headers[HeaderNames.Pragma] = "no-cache";
+					return false;
 				}
 
 				response.Headers[HeaderNames.CacheControl] = restored;
@@ -218,6 +366,8 @@ internal sealed class Antiforgery
 			{
 				response.Headers.Remove(HeaderNames.Pragma);
 			}
+
+			return true;
 		}
 
 		/// <summary>

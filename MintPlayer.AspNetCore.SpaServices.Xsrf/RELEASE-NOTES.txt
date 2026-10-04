@@ -1,4 +1,33 @@
-﻿v 11.0.0-rc.2
+﻿v 11.0.0-rc.3
+FIXES
+- DefaultAntiforgery no longer logs "The 'Cache-Control' and 'Pragma' headers have been
+  overridden..." (EventId 8) once per request on every response that sets its own caching policy.
+  Under PreservePrivate that message was false: the policy was put back straight afterwards. The
+  middleware now hides the application's headers from the framework while it mints, and restores
+  them afterwards. Response headers are unchanged. Under NoStore the override is real, and the
+  warning still appears.
+- A failed mint now restores the application's Cache-Control and Pragma exactly as it set them. If
+  a replaced IAntiforgery wrote a cookie before throwing, the restored value is forced private.
+- An application Cache-Control that cannot be parsed, and is therefore replaced with
+  "no-cache, no-store", is now reported by a Warning naming the value, logged once per process.
+  Before, the policy was dropped silently. The middleware now writes the no-store pair itself, so
+  a replaced IAntiforgery that stamps no cache headers no longer leaves the response without one.
+FEATURES
+- [SkipXsrfToken] on a controller or action, and .SkipXsrfToken() on a minimal-API endpoint or
+  route group (any IEndpointConventionBuilder), keep that response out of the mint: no cookie, no
+  change to Cache-Control or Pragma, no X-Frame-Options. Unlike ShortCircuit(), authentication,
+  authorization, CORS, rate limiting and every other middleware still run. The metadata is read
+  when the response starts, so it works whether the generator is registered above or below
+  UseRouting(). Custom metadata can implement ISkipXsrfTokenMetadata. This turns off issuing a
+  token, not validating one. Never apply it to the SPA's HTML entry point or token-refresh endpoint.
+- XsrfOptions.ShouldIssue (Func<HttpContext, bool>?, default null = always) does the same per
+  response for responses with no endpoint. A predicate that throws is logged, and that response
+  goes out without a token.
+DOCUMENTATION
+- New README section "Keeping an endpoint out of the mint". "Endpoint-routed static assets" now
+  recommends MapStaticAssets().SkipXsrfToken() and lists what ShortCircuit() additionally skips.
+
+v 11.0.0-rc.2
 BREAKING CHANGES
 - The XSRF-TOKEN cookie is now written with SameSite=Strict and with Secure on HTTPS requests
   (CookieSecurePolicy.SameAsRequest). Both were previously absent, so the browser applied its own

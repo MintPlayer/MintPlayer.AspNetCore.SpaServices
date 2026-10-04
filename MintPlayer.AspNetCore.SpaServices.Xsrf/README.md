@@ -35,8 +35,10 @@ The middleware only *issues* tokens. It never validates and never rejects a requ
 |--------|-------------|
 | `AntiforgeryExtensions.UseAntiforgeryGenerator(this IApplicationBuilder builder)` | Adds the middleware that generates an XSRF token for the current user and stores it in a cookie named `XSRF-TOKEN`. |
 | `AntiforgeryExtensions.UseAntiforgeryGenerator(this IApplicationBuilder builder, Action<XsrfOptions> configure)` | The same, with the cookie and the cache-header policy configured. |
-| `XsrfOptions` | `Cookie` (a read-only `CookieBuilder`: name, path, `SameSite`, `SecurePolicy`, domain) and `CacheHeaders`. |
+| `XsrfOptions` | `Cookie` (a read-only `CookieBuilder`: name, path, `SameSite`, `SecurePolicy`, domain), `CacheHeaders`, and `ShouldIssue`. |
 | `XsrfCacheHeaderPolicy` | `PreservePrivate` (default) or `NoStore`. See [Caching](#caching). |
+| `[SkipXsrfToken]` / `.SkipXsrfToken()` / `ISkipXsrfTokenMetadata` | Keeps a controller, action, endpoint or route group out of the mint, without taking it out of the pipeline. See [Keeping an endpoint out of the mint](#keeping-an-endpoint-out-of-the-mint). |
+| `XsrfOptions.ShouldIssue` | `Func<HttpContext, bool>?`: the same per response, for responses with no endpoint. `null` (default) always issues. |
 
 ```csharp
 app.UseAntiforgeryGenerator(options =>
@@ -297,7 +299,13 @@ Registered *before* `UseStaticFiles()`, every asset response also carries a per-
 
 ### Endpoint-routed static assets
 
-`MapStaticAssets()` serves from `UseEndpoints`, so those responses are reached *after* this middleware wherever you put it — `UseStaticFiles` short-circuits, an endpoint does not. To exempt them, [short-circuit the endpoint](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/static-files) **and** register the generator below `UseRouting()`:
+`MapStaticAssets()` serves from `UseEndpoints`, so those responses are reached *after* this middleware wherever you put it — `UseStaticFiles` short-circuits, an endpoint does not. The lighter way to exempt them, from 11.0.0-rc.3, works wherever the generator is registered:
+
+```csharp
+app.MapStaticAssets().SkipXsrfToken();
+```
+
+See [Keeping an endpoint out of the mint](#keeping-an-endpoint-out-of-the-mint). The alternative is to [short-circuit the endpoint](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/static-files). Note that short-circuiting also skips authentication, authorization, CORS, rate limiting, output caching and antiforgery validation for those endpoints. For fingerprinted assets that is usually fine. It only keeps the mint away if the generator is registered below `UseRouting()`:
 
 ```csharp
 app.UseRouting();
@@ -314,7 +322,48 @@ Measured on a real server, `GET` of a short-circuited endpoint:
 | above `UseRouting()` | both cookies written | overwritten by the mint |
 | below `UseRouting()` | none | untouched |
 
-The SPA's HTML entry point is an endpoint too, so it still mints in the second arrangement — the two requirements compose. Which of these you want is your application's call; the library has no opinion and does nothing about it on your behalf.
+The SPA's HTML entry point is an endpoint too, so it still mints in the second arrangement — the two requirements compose.
+
+## Keeping an endpoint out of the mint
+
+Some endpoints serve public, shared-cacheable responses nobody submits a form from: status and coverage badges fetched through an image proxy, Open Graph images, RSS/Atom feeds, `sitemap.xml`, `.well-known/*`. Through the mint, each one gets a per-user `Set-Cookie`, has `public` forced to `private` (so the proxy stops caching it), and pays a DataProtection round trip for a token nobody reads.
+
+Mark them instead:
+
+```csharp
+app.MapGet("/badge/{id}", GetBadge)
+   .SkipXsrfToken()
+   .RequireRateLimiting("per-ip");          // still runs
+
+var feeds = app.MapGroup("/feeds").SkipXsrfToken();   // every endpoint in the group
+
+[SkipXsrfToken]                             // a controller, or a single action
+public class OgImageController : ControllerBase { /* ... */ }
+```
+
+The check runs when the response starts, after routing has matched, so it works **whether the generator is registered above or below `UseRouting()`**, and every other middleware still runs. Measured on Kestrel, with the generator above `UseRouting()` and an endpoint declaring `public, max-age=300` with a 1-request rate limit:
+
+| | 1st request | 2nd request |
+|---|---|---|
+| no opt-out | `max-age=300, private`, two `Set-Cookie` | 429 |
+| `.ShortCircuit()` | `max-age=300, private`, two `Set-Cookie` | **200: the rate limiter was skipped** |
+| `.SkipXsrfToken()` | `public, max-age=300` untouched, no `Set-Cookie` | 429 |
+
+What skipping means:
+
+- **No token at all.** No framework cookie, no `XSRF-TOKEN`, no change to `Cache-Control` or `Pragma`.
+- **No `X-Frame-Options: SAMEORIGIN` either.** The antiforgery system adds it as a side effect. If an HTML page relied on that for framing protection, set the header yourself.
+- **Validation is unaffected.** This turns off *issuing* a token, not *validating* one. That is still governed by `DisableAntiforgery()` / `[RequireAntiforgeryToken]`. A skipped endpoint that requires validation still validates; it just hands out no token.
+
+For responses that have no endpoint, such as a custom middleware serving media or a proxied upstream, use a predicate. It runs at the same point, so it can see the endpoint and the status code:
+
+```csharp
+app.UseAntiforgeryGenerator(o => o.ShouldIssue = ctx => !ctx.Request.Path.StartsWithSegments("/media"));
+```
+
+A predicate that throws is logged at Error, and that response goes out without a token. Prefer the endpoint metadata where an endpoint exists, because it sits next to what it describes and does not drift when a route moves. Before 11.0.0-rc.3 the only alternative was `app.UseWhen(ctx => ..., b => b.UseAntiforgeryGenerator())`.
+
+> ⚠️ **Never skip the SPA's HTML entry point, or an endpoint the SPA calls to refresh its token.** The SPA then has no token to send, and every mutating request after it is rejected. That is why skipping is never automatic, not even for a response the application declared `public`: prerendered HTML can legitimately be `public`, and only the application can tell it apart from a badge.
 
 ## Caching
 
@@ -329,8 +378,11 @@ The default is now `XsrfCacheHeaderPolicy.PreservePrivate`:
 | No `Cache-Control` of its own | `no-cache, no-store` — unchanged. The SPA's HTML navigation carries a fresh token and is still never cached. |
 | `Cache-Control: public, max-age=300` | `max-age=300, private` — preserved, but forced `private`. |
 | `Cache-Control: no-store` | preserved. |
+| a `Cache-Control` that cannot be parsed | `no-cache, no-store`. It cannot be made `private` reliably. From 11.0.0-rc.3 the package logs a Warning naming the dropped value, once per process. |
 
-`private` is forced and `public` dropped because the response carries a `Set-Cookie` holding *this* user's token; a shared cache storing it could hand that token to the next visitor. Set `options.CacheHeaders = XsrfCacheHeaderPolicy.NoStore` to restore the pre-11.0.0-rc.2 behaviour.
+`private` is forced and `public` dropped because the response carries a `Set-Cookie` holding *this* user's token; a shared cache storing it could hand that token to the next visitor. Set `options.CacheHeaders = XsrfCacheHeaderPolicy.NoStore` to restore the pre-11.0.0-rc.2 behaviour. For a response that should stay `public`, keep it out of the mint altogether: see [Keeping an endpoint out of the mint](#keeping-an-endpoint-out-of-the-mint).
+
+`DefaultAntiforgery` logs *"The 'Cache-Control' and 'Pragma' headers have been overridden…"* (EventId 8) whenever it finds a caching policy on the response. In 11.0.0-rc.2 that warning appeared once per request on every response with its own `Cache-Control`, although `PreservePrivate` had put the policy back. From 11.0.0-rc.3 the package hides the application's headers from the framework while it mints, so the warning no longer appears under `PreservePrivate`. Under `NoStore` the override is real, and the warning still appears. If the mint fails, the application's headers are restored exactly as it set them.
 
 ## What this package does not protect
 

@@ -18,7 +18,10 @@ internal static class XsrfTestHost
     public const string RequestToken = "the-request-token";
     public const string CookieToken = "the-cookie-token";
 
-    public sealed record Entry(LogLevel Level, string Message, Exception? Exception);
+    public sealed record Entry(LogLevel Level, string Message, Exception? Exception, string Category = "", EventId EventId = default);
+
+    /// <summary><c>DefaultAntiforgery</c>'s "the cache headers have been overridden" warning.</summary>
+    public const int CacheHeadersOverriddenEventId = 8;
 
     public sealed record Result(DefaultHttpContext Context, IReadOnlyList<string> SetCookies, IReadOnlyList<Entry> Logs)
     {
@@ -35,13 +38,17 @@ internal static class XsrfTestHost
         string? environment = null,
         bool fireCallbacks = true,
         int requests = 1,
-        int? status = null)
+        int? status = null,
+        bool frameworkAntiforgery = false)
     {
         var options = new XsrfOptions();
         configure?.Invoke(options);
 
         var recorder = new RecordingLoggerProvider();
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(recorder).SetMinimumLevel(LogLevel.Trace));
+        // The same recorder, so DefaultAntiforgery's own warnings are visible too. Without it the
+        // framework's logger writes nowhere and "no Warning was logged" passes vacuously.
+        var services = BuildServices(recorder);
 
         // One instance across every request, the way UseMiddleware builds it - otherwise a
         // "log this once per process" assertion cannot fail.
@@ -54,7 +61,7 @@ internal static class XsrfTestHost
         DefaultHttpContext context = null!;
         for (var i = 0; i < requests; i++)
         {
-            context = CreateContext(BuildServices(), https);
+            context = CreateContext(services, https);
             if (status is not null)
             {
                 context.Response.StatusCode = status.Value;
@@ -62,7 +69,8 @@ internal static class XsrfTestHost
 
             configureContext?.Invoke(context);
 
-            await middleware.Invoke(context, antiforgery ?? StubAntiforgery.Working());
+            await middleware.Invoke(context, antiforgery
+                ?? (frameworkAntiforgery ? services.GetRequiredService<IAntiforgery>() : StubAntiforgery.Working()));
 
             if (fireCallbacks)
             {
@@ -73,9 +81,15 @@ internal static class XsrfTestHost
         return new Result(context, ReadSetCookies(context), recorder.Entries);
     }
 
-    public static ServiceProvider BuildServices()
+    public static ServiceProvider BuildServices(ILoggerProvider? logs = null)
         => new ServiceCollection()
-            .AddLogging()
+            .AddLogging(builder =>
+            {
+                if (logs is not null)
+                {
+                    builder.AddProvider(logs).SetMinimumLevel(LogLevel.Trace);
+                }
+            })
             .AddAntiforgery()
             .AddSingleton<IHostEnvironment>(new StubHostEnvironment(Environments.Development))
             .BuildServiceProvider();
@@ -142,17 +156,20 @@ internal static class XsrfTestHost
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 
-    private sealed class RecordingLoggerProvider : ILoggerProvider
+    internal sealed class RecordingLoggerProvider : ILoggerProvider
     {
         private readonly List<Entry> entries = [];
 
-        public IReadOnlyList<Entry> Entries => entries;
+        public IReadOnlyList<Entry> Entries
+        {
+            get { lock (entries) { return [.. entries]; } }
+        }
 
-        public ILogger CreateLogger(string categoryName) => new Recorder(entries);
+        public ILogger CreateLogger(string categoryName) => new Recorder(entries, categoryName);
 
         public void Dispose() { }
 
-        private sealed class Recorder(List<Entry> entries) : ILogger
+        private sealed class Recorder(List<Entry> entries, string category) : ILogger
         {
             public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -162,7 +179,7 @@ internal static class XsrfTestHost
             {
                 lock (entries)
                 {
-                    entries.Add(new Entry(logLevel, formatter(state, exception), exception));
+                    entries.Add(new Entry(logLevel, formatter(state, exception), exception, category, eventId));
                 }
             }
         }
@@ -178,12 +195,19 @@ internal sealed class StubAntiforgery : IAntiforgery
 {
     private readonly Func<Exception>? throws;
     private readonly string? requestToken;
+    private readonly bool throwsAfterCookie;
+    private readonly bool stampsCacheHeaders;
 
-    private StubAntiforgery(Func<Exception>? throws, string? requestToken)
+    private StubAntiforgery(Func<Exception>? throws, string? requestToken, bool throwsAfterCookie = false, bool stampsCacheHeaders = true)
     {
         this.throws = throws;
         this.requestToken = requestToken;
+        this.throwsAfterCookie = throwsAfterCookie;
+        this.stampsCacheHeaders = stampsCacheHeaders;
     }
+
+    /// <summary>A replaced <see cref="IAntiforgery"/> that issues tokens but writes no cache headers.</summary>
+    public static StubAntiforgery StampingNoCacheHeaders() => new(null, XsrfTestHost.RequestToken, stampsCacheHeaders: false);
 
     public static StubAntiforgery Working() => new(null, XsrfTestHost.RequestToken);
 
@@ -191,9 +215,15 @@ internal sealed class StubAntiforgery : IAntiforgery
 
     public static StubAntiforgery Throwing(Func<Exception> factory) => new(factory, null);
 
+    /// <summary>
+    /// Writes the HttpOnly cookie half and then throws - not something DefaultAntiforgery does, but a
+    /// replaced <see cref="IAntiforgery"/> may, and it leaves a per-user cookie on a failed mint.
+    /// </summary>
+    public static StubAntiforgery ThrowingAfterTheCookie(Func<Exception> factory) => new(factory, null, throwsAfterCookie: true);
+
     public AntiforgeryTokenSet GetAndStoreTokens(HttpContext httpContext)
     {
-        if (throws is not null)
+        if (throws is not null && !throwsAfterCookie)
         {
             throw throws();
         }
@@ -203,8 +233,13 @@ internal sealed class StubAntiforgery : IAntiforgery
             new CookieOptions { Path = "/", HttpOnly = true, SameSite = SameSiteMode.Strict });
         httpContext.Response.Headers.XFrameOptions = "SAMEORIGIN";
 
+        if (throws is not null)
+        {
+            throw throws();
+        }
+
         // DefaultAntiforgery.SetDoNotCacheHeaders, which is.
-        if (!httpContext.Response.HasStarted)
+        if (stampsCacheHeaders && !httpContext.Response.HasStarted)
         {
             httpContext.Response.Headers.CacheControl = "no-cache, no-store";
             httpContext.Response.Headers.Pragma = "no-cache";
