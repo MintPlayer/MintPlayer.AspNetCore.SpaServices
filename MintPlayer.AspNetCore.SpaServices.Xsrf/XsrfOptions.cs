@@ -100,4 +100,34 @@ public sealed class XsrfOptions
 	/// Defaults to <see cref="XsrfCacheHeaderPolicy.PreservePrivate"/>.
 	/// </summary>
 	public XsrfCacheHeaderPolicy CacheHeaders { get; set; } = XsrfCacheHeaderPolicy.PreservePrivate;
+
+	/// <summary>
+	/// Decides per response whether a token is issued at all. <see langword="null"/>, the default,
+	/// always issues one.
+	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// For responses that have no endpoint to carry <see cref="SkipXsrfTokenAttribute"/>, such as a
+	/// custom middleware serving media or a proxied upstream. Prefer the attribute or
+	/// <see cref="SkipXsrfTokenExtensions.SkipXsrfToken{TBuilder}(TBuilder, bool)"/> where an endpoint
+	/// exists: it sits next to the endpoint it describes and does not drift when a route moves.
+	/// </para>
+	/// <para>
+	/// Evaluated when the response starts, so routing has already run and the predicate can inspect
+	/// <c>GetEndpoint()</c> and the status code. It is not consulted for an endpoint whose metadata
+	/// already decided, either way.
+	/// </para>
+	/// <para>
+	/// A predicate that throws is logged at Error and the token is <em>issued</em>. That is the safe
+	/// side, because the two mistakes are not symmetric. Wrongly minting costs a <c>Set-Cookie</c>
+	/// and a <c>private</c> downgrade on a response that did not need them. Wrongly skipping on the
+	/// SPA's entry point breaks every mutating request that follows. A buggy predicate is most likely
+	/// to throw on exactly the requests its author did not think about.
+	/// </para>
+	/// <para>
+	/// Returning <see langword="false"/> for the SPA's HTML entry point, or for its token-refresh
+	/// endpoint, leaves the SPA without a token and breaks every mutating request that follows.
+	/// </para>
+	/// </remarks>
+	public Func<HttpContext, bool>? ShouldIssue { get; set; }
 }
