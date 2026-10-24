@@ -24,15 +24,9 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 11.0.100-rc.1.26425.128
-        # Authenticates packages to push to GPR
-        source-url: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
-      env:
-        NUGET_AUTH_TOKEN: '%NUGET_AUTH_TOKEN%'
     
     - name: Install dependencies
       run: dotnet restore
-      env:
-        NUGET_AUTH_TOKEN: ${{ github.token }}
         
     - name: Build
       run: dotnet build --configuration Release --no-restore

@@ -23,15 +23,9 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 11.0.100-rc.1.26425.128
-        # Authenticates packages to push to GPR
-        source-url: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
-      env:
-        NUGET_AUTH_TOKEN: '%NUGET_AUTH_TOKEN%'
     
     - name: Install dependencies
       run: dotnet restore
-      env:
-        NUGET_AUTH_TOKEN: ${{ github.token }}
         
     - name: Build
       run: dotnet build --configuration Release --no-restore
@@ -79,6 +73,6 @@ jobs:
       run: dotnet nuget push **/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.PUBLISH_TO_NUGET_ORG }} --skip-duplicate
      
     - name: PushGithub
-      run: dotnet nuget push **/*.nupkg --no-symbols --skip-duplicate
-      env:
-        NUGET_AUTH_TOKEN: ${{ github.token }}
+      # Explicit source: GitHub Packages is deliberately NOT a restore source on CI. A restore source answering
+      # 403 for a package this repository's token may not read fails the whole restore (MintPlayer/MintPlayer.Dotnet.Tools#200).
+      run: dotnet nuget push **/*.nupkg --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json --api-key ${{ github.token }} --no-symbols --skip-duplicate
