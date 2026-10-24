@@ -10,6 +10,11 @@ jobs:
     name: build-master
     runs-on: ubuntu-latest
 
+    permissions:
+      packages: write
+      contents: write
+      id-token: write
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -63,8 +68,12 @@ jobs:
         # `dotnet pack` and block a NuGet release.
         fail-ci-if-error: false
 
+    - name: Version the packages
+      id: versioning
+      uses: MintPlayer/MintPlayer.Spark/apps/CodeCoverage/versioning-action@a0f9e20f3d7f91814d00c598c64b4a39cd1f1c45 # versioning-v1
+
     - name: Pack
-      run: dotnet pack --no-build --configuration Release
+      run: dotnet pack --configuration Release
      
     - name: PushNuget
       run: dotnet nuget push **/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.PUBLISH_TO_NUGET_ORG }} --skip-duplicate

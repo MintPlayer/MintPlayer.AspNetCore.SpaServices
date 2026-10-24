@@ -1,0 +1,5 @@
+<Project>
+  <ItemGroup>
+    <PackageReference Include="MintPlayer.Versioning.MSBuild" Version="1.0.0" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
