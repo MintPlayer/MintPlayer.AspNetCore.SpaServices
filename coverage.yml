@@ -38,3 +38,15 @@ gate:
   # Failed checks turn red. With this off, both checks post the same numbers but always conclude
   # "neutral" - which is exactly why coverage/project and coverage/patch read "skipping" today.
   blocking: true
+
+# MintPlayer package versioning (added by the onboarding pull request). The publish workflow tags every release
+# `<package id>/v<version>`; the commented lines are the defaults.
+versioning:
+  mode: server                       # server | local: local runs the engine on the runner, without the app
+#   releaseBranches: ["release/*.x"]
+#   ignore: ["**/*.md"]              # changed files that never release a package
+#   groups:                          # packages that always share one version
+#     - name: core
+#       packages: [Acme.Core, Acme.Core.*]
+#   packages:
+#     Acme.Generators: { anchor: free }   # free, or the framework package whose major it follows
