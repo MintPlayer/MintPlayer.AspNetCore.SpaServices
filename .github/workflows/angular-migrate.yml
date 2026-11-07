@@ -1,0 +1,60 @@
+name: angular-migrate
+
+# MintPlayer CodeCoverage dependency updates: the Angular MIGRATE hook (docs/code-coverage/
+# dependency-updates-PRD.md R9, R18, S17). Dispatched only for an APPROVED over-threshold group, after its
+# apply, on a work ref = expected_sha + the applied group. It runs `ng update <pkg> --migrate-only
+# --from --to` per package (local CLI, NG_DISABLE_VERSION_CHECK=1, scripts off), relocks, and uploads
+# `migrate-result.json` (the completion marker, written last) + `migrate.patch`.
+#
+# Migrations execute package code by design (S17). So: `contents: read`, NO secrets, no `id-token`,
+# `persist-credentials: false`. A failing step fails the run and nothing is uploaded (`if: success()`), so
+# a partial migration never looks valid: the bot requires conclusion == success AND the marker. The
+# resulting PR never auto-merges and is marked "contains code migrations".
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_sha:
+        description: The work-ref commit holding the applied group; the patch is a diff against it.
+        required: true
+      packages:
+        description: 'JSON array of {"name","from","to"}, in migration order, e.g. [{"name":"@angular/core","from":"21.2.0","to":"22.2.3"}]'
+        required: true
+      run_id:
+        description: The bot's id for this run (artifact name and run name).
+        required: true
+
+run-name: 'angular migrate (${{ inputs.run_id }})'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.base_sha }}
+          persist-credentials: false
+
+      - id: migrate
+        uses: MintPlayer/MintPlayer.Spark/apps/CodeCoverage/dependency-action@8833d092d77bf1f5c66f9351ad6d27e7079a89f3 # dependency-update-v1
+        with:
+          mode: migrate
+          migrate-tool: angular
+          migrate-packages: ${{ inputs.packages }}
+          base-sha: ${{ inputs.base_sha }}
+
+      - uses: actions/upload-artifact@v7
+        if: success()
+        with:
+          name: dependency-migrate-${{ inputs.run_id }}
+          path: ${{ steps.migrate.outputs.output-dir }}
+          if-no-files-found: error
+          retention-days: 3

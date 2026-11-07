@@ -1,0 +1,63 @@
+name: dependency-lookup
+
+# MintPlayer CodeCoverage dependency updates: the LOOKUP phase (docs/code-coverage/dependency-updates-PRD.md
+# §13.3, R16). The bot dispatches this on the default branch and reads the `dependency-lookup-<run_id>`
+# artifact (lookup.json: ecosystem-neutral records, platform records, Actions interface diffs).
+#
+# It only runs Renovate (pinned by digest inside the action) in lookup mode: Renovate reads manifests and
+# asks registries; S12 showed it executes no repository code for any manager. It never commits or pushes.
+#
+# SECURITY (T5): `contents: read`, no `id-token`, `persist-credentials: false`, the action pinned to the
+# `dependency-update-v1` release line. The bot checks this file's blob against the default branch before it
+# dispatches. Do not add `pull_request_target`, write permissions or an environment.
+#
+# Private feeds: lookup is the one phase where feed credentials are allowed (no repository code runs). Put a
+# Renovate `hostRules` JSON array in a repository secret and pass it as `host-rules` below, e.g.
+#   [{"matchHost":"nuget.pkg.github.com","username":"x","password":"<token>"}]
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: The default-branch commit the bot plans against. The run fails if the checkout differs.
+        required: true
+      run_id:
+        description: The bot's id for this lookup (artifact name and run name).
+        required: true
+
+run-name: 'dependency lookup (${{ inputs.run_id }})'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-lookup
+  cancel-in-progress: false
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.expected_sha }}
+          persist-credentials: false
+
+      - id: lookup
+        uses: MintPlayer/MintPlayer.Spark/apps/CodeCoverage/dependency-action@8833d092d77bf1f5c66f9351ad6d27e7079a89f3 # dependency-update-v1
+        with:
+          mode: lookup
+          expected-sha: ${{ inputs.expected_sha }}
+          # Read-only: Renovate's GitHub tag/release lookups and the action.yml interface diffs (R15).
+          github-token: ${{ github.token }}
+          # host-rules: ${{ secrets.RENOVATE_HOST_RULES }}
+
+      # Only a successful run uploads: a half-written lookup must never reach the bot.
+      - uses: actions/upload-artifact@v7
+        if: success()
+        with:
+          name: dependency-lookup-${{ inputs.run_id }}
+          path: ${{ steps.lookup.outputs.output-dir }}
+          if-no-files-found: error
+          retention-days: 3
