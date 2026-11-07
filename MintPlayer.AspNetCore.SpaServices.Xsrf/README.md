@@ -18,6 +18,170 @@ Install-Package MintPlayer.AspNetCore.SpaServices.Xsrf
 dotnet add package MintPlayer.AspNetCore.SpaServices.Xsrf
 ```
 
+## Getting started: a new ASP.NET Core app and a new Angular workspace
+
+These steps go from nothing to an Angular app whose `POST`s pass antiforgery validation. If you already have one half, skip its step and do the rest.
+
+You need the .NET 10 SDK or later, Node.js 20.19+, 22.12+ or 24, and the Angular CLI (`npm install -g @angular/cli`).
+
+Do you want server-side rendering too? Then follow the [Prerendering getting-started guide](../MintPlayer.AspNetCore.SpaServices.Prerendering/README.md#getting-started-a-new-aspnet-core-app-and-a-new-angular-workspace) first. After that, only steps 1, 4, 5 and 6 below apply: add the package, the antiforgery lines in `Program.cs`, the endpoint and the Angular configuration.
+
+### 1. Create the ASP.NET Core app
+
+```
+dotnet new web -n MyApp
+cd MyApp
+dotnet add package MintPlayer.AspNetCore.SpaServices.Xsrf
+dotnet add package MintPlayer.AspNetCore.SpaServices
+```
+
+`MintPlayer.AspNetCore.SpaServices` serves the Angular app (`UseSpaImproved`). This package doesn't depend on it, so any other way of serving the SPA works too.
+
+### 2. Create the Angular workspace in `ClientApp`
+
+Run this in the project folder, next to `MyApp.csproj`:
+
+```
+ng new ClientApp --ssr=false --skip-git
+```
+
+The SPA packages look for the SPA in `ClientApp` by default.
+
+### 3. `ClientApp/angular.json`: set the output path
+
+Add `"outputPath": "dist"` to `projects.ClientApp.architect.build.options`:
+
+```jsonc
+"build": {
+  "builder": "@angular/build:application",
+  "options": {
+    "outputPath": "dist",
+    "browser": "src/main.ts",
+    // ...
+  }
+}
+```
+
+Without it Angular writes to `dist/ClientApp/browser`, and `RootPath` in step 4 would have to say so.
+
+### 4. `Program.cs`
+
+Replace the generated file. In particular, the template's `app.MapGet("/", () => "Hello World!")` would answer `/` before the SPA could.
+
+```csharp
+using MintPlayer.AspNetCore.SpaServices.Extensions;
+using MintPlayer.AspNetCore.SpaServices.Xsrf;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// AddControllersWithViews, not AddControllers: [ValidateAntiForgeryToken]'s filter lives in the view features.
+builder.Services.AddControllersWithViews();
+// The header the SPA sends the request token in. Required: it has no default.
+builder.Services.AddAntiforgery(options => options.HeaderName = "X-XSRF-TOKEN");
+builder.Services.AddSpaStaticFilesImproved(configuration =>
+{
+    // The Angular build output (angular.json "outputPath": "dist").
+    configuration.RootPath = "ClientApp/dist/browser";
+});
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    // Static files first: they short-circuit, so hashed bundles get no per-user cookie and stay cacheable.
+    app.UseSpaStaticFilesImproved();
+}
+
+// Before whatever serves index.html, so the page load that starts the app sets the XSRF-TOKEN cookie.
+app.UseAntiforgeryGenerator();
+
+app.UseRouting();
+app.MapControllers();
+
+// Explicit: endpoints must run here, before the SPA middleware, which answers every request that reaches
+// it. Without this call WebApplication runs them at the very end of the pipeline, so they are never reached.
+app.UseEndpoints(_ => { });
+
+app.UseSpaImproved(spa =>
+{
+    spa.Options.SourcePath = "ClientApp";
+
+    if (app.Environment.IsDevelopment())
+    {
+        spa.UseAngularCliServer(npmScript: "start");
+    }
+});
+
+app.Run();
+```
+
+### 5. A validated endpoint
+
+`Controllers/WeatherForecastController.cs`:
+
+```csharp
+using Microsoft.AspNetCore.Mvc;
+
+namespace MyApp.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class WeatherForecastController : ControllerBase
+{
+    [HttpPost]
+    [ValidateAntiForgeryToken]   // rejects the request unless X-XSRF-TOKEN matches the antiforgery cookie
+    public IActionResult Create() => Ok(new { created = true });
+}
+```
+
+Validate only mutating verbs: Angular doesn't send the header on `GET` or `HEAD`. To validate every `POST`/`PUT`/`PATCH`/`DELETE` without decorating each action, register `[AutoValidateAntiforgeryToken]` as a global filter: `AddControllersWithViews(o => o.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()))`.
+
+### 6. Angular: `HttpClient` with XSRF names
+
+`ClientApp/src/app/app.config.ts`, add `provideHttpClient` to the generated providers:
+
+```typescript
+import { ApplicationConfig } from '@angular/core';
+import { provideHttpClient, withXsrfConfiguration } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    // ...the providers ng new generated
+    provideRouter(routes),
+    provideHttpClient(withXsrfConfiguration({
+      cookieName: 'XSRF-TOKEN',   // the cookie UseAntiforgeryGenerator writes
+      headerName: 'X-XSRF-TOKEN'  // AntiforgeryOptions.HeaderName
+    }))
+  ]
+};
+```
+
+These are Angular's defaults, so `provideHttpClient()` alone also works; naming them keeps the two sides visibly in step. Then call the API with a **relative** URL; Angular adds the header only to relative or same-origin requests:
+
+```typescript
+this.http.post('/api/WeatherForecast', {}).subscribe();
+```
+
+For an NgModule app, see [Angular: NgModule bootstrap](#angular-ngmodule-bootstrap).
+
+### 7. Run it
+
+```
+dotnet run
+```
+
+Don't start `ng serve` yourself: the middleware starts it. Open the app. The browser's dev tools should show an `XSRF-TOKEN` cookie, and the `POST` should carry an `X-XSRF-TOKEN` header and return 200. Without the header, the same request returns 400.
+
 ## How it works, end to end
 
 1. **You register ASP.NET Core's antiforgery services** and tell them which request header carries the token: `services.AddAntiforgery(options => options.HeaderName = "X-XSRF-TOKEN")`.
@@ -98,11 +262,12 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Issue the XSRF-TOKEN cookie on every response.
-// Place it before the endpoints that will be validated.
+app.UseStaticFiles();
+
+// Issue the XSRF-TOKEN cookie on every response that gets this far (static files short-circuit above).
+// Place it before the endpoints that will be validated and before whatever serves the SPA.
 app.UseAntiforgeryGenerator();
 
-app.UseStaticFiles();
 app.UseRouting();
 
 app.MapControllerRoute(

@@ -23,14 +23,16 @@ BREAKING CHANGES
 MIGRATION (Angular 19-22)
 - main.server.ts: add the renderApplication re-export. Move your providers into prerenderProviders,
   and keep APP_BASE_HREF relative (params.baseUrl): an absolute one makes Angular throw NG05703.
-- app.config.server.ts: provideServerRendering(withRoutes([{ path: '**', renderMode: RenderMode.Server }]))
-  from @angular/ssr. Do not provide the same tokens there; application providers win over platform ones.
-- angular.json: @angular/build:application. Put server, outputMode "server" and ssr.entry in an
+- app.routes.server.ts: renderMode RenderMode.Server for '**' (ng new --ssr generates RenderMode.Prerender).
+  Do not provide prerenderProviders' tokens in app.config(.server).ts; application providers win over
+  platform ones.
+- angular.json: @angular/build:application with "outputPath": "dist", so the output lands in dist/browser
+  and dist/server rather than dist/<project-name>. Put server, outputMode "server" and ssr.entry in an
   "ssr" configuration rather than the default options, or `ng serve` renders pages itself and the
   template ASP.NET Core captures in development is already rendered.
 - Startup: BootModulePath "ClientApp/dist/server/main.server.mjs", SpaOptions.DefaultPage
   "/index.csr.html", and ExcludeUrls ["/@vite", "/@fs", "/@ng", "/@id"] instead of "/sockjs-node".
-- The Prerendering README's "The Angular side" walks through all of it.
+- The Prerendering README's "Getting started" walks through all of it, from dotnet new web and ng new.
 
 FIXES
 - The INodeServices that UseSpaPrerendering creates for itself (when none is registered) is now
