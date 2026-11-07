@@ -14,9 +14,21 @@ public class AngularPrerendererBuilder : Abstractions.ISpaPrerendererBuilder
 	/// <summary>
 	/// Constructs an instance of <see cref="AngularPrerendererBuilder"/>.
 	/// </summary>
-	/// <param name="npmScript">The name of the script in your package.json file that builds the server-side bundle for your Angular application.</param>
-	public AngularPrerendererBuilder(string npmScript) : this(npmScript, @"Build at\:", 2) { }
-	//public AngularPrerendererBuilder(string npmScript) : this(npmScript, "Entrypoint main", 1) { }
+	/// <param name="npmScript">
+	/// The name of the script in your package.json file that builds the server-side bundle for your Angular
+	/// application, typically <c>ng build --configuration development</c>. It is run with <c>--watch</c> appended,
+	/// so it must be a single command: in <c>a &amp;&amp; b</c> only <c>b</c> would receive the flag.
+	/// </param>
+	/// <remarks>
+	/// Waits for the application builder's (Angular 17+) <c>Application bundle generation complete.</c> once. For
+	/// the legacy webpack <c>:server</c> builder, use the other constructor with <c>@"Build at\:"</c>.
+	/// </remarks>
+	public AngularPrerendererBuilder(string npmScript) : this(npmScript, DefaultFinishedPattern, 1) { }
+
+	/// <summary>
+	/// What the Angular application builder prints after every (re)build.
+	/// </summary>
+	internal const string DefaultFinishedPattern = @"Application bundle generation complete\.";
 
 	/// <summary>
 	/// Constructs an instance of <see cref="AngularPrerendererBuilder"/>.
@@ -32,8 +44,7 @@ public class AngularPrerendererBuilder : Abstractions.ISpaPrerendererBuilder
 		}
 
 		this.npmScript = npmScript;
-		//this.finishedRegex = new Regex(finishedRegex ?? "Entrypoint main", RegexOptions.None, RegexMatchTimeout);
-		this.finishedRegex = new Regex(finishedRegex ?? @"Build at\:", RegexOptions.None, RegexMatchTimeout);
+		this.finishedRegex = new Regex(finishedRegex ?? DefaultFinishedPattern, RegexOptions.None, RegexMatchTimeout);
 		this.finishedRegexIndex = finishedRegexNumber;
 	}
 

@@ -47,7 +47,7 @@ public interface INodeServices : IDisposable
 	/// <see cref="InvokeExportAsync{T}(CancellationToken, string, string, object[])"/>: both
 	/// overloads end in <c>params object[] args</c>, so omitting the token compiles silently.
 	/// </remarks>
-	Task<T> InvokeExportAsync<T>(string moduleName, string exportedFunctionName, params object[] args);
+	Task<T> InvokeExportAsync<T>(string moduleName, string? exportedFunctionName, params object[] args);
 
 	/// <summary>
 	/// Asynchronously invokes code in the Node.js instance.
@@ -58,5 +58,5 @@ public interface INodeServices : IDisposable
 	/// <param name="exportedFunctionName">Specifies the CommonJS export to be invoked.</param>
 	/// <param name="args">Any sequence of JSON-serializable arguments to be passed to the Node.js function.</param>
 	/// <returns>A <see cref="Task{TResult}"/> representing the completion of the RPC call.</returns>
-	Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string exportedFunctionName, params object[] args);
+	Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string? exportedFunctionName, params object[] args);
 }

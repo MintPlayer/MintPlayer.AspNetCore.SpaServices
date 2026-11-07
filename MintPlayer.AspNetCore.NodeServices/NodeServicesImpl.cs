@@ -23,9 +23,13 @@ internal partial class NodeServicesImpl : INodeServices
 	private static readonly TimeSpan DefaultConnectionDrainingTimespan = TimeSpan.FromSeconds(15);
 	[Inject] private readonly Func<INodeInstance> _nodeInstanceFactory;
 	private readonly TimeSpan _connectionDrainingTimespan = DefaultConnectionDrainingTimespan;
-	private INodeInstance _currentNodeInstance;
+	private INodeInstance? _currentNodeInstance;
 	private readonly Lock _currentNodeInstanceAccessLock = new();
-	private Exception _instanceDelayedDisposalException;
+	private Exception? _instanceDelayedDisposalException;
+	// Replaced instances still serving in-flight calls. Dispose() ends them too: they used to run out their
+	// draining period, so a stopped host left a node behind for up to 15 s.
+	private readonly HashSet<INodeInstance> _drainingInstances = [];
+	private bool _disposed;
 
 	/// <summary>
 	/// Internal so a test can shorten the draining period; otherwise the delayed disposal would only
@@ -47,17 +51,17 @@ internal partial class NodeServicesImpl : INodeServices
 		return InvokeExportAsync<T>(cancellationToken, moduleName, null, args);
 	}
 
-	public Task<T> InvokeExportAsync<T>(string moduleName, string exportedFunctionName, params object[] args)
+	public Task<T> InvokeExportAsync<T>(string moduleName, string? exportedFunctionName, params object[] args)
 	{
 		return InvokeExportWithPossibleRetryAsync<T>(moduleName, exportedFunctionName, args, /* allowRetry */ true, CancellationToken.None);
 	}
 
-	public Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string exportedFunctionName, params object[] args)
+	public Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string? exportedFunctionName, params object[] args)
 	{
 		return InvokeExportWithPossibleRetryAsync<T>(moduleName, exportedFunctionName, args, /* allowRetry */ true, cancellationToken);
 	}
 
-	private async Task<T> InvokeExportWithPossibleRetryAsync<T>(string moduleName, string exportedFunctionName, object[] args, bool allowRetry, CancellationToken cancellationToken)
+	private async Task<T> InvokeExportWithPossibleRetryAsync<T>(string moduleName, string? exportedFunctionName, object[] args, bool allowRetry, CancellationToken cancellationToken)
 	{
 		ThrowAnyOutstandingDelayedDisposalException();
 		var nodeInstance = GetOrCreateCurrentNodeInstance();
@@ -101,14 +105,23 @@ internal partial class NodeServicesImpl : INodeServices
 	{
 		lock (_currentNodeInstanceAccessLock)
 		{
+			_disposed = true;
 			if (_currentNodeInstance != null)
 			{
 				DisposeNodeInstance(_currentNodeInstance, delay: TimeSpan.Zero);
 				_currentNodeInstance = null;
 			}
+
+			foreach (var draining in _drainingInstances)
+			{
+				draining.Dispose();
+			}
+
+			_drainingInstances.Clear();
 		}
 	}
 
+	// Called with _currentNodeInstanceAccessLock held.
 	private void DisposeNodeInstance(INodeInstance nodeInstance, TimeSpan delay)
 	{
 		if (delay == TimeSpan.Zero)
@@ -117,12 +130,24 @@ internal partial class NodeServicesImpl : INodeServices
 		}
 		else
 		{
+			_drainingInstances.Add(nodeInstance);
 			Task.Run(async () =>
 			{
 				try
 				{
 					await Task.Delay(delay);
-					nodeInstance.Dispose();
+
+					bool stillDraining;
+					lock (_currentNodeInstanceAccessLock)
+					{
+						// False when Dispose() has already ended it.
+						stillDraining = _drainingInstances.Remove(nodeInstance);
+					}
+
+					if (stillDraining)
+					{
+						nodeInstance.Dispose();
+					}
 				}
 				catch (Exception ex)
 				{
@@ -154,6 +179,8 @@ internal partial class NodeServicesImpl : INodeServices
 		{
 			lock (_currentNodeInstanceAccessLock)
 			{
+				// After Dispose() a call would otherwise start a node that nothing will ever stop.
+				ObjectDisposedException.ThrowIf(_disposed, this);
 				instance = _currentNodeInstance ??= CreateNewNodeInstance();
 			}
 		}

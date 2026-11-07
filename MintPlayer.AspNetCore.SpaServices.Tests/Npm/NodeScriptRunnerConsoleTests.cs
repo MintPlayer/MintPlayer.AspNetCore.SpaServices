@@ -61,11 +61,15 @@ public class NodeScriptRunnerConsoleTests
 			var runner = new NodeScriptRunner("C:/app", "build", null, null, "npm", new DiagnosticListener("test"), CancellationToken.None, launcher);
 
 			runner.AttachToLogger(new ConsoleWritingLogger());
+
+			// Subscribed after AttachToLogger, so the runner's own stderr handlers run first for that
+			// line. And subscribed before Release: the reader records a line in its history before it
+			// raises OnReceivedLine, so a WaitForMatch that came later could find the line there and
+			// resolve before the logger had written it.
+			var lastLineHandled = runner.StdErr.WaitForMatch(new Regex(Regex.Escape(lastLine)));
 			launcher.Child.Release();
 
-			// Subscribed after AttachToLogger, so by the time this resolves the runner's own stderr
-			// handlers have already run for that line.
-			await runner.StdErr.WaitForMatch(new Regex(Regex.Escape(lastLine))).WaitAsync(Deadline);
+			await lastLineHandled.WaitAsync(Deadline);
 
 			return captured.ToString();
 		}

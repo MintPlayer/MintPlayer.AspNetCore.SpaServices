@@ -102,6 +102,31 @@ public class OutOfProcessNodeInstanceTests
 	}
 
 	[Fact]
+	public void A_constructor_that_fails_after_node_started_kills_it()
+	{
+		// The watcher throws on a project path that does not exist - after the launch. Nobody can dispose a
+		// half-constructed instance, so this node used to run on unowned.
+		var missing = Path.Combine(Path.GetTempPath(), "no-such-project-" + Guid.NewGuid().ToString("N"));
+
+		Assert.ThrowsAny<ArgumentException>(() => new TestNodeInstance(process, logger, projectPath: missing, watchFileExtensions: [".js"]));
+
+		Assert.Equal(1, process.KillCount);
+		Assert.True(process.KilledEntireTree);
+		Assert.True(process.Disposed);
+	}
+
+	[Fact]
+	public void Dispose_survives_a_kill_that_fails()
+	{
+		var instance = new TestNodeInstance(process, logger);
+		process.KillFailure = new InvalidOperationException("already gone");
+
+		instance.Dispose();
+
+		Assert.True(process.Disposed);
+	}
+
+	[Fact]
 	public async Task Never_listening_times_out_connecting()
 	{
 		using var instance = new TestNodeInstance(process, logger, invocationTimeoutMilliseconds: 50);
@@ -282,16 +307,8 @@ public class OutOfProcessNodeInstanceTests
 		Func<NodeInvocationInfo, CancellationToken, Task<object>>? invoke = null)
 		: OutOfProcessNodeInstance(
 			"module.exports = {};",
-			projectPath ?? Path.GetTempPath(),
-			watchFileExtensions ?? [],
 			"--custom-arg",
-			CancellationToken.None,
-			logger,
-			new Dictionary<string, string>(),
-			invocationTimeoutMilliseconds,
-			launchWithDebugging,
-			9229,
-			"node",
+			TestNodeOptions.Create("node", logger, invocationTimeoutMilliseconds, launchWithDebugging, 9229, projectPath, watchFileExtensions),
 			process.Start)
 	{
 		private readonly Func<NodeInvocationInfo, CancellationToken, Task<object>> invoke =

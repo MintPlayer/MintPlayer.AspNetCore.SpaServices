@@ -1,42 +1,23 @@
-import 'reflect-metadata';
-import { renderApplication } from '@angular/platform-server';
-import { enableProdMode, StaticProvider } from '@angular/core';
-import { createServerRenderer } from 'aspnet-prerendering';
+import { BootstrapContext, bootstrapApplication } from '@angular/platform-browser';
 import { APP_BASE_HREF } from '@angular/common';
+import { StaticProvider } from '@angular/core';
 import { App } from './app/app';
-import { bootstrapApplication } from '@angular/platform-browser';
-import { config as serverConfig } from './app/app.config.server';
-import { MESSAGE_TOKEN, PERSON_TOKEN, PEOPLE_TOKEN } from './app/tokens';
+import { config } from './app/app.config.server';
+import { DATA_FROM_SERVER } from './app/tokens';
 
-enableProdMode();
+// The stock Angular server entry: a bootstrap function, not a renderer.
+const bootstrap = (context: BootstrapContext) => bootstrapApplication(App, config, context);
 
-export default createServerRenderer(params => {
-  const providers: StaticProvider[] = [
-    { provide: APP_BASE_HREF, useValue: params.origin + params.baseUrl.slice(0, -1) },
-    { provide: MESSAGE_TOKEN, useValue: params.data.message },
-  ];
+export default bootstrap;
 
-  if ('people' in params.data) {
-    providers.push({ provide: PEOPLE_TOKEN, useValue: params.data.people });
-  } else {
-    providers.push({ provide: PEOPLE_TOKEN, useValue: null });
-  }
-  if ('person' in params.data) {
-    providers.push({ provide: PERSON_TOKEN, useValue: params.data.person });
-  } else {
-    providers.push({ provide: PERSON_TOKEN, useValue: null });
-  }
+// Lets MintPlayer.AspNetCore.SpaServices.Prerendering render this bundle itself, with the index.html that
+// ASP.NET Core captured and the request URL.
+export { renderApplication } from '@angular/platform-server';
 
-  const options = {
-    document: params.data.originalHtml,
-    url: params.url,
-    platformProviders: providers
-  };
-
-  // Bypass ssr api call cert warnings in development
-  process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = "0";
-
-  const renderPromise = renderApplication((context) => bootstrapApplication(App, serverConfig, context), options);
-
-  return renderPromise.then(html => ({ html }));
-});
+// Optional. Hands the data from ISpaPrerenderingService.OnSupplyData to Angular DI as one object, so nothing
+// has to be fetched over HTTP while the page is rendered on the server. Each page takes what it needs from it.
+export const prerenderProviders = (data: any, params: { baseUrl: string }): StaticProvider[] => [
+  { provide: DATA_FROM_SERVER, useValue: data },
+  // Relative: an absolute base href (origin + path) makes Angular reject the URL as changing origin (NG05703).
+  { provide: APP_BASE_HREF, useValue: params.baseUrl },
+];

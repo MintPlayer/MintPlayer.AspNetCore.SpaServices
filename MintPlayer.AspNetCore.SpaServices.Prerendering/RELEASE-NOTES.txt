@@ -1,3 +1,49 @@
+v next
+BREAKING CHANGES
+- The Angular application builder's server bundle is now supported as it comes. Point BootModulePath
+  at ClientApp/dist/server/main.server.mjs, an ES module with chunk files beside it, and add one line
+  to the stock main.server.ts:
+    export { renderApplication } from '@angular/platform-server';
+  The prerenderer then calls renderApplication with the HTML template ASP.NET Core captured and the
+  request URL. An optional `export const prerenderProviders = (data, params) => Provider[]` hands the
+  data from OnSupplyData to Angular DI. aspnet-prerendering, reflect-metadata and the webpack
+  `server` target are no longer needed. createServerRenderer modules (CommonJS or ESM) keep working
+  unchanged, and so does a plain `(params) => Promise<{ html }>` default export.
+- The aspnet-prerendering v1 "legacy" boot-function mode and the `webpackConfig` boot-module option
+  have been removed. params.domainTasks no longer exists for plain renderers.
+- AngularPrerendererBuilder(npmScript) now waits for the application builder's
+  "Application bundle generation complete." once, instead of "Build at:" twice. If you still use the
+  webpack `ng build && ng run app:server` script, pass both values explicitly:
+    new AngularPrerendererBuilder("build:ssr:development", @"Build at\:", 2)
+  The script is run with --watch appended, so make it a single command:
+    "build:ssr:development": "ng build --configuration development,ssr"
+- RenderToStringResult.Globals is a System.Text.Json JsonObject rather than a Newtonsoft JObject.
+  The package no longer depends on Newtonsoft.Json.
+
+MIGRATION (Angular 19-22)
+- main.server.ts: add the renderApplication re-export. Hand the OnSupplyData values to Angular from
+  prerenderProviders, preferably as one token holding all of them:
+    { provide: DATA_FROM_SERVER, useValue: data }
+  injected optionally by each page. Keep APP_BASE_HREF relative (params.baseUrl): an absolute one
+  makes Angular throw NG05703.
+- app.routes.server.ts: renderMode RenderMode.Server for '**' (ng new --ssr generates RenderMode.Prerender).
+  Do not provide prerenderProviders' tokens in app.config(.server).ts; application providers win over
+  platform ones.
+- angular.json: @angular/build:application with "outputPath": "dist", so the output lands in dist/browser
+  and dist/server rather than dist/<project-name>. Put server, outputMode "server" and ssr.entry in an
+  "ssr" configuration rather than the default options, or `ng serve` renders pages itself and the
+  template ASP.NET Core captures in development is already rendered.
+- Startup: BootModulePath "ClientApp/dist/server/main.server.mjs", SpaOptions.DefaultPage
+  "/index.csr.html", and ExcludeUrls ["/@vite", "/@fs", "/@ng", "/@id"] instead of "/sockjs-node".
+- The Prerendering README's "Getting started" walks through all of it, from dotnet new web and ng new.
+
+FIXES
+- The INodeServices that UseSpaPrerendering creates for itself (when none is registered) is now
+  disposed when the host stops. It used to keep its node process and file watcher until the .NET
+  process exited, so a host stopped and started in one process left a node behind each time.
+- RenderToStringResult.Html and RedirectUrl are annotated string?, matching what a renderer may
+  return.
+
 v 10.8.0-preview1
 BREAKING CHANGES
 - Response headers set by middleware upstream of UseSpaPrerendering are no longer discarded.

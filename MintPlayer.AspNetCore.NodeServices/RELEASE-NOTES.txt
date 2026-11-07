@@ -1,4 +1,52 @@
-﻿v 10.4.1
+﻿v next
+BREAKING CHANGES
+- The Node entry script is hand-written CommonJS (entrypoint-http.cjs) instead of a webpack bundle
+  of TypeScript 3 sources. The package no longer ships or builds any npm toolchain: Yarn.MSBuild,
+  webpack and the package's own node_modules are gone. Modules are loaded with import(), so .mjs and
+  ES-module boot files work, and the `new Function` workaround is gone.
+- The RPC channel to Node uses System.Text.Json instead of Newtonsoft.Json, with camelCase property
+  names and dictionary keys as before. The package no longer depends on Newtonsoft.Json. Invocation
+  arguments and results are serialized with the reflection-based resolver: apps that publish trimmed
+  or native-AOT must keep the types they exchange with Node.
+- StringAsTempFile is now internal. It was an implementation detail of how the entry script reaches
+  Node.
+- OutOfProcessNodeInstance's constructor is now protected and takes (entryPointScript,
+  commandLineArguments, NodeServicesOptions) instead of eleven parameters. Every other value was
+  already a NodeServicesOptions property. The finalizer is gone: an undisposed instance's node ends
+  with the .NET process (job object on Windows, parent-PID poll elsewhere).
+- Nullable annotations: exportedFunctionName / exportNameOrNull and NodeInvocationException's
+  details are string?; NodeInvocationInfo.ExportedFunctionName is string?.
+- Calling INodeServices after it was disposed throws ObjectDisposedException instead of starting a
+  new node process.
+- Changes below node_modules, .angular, .git, .vs, bin and obj (relative to ProjectPath) no longer
+  restart Node. The Angular CLI's cache in .angular/cache rewrites .mjs/.js/.json files while
+  ng serve or ng build --watch runs, which caused needless restarts.
+
+FIXES
+- Node processes no longer outlive their host:
+  - On Windows, node joins the same kill-on-close job object as the npm and Angular CLI processes,
+    so it ends with .NET even when the debugger is stopped or the process is killed.
+  - Disposing INodeServices also ends instances still in their 15-second draining period.
+  - A constructor that failed after node had started (e.g. a ProjectPath that does not exist)
+    left that node running; it is now killed.
+  - A failing kill no longer escapes Dispose and leaves the process handle undisposed.
+- Invocation arguments are serialized asynchronously, so an IAsyncEnumerable - such as an Entity
+  Framework IQueryable handed to SupplyData as it is - is enumerated, as Newtonsoft did, instead of
+  failing with "can only be serialized using async serialization methods".
+- dotnet publish (and a Debug build without node_modules) failed with "The working directory
+  "ClientApp\" does not exist" when installed from NuGet. The relative SpaRoot was passed to
+  npm-install.proj, which resolved it against the package folder; it is now made absolute against
+  the consuming project first.
+
+FEATURES
+- .mjs and .cjs are now watched by default, alongside .js, .ts, .json and .html, so a rebuilt
+  ES-module bundle restarts Node. ES modules cannot be evicted from Node's cache, so the restart
+  is what loads the new code.
+- PublishNodeModules (MSBuild, default: the value of BuildServerSideRenderer) controls whether
+  node_modules is copied into the publish output. The Angular application builder bundles server
+  dependencies into dist/server, so such apps can set it to false.
+
+v 10.4.1
 FIXES
 - EmbeddedResourceReader now names the resource and the assembly it could not find. A missing
   resource previously surfaced as ArgumentNullException (Parameter 'stream'), which identified

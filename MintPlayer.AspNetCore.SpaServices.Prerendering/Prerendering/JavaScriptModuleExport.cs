@@ -25,5 +25,5 @@ internal class JavaScriptModuleExport
 	/// If set, specifies the name of the CommonJS export that is the prerendering function to execute.
 	/// If not set, the JavaScript module's default CommonJS export must itself be the prerendering function.
 	/// </summary>
-	public string ExportName { get; set; }
+	public string? ExportName { get; set; }
 }

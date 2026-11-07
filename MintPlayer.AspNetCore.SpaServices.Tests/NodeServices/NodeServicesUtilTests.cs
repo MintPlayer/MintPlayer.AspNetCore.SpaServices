@@ -38,7 +38,8 @@ public class NodeServicesUtilTests
     {
         var options = new NodeServicesOptions(EmptyServices());
 
-        Assert.Equal(new[] { ".js", ".jsx", ".ts", ".tsx", ".json", ".html" }, options.WatchFileExtensions);
+        // .mjs/.cjs: an ES-module bundle stays in Node's module cache, so only a restart picks up a rebuild.
+        Assert.Equal(new[] { ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx", ".json", ".html" }, options.WatchFileExtensions);
     }
 
     [Fact]
@@ -223,11 +224,12 @@ public class NodeServicesUtilTests
     }
 
     [Fact]
-    public void Temp_file_uses_a_js_extension_so_node_can_load_it_as_a_module()
+    public void Temp_file_uses_a_cjs_extension_so_node_loads_it_as_commonjs_whatever_the_package_type()
     {
         using var sut = new StringAsTempFile("// empty", CancellationToken.None);
 
-        Assert.Equal(".js", Path.GetExtension(sut.FileName));
+        // .cjs, not .js: a "type": "module" package.json above %TEMP% would otherwise make Node parse it as ESM.
+        Assert.Equal(".cjs", Path.GetExtension(sut.FileName));
     }
 
     [Fact]
@@ -255,7 +257,7 @@ public class NodeServicesUtilTests
     [Fact]
     public void Temp_file_is_deleted_when_the_application_stops()
     {
-        // Finalizers do not reliably run at process shutdown, hence the token registration.
+        // The prerenderer script lives as long as the host, so the stopping token is what removes it.
         using var cts = new CancellationTokenSource();
         using var sut = new StringAsTempFile("// empty", cts.Token);
 
@@ -282,120 +284,14 @@ public class NodeServicesUtilTests
 
     #endregion
 
-    #region TaskExtensions
-
-    [Fact]
-    public void A_completed_task_is_passed_straight_through()
-    {
-        // No continuation is allocated, so a cancelled token cannot turn an already-finished task
-        // into a cancelled one.
-        var task = Task.CompletedTask;
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-
-        Assert.Same(task, task.OrThrowOnCancellation(cts.Token));
-    }
-
-    [Fact]
-    public void A_completed_task_with_a_result_is_passed_straight_through()
-    {
-        var task = Task.FromResult(42);
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-
-        Assert.Same(task, task.OrThrowOnCancellation(cts.Token));
-    }
-
-    [Fact]
-    public async Task A_pending_task_is_cancelled_by_an_already_cancelled_token()
-    {
-        var source = new TaskCompletionSource();
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-
-        var wrapped = source.Task.OrThrowOnCancellation(cts.Token);
-
-        await Assert.ThrowsAsync<TaskCanceledException>(() => wrapped);
-        source.SetResult();
-    }
-
-    [Fact]
-    public async Task A_pending_task_with_a_result_is_cancelled_by_an_already_cancelled_token()
-    {
-        var source = new TaskCompletionSource<int>();
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-
-        var wrapped = source.Task.OrThrowOnCancellation(cts.Token);
-
-        await Assert.ThrowsAsync<TaskCanceledException>(() => wrapped);
-        source.SetResult(1);
-    }
-
-    [Fact]
-    public async Task A_pending_task_completes_normally_while_the_token_stays_live()
-    {
-        var source = new TaskCompletionSource();
-        using var cts = new CancellationTokenSource();
-
-        var wrapped = source.Task.OrThrowOnCancellation(cts.Token);
-        Assert.NotSame(source.Task, wrapped);
-
-        source.SetResult();
-        await wrapped;
-    }
-
-    [Fact]
-    public async Task A_pending_task_passes_its_result_through()
-    {
-        var source = new TaskCompletionSource<int>();
-        using var cts = new CancellationTokenSource();
-
-        var wrapped = source.Task.OrThrowOnCancellation(cts.Token);
-        source.SetResult(42);
-
-        Assert.Equal(42, await wrapped);
-    }
-
-    [Fact]
-    public async Task A_pending_task_that_faults_surfaces_its_own_exception()
-    {
-        // The wrapper used to be "_ => { }", which turned the fault into success - so a Node process that
-        // died before it was listening (B1) let the waiting invocation carry on as if it were connected.
-        var source = new TaskCompletionSource();
-        using var cts = new CancellationTokenSource();
-        var failure = new InvalidOperationException("faulted");
-
-        var wrapped = source.Task.OrThrowOnCancellation(cts.Token);
-        source.SetException(failure);
-
-        Assert.Same(failure, await Assert.ThrowsAsync<InvalidOperationException>(() => wrapped));
-    }
-
-    [Fact]
-    public async Task A_pending_task_with_a_result_that_faults_surfaces_its_own_exception()
-    {
-        // "t => t.Result" wrapped the fault in an AggregateException.
-        var source = new TaskCompletionSource<int>();
-        using var cts = new CancellationTokenSource();
-        var failure = new IOException("faulted");
-
-        var wrapped = source.Task.OrThrowOnCancellation(cts.Token);
-        source.SetException(failure);
-
-        Assert.Same(failure, await Assert.ThrowsAsync<IOException>(() => wrapped));
-    }
-
-    #endregion
-
     #region EmbeddedResourceReader
 
     [Fact]
     public void Reads_an_embedded_resource_addressed_by_its_path()
     {
-        // The reader turns "/Content/Node/entrypoint-http.js" into the manifest name
-        // "<assembly>.Content.Node.entrypoint-http.js", so the leading slash is load-bearing.
-        var content = EmbeddedResourceReader.Read(typeof(NodeServicesOptions), "/Content/Node/entrypoint-http.js");
+        // The reader turns "/Content/Node/entrypoint-http.cjs" into the manifest name
+        // "<assembly>.Content.Node.entrypoint-http.cjs", so the leading slash is load-bearing.
+        var content = EmbeddedResourceReader.Read(typeof(NodeServicesOptions), "/Content/Node/entrypoint-http.cjs");
 
         Assert.False(string.IsNullOrWhiteSpace(content));
     }

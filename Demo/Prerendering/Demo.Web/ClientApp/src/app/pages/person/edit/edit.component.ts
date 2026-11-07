@@ -13,7 +13,7 @@ import { BsButtonTypeDirective } from '@mintplayer/ng-bootstrap/button-type';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
 import { SlugifyPipe } from '../../../pipes/slugify.pipe';
-import { PERSON_TOKEN } from '../../../tokens';
+import { DATA_FROM_SERVER } from '../../../tokens';
 
 @Component({
 	selector: 'app-person-edit',
@@ -34,7 +34,7 @@ import { PERSON_TOKEN } from '../../../tokens';
 export class PersonEditComponent {
 	private readonly personService = inject(PersonService);
 	private readonly platformId = inject(PLATFORM_ID);
-	private readonly personInj = inject(PERSON_TOKEN, { optional: true });
+	private readonly personInj = inject(DATA_FROM_SERVER, { optional: true })?.person ?? null;
 	private readonly router = inject(Router);
 	private readonly route = inject(ActivatedRoute);
 	private readonly titleService = inject(Title);

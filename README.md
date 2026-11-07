@@ -32,7 +32,7 @@ is being rendered is what lets you supply the right data for it.
 dotnet add package MintPlayer.AspNetCore.SpaServices.Routing
 ```
 
-Each package has its own detailed documentation. Start with Routing; the others are reference.
+Each package has its own detailed documentation. To set up a new app, follow [Getting started](#getting-started) below; the package READMEs are the reference.
 
 | Package | What it is for | Documentation |
 |---|---|---|
@@ -43,52 +43,28 @@ Each package has its own detailed documentation. Start with Routing; the others 
 | [`…SpaServices.Xsrf`](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Xsrf) | CSRF tokens for a SPA — independent of the rest; install it only if you want it. | [README](./MintPlayer.AspNetCore.SpaServices.Xsrf/README.md) |
 | [`…SpaServices.Abstractions`](https://www.nuget.org/packages/MintPlayer.AspNetCore.SpaServices.Abstractions) | Interfaces only, for libraries that integrate without depending on the implementation. | [README](./MintPlayer.AspNetCore.SpaServices.Abstractions/README.md) |
 
-## A minimal setup
+## Getting started
 
-```csharp
-public void ConfigureServices(IServiceCollection services)
-{
-    services.AddSpaStaticFilesImproved(configuration =>
-    {
-        // Angular 17+ puts the browser build in dist/browser, not dist.
-        configuration.RootPath = "ClientApp/dist/browser";
-    });
+Each guide starts from `dotnet new web` and `ng new` and lists every file you change, in order:
 
-    services.AddSpaPrerenderingService<MySpaPrerenderingService>();
-}
+- **Server-side rendering:** [Prerendering: getting started](./MintPlayer.AspNetCore.SpaServices.Prerendering/README.md#getting-started-a-new-aspnet-core-app-and-a-new-angular-workspace).
+  It covers the packages, the `ng new ClientApp --ssr` workspace, `angular.json` (`outputPath`, the
+  `ssr` configuration), `app.routes.server.ts`, `main.server.ts`, the `package.json` scripts,
+  `Program.cs` and the `.csproj`.
+- **XSRF tokens for the SPA's API calls:** [Xsrf: getting started](./MintPlayer.AspNetCore.SpaServices.Xsrf/README.md#getting-started-a-new-aspnet-core-app-and-a-new-angular-workspace).
+  It covers the antiforgery services, the middleware, a validated endpoint and Angular's `HttpClient`.
 
-public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
-{
-    if (!env.IsDevelopment())
-    {
-        app.UseSpaStaticFilesImproved();
-    }
+Use both? Follow the Prerendering guide first, then the Xsrf guide's steps 1, 4, 5 and 6.
 
-    app.UseRouting();
-    app.UseEndpoints(endpoints => endpoints.MapControllers());
+Two things the generators get in the way of, so you are not surprised:
 
-    app.UseSpaImproved(spa =>
-    {
-        spa.Options.SourcePath = "ClientApp";
+- `ng new` sets no `outputPath`, so Angular writes to `dist/<project-name>/…`. The guides set
+  `"outputPath": "dist"`, so the paths are `ClientApp/dist/browser` and `ClientApp/dist/server`.
+- With `WebApplication`, call `app.UseEndpoints(_ => { })` after mapping your endpoints and before
+  `app.UseSpaImproved(...)`. Otherwise the endpoints run after the SPA middleware, which has already
+  answered the request.
 
-        spa.UseSpaPrerendering(options =>
-        {
-            options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.js";
-            options.BootModuleBuilder = env.IsDevelopment()
-                ? new AngularPrerendererBuilder("build:ssr:development")
-                : null;
-            options.ExcludeUrls = ["/sockjs-node"];
-        });
-
-        if (env.IsDevelopment())
-        {
-            spa.UseAngularCliServer(npmScript: "start");
-        }
-    });
-}
-```
-
-Your routes and per-page data live in one class:
+Once that runs, your routes and per-page data live in one class:
 
 ```csharp
 public class MySpaPrerenderingService : ISpaPrerenderingService
@@ -238,6 +214,7 @@ The packages automatically configure your project with MSBuild props and targets
 | `EnableSpaBuilder` | `true` | Master switch to enable/disable all SPA build automation |
 | `SpaRoot` | `ClientApp\` | Path to your SPA source folder |
 | `BuildServerSideRenderer` | `true` | Whether to build the SSR bundle during publish |
+| `PublishNodeModules` | `$(BuildServerSideRenderer)` | Copies `node_modules` into the publish output. The Angular application builder bundles server dependencies into `dist/server`, so set it to `false` |
 
 ### Build Targets
 

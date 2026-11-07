@@ -1,9 +1,8 @@
 import { of } from 'rxjs';
 import { mergeApplicationConfig, ApplicationConfig, importProvidersFrom } from '@angular/core';
-import { provideServerRendering } from '@angular/platform-server';
+import { provideServerRendering, withRoutes, RenderMode } from '@angular/ssr';
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { appConfig } from './app.config';
-import { MESSAGE_TOKEN } from './tokens';
 
 import * as translationEn from '../assets/i18n/en.json';
 import * as translationNl from '../assets/i18n/nl.json';
@@ -19,7 +18,9 @@ class TranslateJsonLoader implements TranslateLoader {
 
 const serverConfig: ApplicationConfig = {
   providers: [
-    provideServerRendering(),
+    // RenderMode.Server: nothing is prerendered at build time, so dist/browser keeps a plain template
+    // (index.csr.html) for ASP.NET Core to capture and hand to the renderer.
+    provideServerRendering(withRoutes([{ path: '**', renderMode: RenderMode.Server }])),
     importProvidersFrom(
       TranslateModule.forRoot({
         loader: {
@@ -30,7 +31,8 @@ const serverConfig: ApplicationConfig = {
         }
       })
     ),
-    { provide: MESSAGE_TOKEN, useValue: 'MESS_FROM_SERV' }
+    // DATA_FROM_SERVER is not provided here: an application-level provider would shadow the platform provider
+    // main.server.ts's prerenderProviders creates from the data ASP.NET Core supplied.
   ]
 };
 

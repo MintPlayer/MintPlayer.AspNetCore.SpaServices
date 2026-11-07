@@ -54,8 +54,16 @@ internal sealed class FakeNodeProcess : INodeProcess
 		Exited?.Invoke(this, EventArgs.Empty);
 	}
 
+	/// <summary>Thrown by <see cref="Kill"/> instead of exiting, when set.</summary>
+	public Exception? KillFailure { get; set; }
+
 	public void Kill(bool entireProcessTree)
 	{
+		if (KillFailure != null)
+		{
+			throw KillFailure;
+		}
+
 		KillCount++;
 		KilledEntireTree = entireProcessTree;
 		Exit();

@@ -157,6 +157,37 @@ public class NodeServicesImplTests
     }
 
     [Fact]
+    public async Task Dispose_also_ends_an_instance_that_is_still_draining()
+    {
+        // A stopped host used to leave the replaced node running for the rest of the 15 s draining period.
+        FakeNodeInstance? first = null;
+        var factory = new CountingFactory(index =>
+        {
+            if (index == 0)
+                return first = new FakeNodeInstance(_ => throw Unavailable(allowConnectionDraining: true));
+            return new FakeNodeInstance(_ => Task.FromResult<object>("second"));
+        });
+        var services = new NodeServicesImpl(factory.Create);
+        await services.InvokeAsync<string>("module");
+        Assert.False(first!.Disposed);
+
+        services.Dispose();
+
+        Assert.True(first.Disposed);
+    }
+
+    [Fact]
+    public async Task Refuses_to_start_a_node_instance_after_it_is_disposed()
+    {
+        var factory = new CountingFactory(_ => new FakeNodeInstance(_ => Task.FromResult<object>("ok")));
+        var services = new NodeServicesImpl(factory.Create);
+        services.Dispose();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => services.InvokeAsync<string>("module"));
+        Assert.Equal(0, factory.CreateCount);
+    }
+
+    [Fact]
     public async Task Disposes_the_drained_instance_once_the_draining_period_ends()
     {
         FakeNodeInstance? first = null;
@@ -262,7 +293,7 @@ public class NodeServicesImplTests
 
         public bool Disposed => disposed;
 
-        public async Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string exportNameOrNull, params object[] args)
+        public async Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string? exportNameOrNull, params object[] args)
         {
             var result = await invoke(new NodeInvocationInfo
             {

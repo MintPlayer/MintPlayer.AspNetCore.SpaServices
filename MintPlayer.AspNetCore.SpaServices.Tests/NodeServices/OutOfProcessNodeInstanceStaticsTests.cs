@@ -74,6 +74,20 @@ public class OutOfProcessNodeInstanceStaticsTests
 		Assert.Equal(expected, OutOfProcessNodeInstance.IsFilenameBeingWatched(path, [".ts", ".js"]));
 	}
 
+	[Theory]
+	[InlineData("ClientApp/.angular/cache/21.2.0/vite/deps/chunk-ABC.js", true)]
+	[InlineData("ClientApp/node_modules/@angular/core/fesm2022/core.mjs", true)]
+	[InlineData("obj/project.assets.json", true)]
+	[InlineData("ClientApp/dist/server/main.server.mjs", false)]
+	[InlineData("ClientApp/src/app/app.ts", false)]
+	[InlineData("appsettings.json", false)]
+	public void IsInIgnoredDirectory_skips_tool_output_below_the_root(string relativePath, bool expected)
+	{
+		var root = Path.Combine(Path.GetTempPath(), "bin", "app");
+
+		Assert.Equal(expected, OutOfProcessNodeInstance.IsInIgnoredDirectory(root, Path.Combine(root, relativePath)));
+	}
+
 	[Fact]
 	public void IsFilenameBeingWatched_ignores_an_empty_path()
 	{

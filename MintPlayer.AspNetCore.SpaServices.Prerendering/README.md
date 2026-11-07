@@ -18,6 +18,222 @@ Install-Package MintPlayer.AspNetCore.SpaServices.Prerendering
 dotnet add package MintPlayer.AspNetCore.SpaServices.Prerendering
 ```
 
+## Getting started: a new ASP.NET Core app and a new Angular workspace
+
+These steps go from nothing to a server-rendered Angular page. If you already have one half, skip its step and do the rest. Every step after step 2 changes a file the generators create.
+
+You need the .NET 10 SDK or later, Node.js 20.19+, 22.12+ or 24, and the Angular CLI (`npm install -g @angular/cli`). Angular 19 to 22 are supported.
+
+### 1. Create the ASP.NET Core app
+
+```
+dotnet new web -n MyApp
+cd MyApp
+dotnet add package MintPlayer.AspNetCore.SpaServices.Routing
+```
+
+`…SpaServices.Routing` brings in this package together with SpaServices and NodeServices. It also adds route matching, which you need once you supply per-page data (step 9).
+
+### 2. Create the Angular workspace in `ClientApp`
+
+Run this in the project folder, next to `MyApp.csproj`:
+
+```
+ng new ClientApp --ssr --skip-git
+```
+
+The packages look for the SPA in `ClientApp` by default; see `SpaRoot` under [MSBuild integration](#msbuild-integration) to use another folder. If you already have an Angular workspace without SSR, run `ng add @angular/ssr` inside it instead.
+
+### 3. `ClientApp/angular.json`: set the output path and move the SSR options
+
+Two changes to `projects.ClientApp.architect.build`:
+
+- Add `"outputPath": "dist"`. Without it Angular writes to `dist/ClientApp/browser` and `dist/ClientApp/server`, but every path in this guide is `dist/browser` and `dist/server`.
+- **Move** `server`, `outputMode` and `ssr` out of `options` into a new configuration named `ssr`. `ng new --ssr` puts them in `options`. Leave the other options there, such as `security`. While they are there, `ng serve` renders every page itself, so the page this package captures as its template in development is already rendered.
+
+Before (as generated):
+
+```jsonc
+"build": {
+  "builder": "@angular/build:application",
+  "options": {
+    "browser": "src/main.ts",
+    "tsConfig": "tsconfig.app.json",
+    // ...
+    "server": "src/main.server.ts",
+    "outputMode": "server",
+    "ssr": {
+      "entry": "src/server.ts"
+    }
+  },
+  "configurations": {
+    "production": { /* ... */ },
+    "development": { /* ... */ }
+  },
+  "defaultConfiguration": "production"
+}
+```
+
+After:
+
+```jsonc
+"build": {
+  "builder": "@angular/build:application",
+  "options": {
+    "outputPath": "dist",
+    "browser": "src/main.ts",
+    "tsConfig": "tsconfig.app.json"
+    // ...
+  },
+  "configurations": {
+    "production": { /* ... */ },
+    "development": { /* ... */ },
+    "ssr": {
+      "server": "src/main.server.ts",
+      "outputMode": "server",
+      "ssr": {
+        "entry": "src/server.ts"
+      }
+    }
+  },
+  "defaultConfiguration": "production"
+}
+```
+
+### 4. `ClientApp/src/app/app.routes.server.ts`: render on the server, not at build time
+
+Change `RenderMode.Prerender` to `RenderMode.Server`:
+
+```typescript
+import { RenderMode, ServerRoute } from '@angular/ssr';
+
+export const serverRoutes: ServerRoute[] = [
+  {
+    path: '**',
+    renderMode: RenderMode.Server
+  }
+];
+```
+
+With `RenderMode.Prerender`, `ng build` renders the pages at build time and `dist/browser/index.html` is a rendered page, which is not a usable template. With `RenderMode.Server` the build writes the plain template as `dist/browser/index.csr.html`, which step 7 points to.
+
+### 5. `ClientApp/src/main.server.ts`: export `renderApplication`
+
+Add one line at the end of the generated file:
+
+```typescript
+export { renderApplication } from '@angular/platform-server';
+```
+
+The generated file exports a bootstrap function, not a renderer. With this export the package can render the bundle itself (see [The Angular side](#the-angular-side)). `@angular/platform-server` is already a dependency of an SSR workspace.
+
+### 6. `ClientApp/package.json`: add the two SSR build scripts
+
+```json
+"scripts": {
+  "ng": "ng",
+  "start": "ng serve",
+  "build": "ng build",
+  "build:ssr:development": "ng build --configuration development,ssr",
+  "build:ssr:production": "ng build --configuration production,ssr",
+  "watch": "ng build --watch --configuration development",
+  "test": "ng test"
+}
+```
+
+The host runs `build:ssr:development` in development (step 7). `dotnet publish` runs `build:ssr:production`. Remove the generated `serve:ssr:ClientApp` script: it starts Angular's own Express server, which this setup doesn't use.
+
+### 7. `Program.cs`
+
+Replace the generated file. In particular, the template's `app.MapGet("/", () => "Hello World!")` would answer `/` before the SPA could.
+
+```csharp
+using MintPlayer.AspNetCore.SpaServices.Extensions;
+using MintPlayer.AspNetCore.SpaServices.Prerendering;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSpaStaticFilesImproved(configuration =>
+{
+    // The browser half of the build (angular.json "outputPath": "dist").
+    configuration.RootPath = "ClientApp/dist/browser";
+});
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseSpaStaticFilesImproved();
+}
+
+app.UseRouting();
+// Map your controllers, minimal APIs, etc. here, e.g. app.MapControllers();
+
+// Explicit: endpoints must run here, before the SPA middleware, which answers every request that reaches
+// it. Without this call WebApplication runs them at the very end of the pipeline, so they are never reached.
+app.UseEndpoints(_ => { });
+
+app.UseSpaImproved(spa =>
+{
+    spa.Options.SourcePath = "ClientApp";
+
+    // RenderMode.Server writes the plain template as index.csr.html (step 4). Used outside Development;
+    // in Development the Angular dev server answers instead.
+    spa.Options.DefaultPage = "/index.csr.html";
+
+    // Registered before UseAngularCliServer, so the page the dev server returns becomes the template.
+    spa.UseSpaPrerendering(options =>
+    {
+        options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.server.mjs";
+        // Development: build the server bundle on the first request, and rebuild it when you save.
+        // Production: dotnet publish has already built it.
+        options.BootModuleBuilder = app.Environment.IsDevelopment()
+            ? new AngularPrerendererBuilder("build:ssr:development")
+            : null;
+        // The Vite dev server's own endpoints are not pages.
+        options.ExcludeUrls = ["/@vite", "/@fs", "/@ng", "/@id"];
+    });
+
+    if (app.Environment.IsDevelopment())
+    {
+        spa.UseAngularCliServer(npmScript: "start");
+    }
+});
+
+app.Run();
+```
+
+### 8. `MyApp.csproj` (recommended)
+
+```xml
+<PropertyGroup>
+  <PublishNodeModules>false</PublishNodeModules>
+</PropertyGroup>
+```
+
+The application builder bundles everything the server code needs into `dist/server`, so `node_modules` doesn't have to be published. The packages already keep `ClientApp` out of the compile and content items, and run `npm install` before a Debug build when `ClientApp/node_modules` is missing.
+
+### 9. Run it
+
+```
+dotnet run
+```
+
+Don't start `ng serve` yourself: the middleware starts the dev server and the SSR watch build. The first page request waits for both builds, which can take a while. After that, *View source* shows the rendered markup inside `<app-root>` instead of an empty element.
+
+Next steps:
+
+- **Supply data to the render:** implement `ISpaPrerenderingService` and register it with `AddSpaPrerenderingService<T>()` ([Supplying data](#supplying-data-ispaprerenderingservice)). Then hand the values to Angular with a `prerenderProviders` export ([Handing `OnSupplyData` to Angular](#handing-onsupplydata-to-angular-prerenderproviders)).
+- **Publish:** `dotnet publish -c Release` runs `npm run build:ssr:production` and includes `ClientApp/dist` in the output.
+- **XSRF tokens for the SPA's API calls:** [MintPlayer.AspNetCore.SpaServices.Xsrf](../MintPlayer.AspNetCore.SpaServices.Xsrf/README.md).
+
 ## How it works
 
 `UseSpaPrerendering` is registered inside the `UseSpaImproved` callback, which makes it a piece of middleware that sits *in front of* everything the SPA middleware serves — including the static-file middleware that serves `index.html` in production and the Angular CLI dev-server proxy in development.
@@ -61,6 +277,16 @@ A `HEAD` is included in that: the static-file middleware answers a `HEAD` with t
 
 ## Basic setup
 
+The `Program.cs` in [step 7](#7-programcs) is the complete setup. Mind the order there:
+
+1. `UseSpaStaticFilesImproved()` (outside Development).
+2. `UseRouting()`, then your endpoints, then an explicit `UseEndpoints(_ => { })`.
+3. `UseSpaImproved(...)` last, with `UseSpaPrerendering` registered **before** `UseAngularCliServer`.
+
+`UseSpaImproved` answers every request that reaches it. With `WebApplication`, endpoints you map run at the end of the pipeline unless you call `UseEndpoints` yourself, so leave out step 2's explicit call and your controllers are never reached.
+
+The same pipeline in a classic `Startup.Configure`:
+
 ```csharp
 using MintPlayer.AspNetCore.SpaServices.Extensions;
 using MintPlayer.AspNetCore.SpaServices.Prerendering;
@@ -83,16 +309,19 @@ public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     app.UseSpaImproved(spa =>
     {
         spa.Options.SourcePath = "ClientApp";
+        // "outputMode": "server" with RenderMode.Server writes the template as index.csr.html.
+        spa.Options.DefaultPage = "/index.csr.html";
 
         // Registered before UseAngularCliServer, so the dev server's index.html
         // becomes the template this middleware captures.
         spa.UseSpaPrerendering(options =>
         {
-            options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.js";
+            options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.server.mjs";
             options.BootModuleBuilder = env.IsDevelopment()
                 ? new AngularPrerendererBuilder("build:ssr:development")
                 : null;
-            options.ExcludeUrls = ["/sockjs-node"];
+            // Vite dev-server endpoints, not pages.
+            options.ExcludeUrls = ["/@vite", "/@fs", "/@ng", "/@id"];
         });
 
         if (env.IsDevelopment())
@@ -109,7 +338,7 @@ Namespace: `MintPlayer.AspNetCore.SpaServices.Prerendering`.
 
 | Member | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `BootModulePath` | `string` | none — **required** | Path, relative to the application content root, of the JavaScript file containing your prerendering logic (the server bundle). For an Angular app this is typically `ClientApp/dist/server/main.js`. Leaving it null or empty makes `UseSpaPrerendering` throw an `InvalidOperationException` at startup. |
+| `BootModulePath` | `string` | none — **required** | Path, relative to the application content root, of the JavaScript file containing your prerendering logic (the server bundle). For an Angular application-builder app this is `ClientApp/dist/server/main.server.mjs` (an ES module; see [Boot module formats](#boot-module-formats)). Leaving it null or empty makes `UseSpaPrerendering` throw an `InvalidOperationException` at startup. |
 | `BootModuleBuilder` | `ISpaPrerendererBuilder?` | `null` | An optional builder invoked once, lazily, on the first request that needs the boot module, to generate it. Intended for **development only** — set it to `null` in production, where the bundle is produced at publish time. Use `AngularPrerendererBuilder` (see below). |
 | `ExcludeUrls` | `string[]` | `null` (treated as empty) | URL prefixes for which prerendering is skipped entirely; matched with `PathString.StartsWithSegments`. Use it to keep dev-server plumbing and client-side asset folders from being answered with a prerendered page. |
 | `NodePath` | `string` | `"node"` | The Node executable used to host the render. Set an absolute path if `node` is not on the host's `PATH`. |
@@ -130,7 +359,7 @@ app.UseSpaImproved(spa =>
 
     spa.UseSpaPrerendering(options =>
     {
-        options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.js";
+        options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.server.mjs";
         options.BootModuleBuilder = new AngularPrerendererBuilder("build:ssr:development");
         options.TimeoutMilliseconds = 60_000; // and a slow page render
     });
@@ -142,23 +371,23 @@ app.UseSpaImproved(spa =>
 `AngularPrerendererBuilder` implements `ISpaPrerendererBuilder`. It runs an npm script from your `SpaOptions.SourcePath` folder with `--watch`, streams its output to the logger under the category `AngularPrerendererBuilder`, and waits until the build has signalled success before the first request is prerendered. Because it runs in watch mode, later edits to your SPA rebuild the server bundle without restarting the host.
 
 ```csharp
-// Uses the default success pattern: the regex "Build at\:", second occurrence.
-new AngularPrerendererBuilder(npmScript: "build:ssr");
+// The application builder (Angular 17+): waits for "Application bundle generation complete." once.
+new AngularPrerendererBuilder(npmScript: "build:ssr:development");
 
-// Explicit pattern and occurrence, for a build whose output differs.
+// The legacy webpack builders (`ng build && ng run ClientApp:server`) print "Build at:" once per build.
 new AngularPrerendererBuilder(
     npmScript: "build:ssr:development",
     finishedRegex: @"Build at\:",
-    finishedRegexNumber: 1);
+    finishedRegexNumber: 2);
 ```
 
 | Constructor parameter | Meaning |
 | --- | --- |
-| `npmScript` | Name of the script in your `package.json` that builds the server-side bundle. Throws `ArgumentException` if null or empty. |
-| `finishedRegex` | Regular expression whose appearance on stdout means a build completed. Defaults to `Build at\:`. |
-| `finishedRegexNumber` | How many times the pattern must appear before the build counts as done. Defaults to `2`. An Angular SSR script that runs two builds (browser then server) prints it twice; a single-build script prints it once, so pass `1`. |
+| `npmScript` | Name of the script in your `package.json` that builds the server-side bundle. It is run with `--watch` appended, so it must be a single command (`ng build --configuration development,ssr`); in `a && b` only `b` receives the flag. Throws `ArgumentException` if null or empty. |
+| `finishedRegex` | Regular expression whose appearance on stdout means a build completed. Defaults to `Application bundle generation complete\.`. |
+| `finishedRegexNumber` | How many times the pattern must appear before the build counts as done. Defaults to `1`: the application builder builds the browser and server bundles in one pass. |
 
-If your `npmScript` runs both a browser and a server build (`ng build && ng run ClientApp:server`), the default of `2` is right. If it runs one, pass `1` — otherwise the first request waits for a second success line that never comes, until `SpaOptions.StartupTimeout` elapses.
+Earlier releases defaulted to `Build at\:` and `2`, for the webpack browser-then-server script. Pass those explicitly if you still use it — otherwise the first request waits for a success line that never comes, until `SpaOptions.StartupTimeout` elapses.
 
 The bundle is built **once** per process; every concurrent request awaits the same build. A build that fails, exits without signalling success, or times out is final: the resulting `InvalidOperationException` includes the npm script's own stdout and stderr, and the failure is reported to every request rather than only the first. A failed build is not retried, because retrying would spawn another npm process and a hanging build does not fix itself.
 
@@ -190,12 +419,10 @@ var personService = httpContext.RequestServices.GetRequiredService<IPersonServic
 The registration helper lives in the Routing package (`MintPlayer.AspNetCore.SpaServices.Routing`), because a prerendering service's `BuildRoutes` is only meaningful together with the route services:
 
 ```csharp
+// Program.cs
 using MintPlayer.AspNetCore.SpaServices.Routing;
 
-public void ConfigureServices(IServiceCollection services)
-{
-    services.AddSpaPrerenderingService<DemoSpaPrerenderingService>();
-}
+builder.Services.AddSpaPrerenderingService<DemoSpaPrerenderingService>();
 ```
 
 `AddSpaPrerenderingService<TService>` registers `TService` as a scoped `ISpaPrerenderingService` and also adds `IHttpContextAccessor` and the SPA route services. If no `ISpaPrerenderingService` is registered, prerendering still works — the render simply receives nothing but `originalHtml`.
@@ -282,83 +509,135 @@ Everything you put in `data` must be JSON-serializable — it crosses a process 
 
 ## The Angular side
 
-Your server bundle's entry point (`main.server.ts`) exports a renderer created by `createServerRenderer` from the [`aspnet-prerendering`](https://www.npmjs.com/package/aspnet-prerendering) npm package. It receives a `params` object and returns a promise resolving to `{ html }`.
-
-Two things matter:
-
-- **`params.data.originalHtml`** is the HTML template the middleware captured. Pass it to Angular as the `document` option: the render fills in this real page — with its `<head>`, its stylesheet and script tags, its `<base href>` — instead of a synthetic one. Rendering without it, or with an empty string, is what produces Angular's `NG05104`.
-- **`params.data`** also holds everything your `OnSupplyData` added. Feed those values into the render through platform providers, so components can inject them instead of issuing an HTTP call the server has already made.
-
-The example below is the shape used by this repository's demo, against Angular 21 with standalone bootstrapping. Angular's SSR API has changed repeatedly, so match your own Angular version rather than copying an older sample.
+Start from the workspace `ng new --ssr` (or `ng add @angular/ssr`) generates; Angular 19 to 22 work. The stock `src/main.server.ts` exports a bootstrap function, not a renderer, so add **one line** that lets this package render the bundle itself:
 
 ```typescript
 // ClientApp/src/main.server.ts
-import 'reflect-metadata';
-import { renderApplication } from '@angular/platform-server';
-import { enableProdMode, StaticProvider } from '@angular/core';
-import { createServerRenderer } from 'aspnet-prerendering';
-import { APP_BASE_HREF } from '@angular/common';
-import { bootstrapApplication } from '@angular/platform-browser';
+import { BootstrapContext, bootstrapApplication } from '@angular/platform-browser';
 import { App } from './app/app';
-import { config as serverConfig } from './app/app.config.server';
-import { MESSAGE_TOKEN, PERSON_TOKEN, PEOPLE_TOKEN } from './app/tokens';
+import { config } from './app/app.config.server';
 
-enableProdMode();
+const bootstrap = (context: BootstrapContext) => bootstrapApplication(App, config, context);
 
-export default createServerRenderer(params => {
-  const providers: StaticProvider[] = [
-    { provide: APP_BASE_HREF, useValue: params.origin + params.baseUrl.slice(0, -1) },
-    { provide: MESSAGE_TOKEN, useValue: params.data.message },
-  ];
+export default bootstrap;
 
-  // Values supplied by OnSupplyData are route-dependent, so provide null when absent.
-  providers.push({
-    provide: PEOPLE_TOKEN,
-    useValue: 'people' in params.data ? params.data.people : null,
-  });
-  providers.push({
-    provide: PERSON_TOKEN,
-    useValue: 'person' in params.data ? params.data.person : null,
-  });
-
-  const options = {
-    document: params.data.originalHtml, // the captured template
-    url: params.url,
-    platformProviders: providers,
-  };
-
-  return renderApplication(
-    (context) => bootstrapApplication(App, serverConfig, context),
-    options
-  ).then(html => ({ html }));
-});
+// The one addition.
+export { renderApplication } from '@angular/platform-server';
 ```
 
-The injection tokens are ordinary Angular `InjectionToken`s, declared once and given a client-side fallback in your browser config:
+The prerenderer then calls `renderApplication(bootstrap, { document, url, platformProviders })` with:
+
+- **`document`**: `params.data.originalHtml`, the HTML template the middleware captured. The render fills in this real page — with its `<head>`, its stylesheet and script tags, its `<base href>` — instead of a synthetic one. A missing or empty template is what produces Angular's `NG05104`.
+- **`url`**: the request's path and query. It is relative on purpose: Angular 19.2+ rejects absolute URLs whose host is not in `security.allowedHosts` (`NG05706`).
+- **`platformProviders`**: whatever your optional `prerenderProviders` export returns.
+
+### Handing `OnSupplyData` to Angular: `prerenderProviders`
+
+Optional: without this export the page still renders, Angular just doesn't receive any server data. Everything your `OnSupplyData` added arrives in `data`. Hand all of it to Angular as **one** provider, and let each page take what it needs. Then components inject the values instead of issuing an HTTP call the server has already made. The render itself makes no outbound requests: data flows in from ASP.NET Core.
+
+Declare one token for it, in a file both the server and the browser code import:
 
 ```typescript
 // ClientApp/src/app/tokens.ts
 import { InjectionToken } from '@angular/core';
 import { Person } from './entities/person';
 
-export const MESSAGE_TOKEN = new InjectionToken<string>('MESSAGE');
-export const PERSON_TOKEN = new InjectionToken<Person>('PERSON');
-export const PEOPLE_TOKEN = new InjectionToken<Person[]>('PEOPLE');
+// The keys your OnSupplyData sets. All optional: each route supplies only its own.
+export interface DataFromServer {
+  message?: string;
+  people?: Person[];
+  person?: Person;
+}
+
+export const DATA_FROM_SERVER = new InjectionToken<DataFromServer>('DATA_FROM_SERVER');
 ```
 
-The `package.json` scripts referenced by `BuildServerSideRenderer` and `AngularPrerendererBuilder` look like this:
+Provide it from `main.server.ts`:
+
+```typescript
+import { APP_BASE_HREF } from '@angular/common';
+import { StaticProvider } from '@angular/core';
+import { DATA_FROM_SERVER } from './app/tokens';
+
+export const prerenderProviders = (data: any, params: { baseUrl: string }): StaticProvider[] => [
+  { provide: DATA_FROM_SERVER, useValue: data },
+  // Only if your code injects APP_BASE_HREF. Relative: an absolute one makes Angular throw NG05703.
+  { provide: APP_BASE_HREF, useValue: params.baseUrl },
+];
+```
+
+It receives `(data, params)`, where `params` has `location`, `origin`, `url`, `baseUrl`, `absoluteUrl` and `data`.
+
+Inject it **optionally**: it only exists during the server render. In the browser, and after a client-side navigation, it is absent, so fall back to an HTTP call:
+
+```typescript
+export class PersonShowComponent {
+  private readonly person = inject(DATA_FROM_SERVER, { optional: true })?.person ?? null;
+  // ...on the server use this.person; in the browser fetch it from your API.
+}
+```
+
+These are *platform* providers. A provider for the same token in `app.config.server.ts` (or `app.config.ts`) is closer to the components and wins, so do not also provide the token there. Keep `APP_BASE_HREF` relative: an absolute base href such as `params.origin + ...` makes Angular reject the navigation as changing origin (`NG05703`).
+
+### Workspace configuration
+
+Steps [3](#3-clientappangularjson-set-the-output-path-and-move-the-ssr-options), [4](#4-clientappsrcappapproutesserverts-render-on-the-server-not-at-build-time) and [6](#6-clientapppackagejson-add-the-two-ssr-build-scripts) of the getting-started guide make these changes to a generated workspace. In short:
+
+- **`"outputPath": "dist"`** in the build options, so the output lands in `dist/browser` and `dist/server` rather than `dist/<project-name>/...`.
+- **`RenderMode.Server` for every route** in `src/app/app.routes.server.ts` (`ng new --ssr` generates `RenderMode.Prerender`). Then nothing is prerendered at build time and `dist/browser/index.csr.html` stays a plain template; set `SpaOptions.DefaultPage` to it.
+
+```typescript
+// ClientApp/src/app/app.routes.server.ts
+export const serverRoutes: ServerRoute[] = [
+  { path: '**', renderMode: RenderMode.Server }
+];
+```
+
+- **Move** `server`, `outputMode` and `ssr` out of the default build options into a configuration of their own. Angular's dev server renders pages itself whenever the build it serves has `server` and `outputMode`, and then the "template" the middleware captures from `ng serve` would already be a rendered page:
+
+```jsonc
+// angular.json, projects.ClientApp.architect.build
+"options": {
+  "outputPath": "dist",
+  // ... no server, outputMode or ssr here
+},
+"configurations": {
+  "production": { /* ... */ },
+  "development": { /* ... */ },
+  "ssr": {
+    "server": "src/main.server.ts",
+    "outputMode": "server",
+    "ssr": { "entry": "src/server.ts" }
+  }
+}
+```
+
+The `package.json` scripts referenced by `BuildServerSideRenderer` and `AngularPrerendererBuilder`, each a single command:
 
 ```json
 {
   "scripts": {
     "start": "ng serve",
     "build": "ng build",
-    "build:ssr": "ng build && ng run ClientApp:server",
-    "build:ssr:development": "ng build --configuration=development && ng run ClientApp:server:development",
-    "build:ssr:production": "ng build --configuration=production && ng run ClientApp:server:production"
+    "build:ssr:development": "ng build --configuration development,ssr",
+    "build:ssr:production": "ng build --configuration production,ssr"
   }
 }
 ```
+
+### Boot module formats
+
+`BootModulePath` may point at any of these. The module is loaded with a dynamic `import()`, so an ES module may import its chunks and use top-level `await`.
+
+| Bundle | Detected by | Called as |
+| --- | --- | --- |
+| `createServerRenderer(...)` from `aspnet-prerendering`, CommonJS or ESM | the function's flag | unchanged, as before |
+| Angular application-builder entry (`main.server.mjs`) | a default export plus a `renderApplication` export | `renderApplication(default, { document, url, platformProviders })` |
+| A plain renderer function, the default export (or `renderToString`) | a function export | `fn(params)`, returning (a promise of) the object below |
+
+An Angular bundle without the `renderApplication` export fails with an error that quotes the line to add.
+
+Node caches ES modules for the life of the process and offers no way to evict them. When the bundle is rebuilt, the file watcher of `MintPlayer.AspNetCore.NodeServices` restarts Node, which is what loads the new bundle; `.mjs` and `.cjs` are among the watched extensions.
 
 ### What your renderer may return
 
@@ -441,7 +720,7 @@ To see the `Debug` messages, raise the level for that category in `appsettings.D
 
 Angular was handed an empty or missing document. Check, in order:
 
-1. Your `main.server.ts` passes `params.data.originalHtml` as the `document` option — not `''`, not a hand-written string, not an omitted option.
+1. If you render yourself (a plain renderer or `createServerRenderer`), you pass `params.data.originalHtml` as the `document` option — not `''`, not a hand-written string, not an omitted option. With the `renderApplication` export this package passes it for you.
 2. The response captured from the downstream pipeline is not empty. If it is, a `Warning` under the `MintPlayer.AspNetCore.SpaServices.Prerendering` category names the path and the captured-versus-declared byte counts; enable the logging above.
 3. In production, `SpaStaticFilesOptions.RootPath` points at the folder that actually contains `index.html`. Angular 17+ splits its output, so the browser assets sit in `dist/browser`, not `dist` — pointing at `dist` means there is no default page to capture.
 
@@ -454,9 +733,13 @@ The server bundle is built once, lazily, on the first request that needs it, and
 Two adjacent failure shapes:
 
 - **The script exited without signalling success.** The exception says so and includes the output; usually a genuine build error.
-- **The build succeeded but the pattern never matched the expected number of times.** Check `finishedRegexNumber`: pass `1` for a script that runs a single build, `2` (the default) for one that runs a browser build followed by a server build.
+- **The build succeeded but the pattern never matched the expected number of times.** Check `finishedRegex` and `finishedRegexNumber`: the defaults fit the application builder (`Application bundle generation complete.`, once); a webpack browser-then-server script needs `Build at\:` and `2`.
 
 If the build legitimately takes longer than two minutes, raise `spa.Options.StartupTimeout`. Note that a failed build is not retried — restart the host after fixing it.
+
+### `Prerendering timed out after 30000ms`
+
+Angular reports most render errors (an unmatched route `NG04002`, `NG05703`, a component that throws) to its `ErrorHandler`, which logs them, and the render promise then never settles. The timeout is what ends the request. Look in the Node output logged under `MintPlayer.AspNetCore.NodeServices` for the `ERROR RuntimeError: NG0...` line that precedes it.
 
 ### Prerendering silently does nothing
 
@@ -514,7 +797,8 @@ This package depends on [MintPlayer.AspNetCore.NodeServices](https://www.nuget.o
 | --- | --- | --- |
 | `EnableSpaBuilder` | `true` | Master switch for all SPA build automation. Set to `false` in a project that references the package but has no SPA. |
 | `SpaRoot` | `ClientApp\` | The SPA source folder, relative to the project. Also controls which files are excluded from compilation and shown as `None` items. |
-| `BuildServerSideRenderer` | `true` | When `true`, publish runs `npm run build:ssr:production` and the SSR bundle plus `node_modules` are included in the publish output. When `false`, publish runs `npm run build -- --configuration production` and no server bundle is produced — leave it `true` when you use this package. |
+| `BuildServerSideRenderer` | `true` | When `true`, publish runs `npm run build:ssr:production` and the SSR bundle is included in the publish output (plus `node_modules`, unless `PublishNodeModules` is `false`). When `false`, publish runs `npm run build -- --configuration production` and no server bundle is produced — leave it `true` when you use this package. |
+| `PublishNodeModules` | `$(BuildServerSideRenderer)` | Copies `node_modules` into the publish output next to the server bundle. The Angular application builder bundles server dependencies into `dist/server`, so such apps can set it to `false` and publish far less. |
 
 Note the script names: with `BuildServerSideRenderer` enabled, your `package.json` must define `build:ssr:production`.
 

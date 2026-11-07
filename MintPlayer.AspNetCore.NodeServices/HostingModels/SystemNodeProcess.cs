@@ -31,6 +31,11 @@ internal sealed class SystemNodeProcess : INodeProcess
 		// zombie be cleaned away without having to block our thread.
 		process.EnableRaisingEvents = true;
 
+		// Into the kill-on-close job object (Windows): when this .NET process ends in any way - including the
+		// debugger being stopped or the process being killed - Windows ends node with it, instead of leaving it
+		// to notice on its next parent-PID poll. Elsewhere the ProcessExit fallback and that poll remain.
+		ProcessTracker.AddProcess(process);
+
 		return new SystemNodeProcess(process);
 	}
 
@@ -53,5 +58,10 @@ internal sealed class SystemNodeProcess : INodeProcess
 		_process.BeginErrorReadLine();
 	}
 
-	public void Dispose() => _process.Dispose();
+	public void Dispose()
+	{
+		// A disposed Process no longer raises Exited, so it would otherwise stay tracked forever.
+		ProcessTracker.RemoveProcess(_process);
+		_process.Dispose();
+	}
 }

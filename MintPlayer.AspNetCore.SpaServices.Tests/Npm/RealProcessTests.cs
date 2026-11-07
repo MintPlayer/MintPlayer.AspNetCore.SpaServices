@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using MintPlayer.AspNetCore.NodeServices;
 using MintPlayer.AspNetCore.SpaServices.Npm;
 using MintPlayer.AspNetCore.SpaServices.Tests.TestHelpers;
 using Xunit;

@@ -11,6 +11,7 @@ using MintPlayer.AspNetCore.NodeServices;
 using MintPlayer.AspNetCore.SpaServices.Prerendering;
 using MintPlayer.AspNetCore.SpaServices.Prerendering.Services;
 using MintPlayer.AspNetCore.SpaServices.Routing;
+using MintPlayer.AspNetCore.SpaServices.Tests.TestHelpers;
 using Xunit;
 
 namespace MintPlayer.AspNetCore.SpaServices.Tests.Prerendering;
@@ -45,9 +46,9 @@ internal static class PrerenderingHarness
 
         public Task<T> InvokeAsync<T>(CancellationToken cancellationToken, string moduleName, params object[] args) => throw Boom();
 
-        public Task<T> InvokeExportAsync<T>(string moduleName, string exportedFunctionName, params object[] args) => throw Boom();
+        public Task<T> InvokeExportAsync<T>(string moduleName, string? exportedFunctionName, params object[] args) => throw Boom();
 
-        public Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string exportedFunctionName, params object[] args) => throw Boom();
+        public Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string? exportedFunctionName, params object[] args) => throw Boom();
 
         public void Dispose() { }
 
@@ -85,9 +86,9 @@ internal static class PrerenderingHarness
 
         public Task<T> InvokeAsync<T>(CancellationToken cancellationToken, string moduleName, params object[] args) => throw TokenlessOverload();
 
-        public Task<T> InvokeExportAsync<T>(string moduleName, string exportedFunctionName, params object[] args) => throw TokenlessOverload();
+        public Task<T> InvokeExportAsync<T>(string moduleName, string? exportedFunctionName, params object[] args) => throw TokenlessOverload();
 
-        public Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string exportedFunctionName, params object[] args)
+        public Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string? exportedFunctionName, params object[] args)
         {
             WasInvoked = true;
             ReceivedToken = cancellationToken;
@@ -583,21 +584,47 @@ public class OriginalHtmlCaptureTests
         Assert.False(result.Service.WasCalled);
         Assert.Equal("console.log(1);", Encoding.UTF8.GetString(result.ClientBody.ToArray()));
     }
+}
 
+/// <summary>
+/// Watches the machine's node processes, so it must not run beside the tests that start node: it
+/// sits in the non-parallel collection, which xUnit runs on its own.
+/// </summary>
+[Collection(ProcessGlobalStateCollection.Name)]
+public class PrivateNodeServicesLaunchTests
+{
     [Fact]
     public async Task Works_even_without_a_registered_INodeServices()
     {
         // NodeServicesFactory.CreateNodeServices only wraps a Func<INodeInstance>; the node process
         // is launched in the OutOfProcessNodeInstance constructor, which the factory lambda calls on
         // first InvokeExportAsync. So the "no registered instance" branch does not spawn anything.
-        var nodeProcessesBefore = System.Diagnostics.Process.GetProcessesByName("node").Length;
+        // Compared by id, not by count: a node an earlier test is still ending may vanish meanwhile.
+        const string html = "<html><head></head><body><app-root></app-root></body></html>";
+        var nodeBefore = NodeProcessIds();
 
         var result = await PrerenderingHarness.Run(
-            PrerenderingHarness.HtmlPage(SmallIndexHtml),
+            PrerenderingHarness.HtmlPage(html),
             registerNodeServices: false);
 
-        Assert.Equal(SmallIndexHtml, result.Service.OriginalHtml);
-        Assert.Equal(nodeProcessesBefore, System.Diagnostics.Process.GetProcessesByName("node").Length);
+        Assert.Equal(html, result.Service.OriginalHtml);
+        Assert.Empty(NodeProcessIds().Except(nodeBefore));
+    }
+
+    private static HashSet<int> NodeProcessIds()
+    {
+        var processes = System.Diagnostics.Process.GetProcessesByName("node");
+        try
+        {
+            return processes.Select(p => p.Id).ToHashSet();
+        }
+        finally
+        {
+            foreach (var process in processes)
+            {
+                process.Dispose();
+            }
+        }
     }
 }
 

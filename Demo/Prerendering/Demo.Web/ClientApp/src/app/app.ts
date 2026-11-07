@@ -2,7 +2,7 @@ import { Component, inject, effect, ChangeDetectionStrategy } from '@angular/cor
 import { RouterOutlet, Router, ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslateService } from '@ngx-translate/core';
-import { MESSAGE_TOKEN } from './tokens';
+import { DATA_FROM_SERVER } from './tokens';
 
 @Component({
   selector: 'app-root',
@@ -15,7 +15,8 @@ export class App {
   private readonly translateService = inject(TranslateService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  readonly message = inject(MESSAGE_TOKEN);
+  // Only provided during the server render.
+  readonly message = inject(DATA_FROM_SERVER, { optional: true })?.message ?? 'Message from browser';
 
   title = 'ClientApp';
 

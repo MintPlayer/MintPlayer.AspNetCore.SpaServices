@@ -17,5 +17,5 @@ public interface INodeInstance : IDisposable
 	/// <param name="exportNameOrNull">If set, specifies the CommonJS export to be invoked. If not set, the module's default CommonJS export itself must be a function to be invoked.</param>
 	/// <param name="args">Any sequence of JSON-serializable arguments to be passed to the Node.js function.</param>
 	/// <returns>A <see cref="Task{TResult}"/> representing the completion of the RPC call.</returns>
-	Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string exportNameOrNull, params object[] args);
+	Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string? exportNameOrNull, params object[] args);
 }

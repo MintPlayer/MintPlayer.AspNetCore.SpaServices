@@ -6,7 +6,12 @@ namespace MintPlayer.AspNetCore.NodeServices;
 /// <summary>
 /// Makes it easier to pass script files to Node in a way that's sure to clean up after the process exits.
 /// </summary>
-public sealed class StringAsTempFile : IDisposable
+/// <remarks>
+/// Internal: it only ever carried this library's own embedded scripts. The file is written with a
+/// <c>.cjs</c> extension, so Node treats it as CommonJS regardless of any <c>package.json</c> "type" above the
+/// temp directory.
+/// </remarks>
+internal sealed class StringAsTempFile : IDisposable
 {
 	private bool _disposedValue;
 	private bool _hasDeletedTempFile;
@@ -20,12 +25,11 @@ public sealed class StringAsTempFile : IDisposable
 	/// <param name="applicationStoppingToken">A token that indicates when the host application is stopping.</param>
 	public StringAsTempFile(string content, CancellationToken applicationStoppingToken)
 	{
-		// Use .js extension so Node.js ESM can recognize the file type
-		FileName = Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(Path.GetRandomFileName()) + ".js");
+		FileName = Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(Path.GetRandomFileName()) + ".cjs");
 		File.WriteAllText(FileName, content);
 
-		// Because .NET finalizers don't reliably run when the process is terminating, also
-		// add event handlers for other shutdown scenarios.
+		// Deleted on Dispose, or when the host stops for an instance that lives as long as the host (the
+		// prerenderer script). There is no finalizer: finalizers don't reliably run at process exit anyway.
 		_applicationLifetimeRegistration = applicationStoppingToken.Register(EnsureTempFileDeleted);
 	}
 
@@ -39,22 +43,10 @@ public sealed class StringAsTempFile : IDisposable
 	/// </summary>
 	public void Dispose()
 	{
-		DisposeImpl(true);
-		GC.SuppressFinalize(this);
-	}
-
-	private void DisposeImpl(bool disposing)
-	{
 		if (!_disposedValue)
 		{
-			if (disposing)
-			{
-				// Dispose managed state
-				_applicationLifetimeRegistration.Dispose();
-			}
-
+			_applicationLifetimeRegistration.Dispose();
 			EnsureTempFileDeleted();
-
 			_disposedValue = true;
 		}
 	}
@@ -69,13 +61,5 @@ public sealed class StringAsTempFile : IDisposable
 				_hasDeletedTempFile = true;
 			}
 		}
-	}
-
-	/// <summary>
-	/// Implements the finalization part of the IDisposable pattern by calling Dispose(false).
-	/// </summary>
-	~StringAsTempFile()
-	{
-		DisposeImpl(false);
 	}
 }

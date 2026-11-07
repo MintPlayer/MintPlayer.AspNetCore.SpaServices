@@ -4,6 +4,14 @@
 	<UsingTask TaskName="MintPlayer.FolderHasher.Targets.ComputeFolderHashTask"
 	           AssemblyFile="$(MSBuildThisFileDirectory)MintPlayer.FolderHasher.Targets.dll" />
 
+	<!-- npm-install.proj lives in this package's folder, and MSBuild resolves a relative path against the
+	     project that uses it. So hand it absolute paths, resolved against the consuming project (an absolute
+	     override stays as it is). With the default relative SpaRoot, "ClientApp\" pointed into the package. -->
+	<PropertyGroup>
+		<_NpmInstallWorkingDirectoryFull>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(NpmInstallWorkingDirectory)'))</_NpmInstallWorkingDirectoryFull>
+		<_NodeModulesCheckPathFull>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(NodeModulesCheckPath)'))</_NodeModulesCheckPathFull>
+	</PropertyGroup>
+
 	<!-- Create default .hasherignore file if it doesn't exist -->
 	<Target Name="EnsureHasherIgnoreFile"
 	        Condition=" '$(EnableSpaBuilder)' == 'true' And '$(EnableSpaBuildCaching)' == 'true' And '$(CreateDefaultHasherIgnore)' == 'true' And Exists('$(SpaRoot)') And !Exists('$(SpaRoot).hasherignore') ">
@@ -73,7 +81,7 @@
 		     in a parallel solution build call this with the same properties, it runs only once. -->
 		<MSBuild Projects="$(MSBuildThisFileDirectory)npm-install.proj"
 		         Targets="NpmInstall"
-		         Properties="NpmInstallWorkingDirectory=$(NpmInstallWorkingDirectory);NodeModulesCheckPath=$(NodeModulesCheckPath)" />
+		         Properties="NpmInstallWorkingDirectory=$(_NpmInstallWorkingDirectoryFull);NodeModulesCheckPath=$(_NodeModulesCheckPathFull)" />
 	</Target>
 
 	<!-- Publish: Build the SPA (with caching support) -->
@@ -100,7 +108,7 @@
 		<!-- As part of publishing, ensure the JS resources are freshly built in production mode -->
 		<MSBuild Projects="$(MSBuildThisFileDirectory)npm-install.proj"
 		         Targets="NpmInstall"
-		         Properties="NpmInstallWorkingDirectory=$(NpmInstallWorkingDirectory);NodeModulesCheckPath=$(NodeModulesCheckPath)"
+		         Properties="NpmInstallWorkingDirectory=$(_NpmInstallWorkingDirectoryFull);NodeModulesCheckPath=$(_NodeModulesCheckPathFull)"
 		         Condition=" '$(_RunNpmBuild)' == 'true' " />
 
 		<!-- Build command selection based on BuildServerSideRenderer:
@@ -120,7 +128,7 @@
 		<!-- Always include the built files in the publish output -->
 		<ItemGroup>
 			<DistFiles Include="$(SpaRoot)dist\**; $(SpaRoot)dist-server\**" />
-			<DistFiles Include="$(SpaRoot)node_modules\**" Condition="'$(BuildServerSideRenderer)' == 'true'" />
+			<DistFiles Include="$(SpaRoot)node_modules\**" Condition="'$(PublishNodeModules)' == 'true'" />
 			<ResolvedFileToPublish Include="@(DistFiles->'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
 				<RelativePath>%(DistFiles.Identity)</RelativePath>
 				<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>

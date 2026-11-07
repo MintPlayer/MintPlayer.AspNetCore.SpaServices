@@ -72,8 +72,9 @@ public static class SpaPrerenderingExtensions
 		// Get all the necessary context info that will be used for each prerendering call
 		var applicationBuilder = spaBuilder.ApplicationBuilder;
 		var serviceProvider = applicationBuilder.ApplicationServices;
-		var nodeServices = GetNodeServices(serviceProvider, opts => opts.NodePath = options.NodePath);
-		var applicationStoppingToken = serviceProvider.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
+		var applicationLifetime = serviceProvider.GetRequiredService<IHostApplicationLifetime>();
+		var nodeServices = GetNodeServices(serviceProvider, applicationLifetime, opts => opts.NodePath = options.NodePath);
+		var applicationStoppingToken = applicationLifetime.ApplicationStopping;
 		var applicationBasePath = serviceProvider.GetRequiredService<IWebHostEnvironment>().ContentRootPath;
 		var moduleExport = new JavaScriptModuleExport(capturedBootModulePath);
 		var excludePathStrings = (options.ExcludeUrls ?? Array.Empty<string>())
@@ -671,10 +672,10 @@ public static class SpaPrerenderingExtensions
 		request.Headers.Remove(HeaderNames.Range);
 	}
 
-	private static string GetAndRemoveAcceptEncodingHeader(HttpRequest request)
+	private static string? GetAndRemoveAcceptEncodingHeader(HttpRequest request)
 	{
 		var headers = request.Headers;
-		var value = (string)null;
+		string? value = null;
 
 		if (headers.ContainsKey(HeaderNames.AcceptEncoding))
 		{
@@ -693,8 +694,9 @@ public static class SpaPrerenderingExtensions
 		// above that calls Prerenderer.RenderToString to use the internal overload
 		// that takes an HttpContext instead of a url/path+query pair.
 		var requestFeature = httpContext.Features.Get<IHttpRequestFeature>();
-		var unencodedPathAndQuery = requestFeature.RawTarget;
 		var request = httpContext.Request;
+		// Every server sets the feature; the fallback (decoded) only spares a hand-built context a NullReferenceException.
+		var unencodedPathAndQuery = requestFeature?.RawTarget ?? (request.PathBase + request.Path + request.QueryString).ToString();
 		var unencodedAbsoluteUrl = $"{request.Scheme}://{request.Host}{unencodedPathAndQuery}";
 		return (unencodedAbsoluteUrl, unencodedPathAndQuery);
 	}
@@ -796,22 +798,24 @@ public static class SpaPrerenderingExtensions
 		}
 	}
 
-	private static INodeServices GetNodeServices(IServiceProvider serviceProvider, Action<NodeServicesOptions> optionAction)
+	private static INodeServices GetNodeServices(
+		IServiceProvider serviceProvider, IHostApplicationLifetime applicationLifetime, Action<NodeServicesOptions> optionAction)
 	{
-		// Use the registered instance, or create a new private instance if none is registered
+		// Use the registered instance (the container disposes it), or create a private one.
 		var instance = serviceProvider.GetService<INodeServices>();
-		if (instance == null)
+		if (instance != null)
 		{
-			// Will always be this case
-			var opts = new NodeServicesOptions(serviceProvider);
-			optionAction(opts);
-			var result = NodeServicesFactory.CreateNodeServices(opts);
-			return result;
-		}
-		else
-		{
-			// Will never be called for the moment
 			return instance;
 		}
+
+		var opts = new NodeServicesOptions(serviceProvider);
+		optionAction(opts);
+		var result = NodeServicesFactory.CreateNodeServices(opts);
+
+		// Nothing else owns the private instance. Without this its node process, and its file watcher, outlived
+		// the host: harmless when the .NET process exits with it, but a host stopped and started inside one
+		// process (integration tests, a restart in place) left one node behind per start.
+		applicationLifetime.ApplicationStopped.Register(result.Dispose);
+		return result;
 	}
 }

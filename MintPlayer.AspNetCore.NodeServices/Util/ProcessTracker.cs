@@ -4,7 +4,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace MintPlayer.AspNetCore.SpaServices.Npm;
+namespace MintPlayer.AspNetCore.NodeServices;
 
 /// <summary>
 /// Ensures child processes are terminated when the parent process exits.

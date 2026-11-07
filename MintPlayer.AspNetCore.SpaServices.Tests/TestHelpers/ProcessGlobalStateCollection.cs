@@ -4,7 +4,8 @@ namespace MintPlayer.AspNetCore.SpaServices.Tests.TestHelpers;
 
 /// <summary>
 /// For tests that touch state shared by the whole test process: <c>Console.SetOut</c>, or
-/// <c>ProcessTracker.KillTrackedProcesses</c>, which kills every process any test has started.
+/// <c>ProcessTracker.KillTrackedProcesses</c>, which kills every process any test has started -
+/// and for tests that watch the machine's node processes, which the parallel tests start.
 /// xUnit runs a collection with parallelization disabled on its own, after the parallel ones.
 /// </summary>
 [CollectionDefinition(Name, DisableParallelization = true)]

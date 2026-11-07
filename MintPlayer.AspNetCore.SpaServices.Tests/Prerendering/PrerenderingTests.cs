@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
 using MintPlayer.AspNetCore.SpaServices.Prerendering;
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 using Xunit;
 
 namespace MintPlayer.AspNetCore.SpaServices.Tests.Prerendering;
@@ -17,16 +17,16 @@ public class AngularPrerendererBuilderTests
     }
 
     [Fact]
-    public void Defaults_to_waiting_for_the_second_angular_build_marker()
+    public void Defaults_to_waiting_for_the_application_builder_completion_marker_once()
     {
         // The one-argument constructor is the documented entry point, and the values it picks are
-        // what decide when prerendering considers the SSR build finished. Waiting for the SECOND
-        // occurrence is deliberate: Angular prints the marker once for the browser bundle and again
-        // for the server bundle, and prerendering needs the latter.
+        // what decide when prerendering considers the SSR build finished. The application builder
+        // (Angular 17+) builds the browser and server bundles in one pass and prints the marker once
+        // per (re)build, so the first occurrence means the server bundle is on disk.
         var builder = new AngularPrerendererBuilder("build:ssr");
 
-        Assert.Equal(@"Build at\:", Field<Regex>(builder, "finishedRegex").ToString());
-        Assert.Equal(2, Field<int>(builder, "finishedRegexIndex"));
+        Assert.Equal(@"Application bundle generation complete\.", Field<Regex>(builder, "finishedRegex").ToString());
+        Assert.Equal(1, Field<int>(builder, "finishedRegexIndex"));
         Assert.Equal("build:ssr", Field<string>(builder, "npmScript"));
     }
 
@@ -73,7 +73,7 @@ public class RenderToStringResultTests
     {
         var result = new RenderToStringResult
         {
-            Globals = JObject.Parse("""{ "answer": 42 }"""),
+            Globals = (JsonObject)JsonNode.Parse("""{ "answer": 42 }"""),
         };
 
         Assert.Equal("""window["answer"] = JSON.parse("42");""", result.CreateGlobalsAssignmentScript());
@@ -84,7 +84,7 @@ public class RenderToStringResultTests
     {
         var result = new RenderToStringResult
         {
-            Globals = JObject.Parse("""{ "a": 1, "b": 2 }"""),
+            Globals = (JsonObject)JsonNode.Parse("""{ "a": 1, "b": 2 }"""),
         };
 
         var script = result.CreateGlobalsAssignmentScript();
@@ -98,7 +98,7 @@ public class RenderToStringResultTests
     {
         var result = new RenderToStringResult
         {
-            Globals = JObject.Parse("""{ "config": { "url": "/api" } }"""),
+            Globals = (JsonObject)JsonNode.Parse("""{ "config": { "url": "/api" } }"""),
         };
 
         var script = result.CreateGlobalsAssignmentScript();
@@ -114,7 +114,7 @@ public class RenderToStringResultTests
         // able to break out of it.
         var result = new RenderToStringResult
         {
-            Globals = JObject.Parse("""{ "payload": "</script><script>alert(1)</script>" }"""),
+            Globals = (JsonObject)JsonNode.Parse("""{ "payload": "</script><script>alert(1)</script>" }"""),
         };
 
         var script = result.CreateGlobalsAssignmentScript();
@@ -127,7 +127,7 @@ public class RenderToStringResultTests
     {
         var result = new RenderToStringResult
         {
-            Globals = JObject.Parse("""{ "a\"b": 1 }"""),
+            Globals = (JsonObject)JsonNode.Parse("""{ "a\"b": 1 }"""),
         };
 
         var script = result.CreateGlobalsAssignmentScript();

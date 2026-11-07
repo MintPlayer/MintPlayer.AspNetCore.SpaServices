@@ -1,16 +1,128 @@
-namespace Demo.Web;
+using Demo.Data.Extensions;
+using Microsoft.AspNetCore.Mvc.Razor;
+using MintPlayer.AspNetCore.SpaServices.Extensions;
+using MintPlayer.AspNetCore.SpaServices.Prerendering;
+using MintPlayer.AspNetCore.SpaServices.Routing;
+using WebMarkupMin.AspNetCoreLatest;
 
-public class Program
-{
-	public static void Main(string[] args)
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllersWithViews();
+
+builder.Services
+	.AddDemo(options =>
 	{
-		CreateHostBuilder(args).Build().Run();
-	}
+		options.ConnectionString = builder.Configuration.GetConnectionString("Demo");
+	})
+	.AddSpaStaticFilesImproved(configuration =>
+	{
+		// Angular 17+ splits its output into dist/browser and dist/server, so the browser
+		// assets - index.html above all - are one level below dist. Pointing at dist itself
+		// meant Production could not serve the default page at all.
+		configuration.RootPath = "ClientApp/dist/browser";
+	});
 
-	public static IHostBuilder CreateHostBuilder(string[] args) =>
-		Host.CreateDefaultBuilder(args)
-			.ConfigureWebHostDefaults(webBuilder =>
-			{
-				webBuilder.UseStartup<Startup>();
-			});
+// Define the SPA-routes for our helper
+builder.Services.AddSpaPrerenderingService<Demo.Web.Services.DemoSpaPrerenderingService>();
+builder.Services.AddWebMarkupMin().AddHttpCompression().AddHtmlMinification();
+
+builder.Services
+	.Configure<RazorViewEngineOptions>(options =>
+	{
+		var new_locations = options.ViewLocationFormats.Select(vlf => $"/Server{vlf}").ToList();
+		options.ViewLocationFormats.Clear();
+		foreach (var format in new_locations)
+			options.ViewLocationFormats.Add(format);
+	})
+	.Configure<WebMarkupMinOptions>(options =>
+	{
+		options.DisablePoweredByHttpHeaders = true;
+		options.AllowMinificationInDevelopmentEnvironment = true;
+		options.AllowCompressionInDevelopmentEnvironment = true;
+		options.DisablePoweredByHttpHeaders = false;
+	})
+	.Configure<HtmlMinificationOptions>(options =>
+	{
+		options.MinificationSettings.RemoveEmptyAttributes = true;
+		options.MinificationSettings.RemoveRedundantAttributes = true;
+		options.MinificationSettings.RemoveHttpProtocolFromAttributes = true;
+		options.MinificationSettings.RemoveHttpsProtocolFromAttributes = false;
+		options.MinificationSettings.MinifyInlineJsCode = true;
+		options.MinificationSettings.MinifyEmbeddedJsCode = true;
+		options.MinificationSettings.MinifyEmbeddedJsonData = true;
+		options.MinificationSettings.WhitespaceMinificationMode = WebMarkupMin.Core.WhitespaceMinificationMode.Aggressive;
+		options.MinificationSettings.MinifyEmbeddedCssCode = true;
+		options.MinificationSettings.MinifyInlineCssCode = true;
+	});
+
+var app = builder.Build();
+
+// WebApplication adds the developer exception page in Development itself.
+if (!app.Environment.IsDevelopment())
+{
+	app.UseExceptionHandler("/Error");
+	// The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+	app.UseHsts();
 }
+
+app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+	app.UseSpaStaticFilesImproved();
+}
+
+// Registered before UseSpaImproved, at the top level. Both of these used to be unusable
+// there: UseHsts writes Strict-Transport-Security eagerly on the way in, and prerendering
+// cleared the response before writing, so the header never reached the client on a rendered
+// page. WebMarkupMin had to be registered inside the SPA callback for the same reason.
+// See issue #81.
+app.UseResponseCaching();
+app.UseHsts();
+app.UseWebMarkupMin();
+
+app.UseRouting();
+
+app.MapStaticAssets();
+app.MapControllerRoute(
+	name: "default",
+	pattern: "{controller}/{action=Index}/{id?}");
+
+// Explicit, so the endpoints run here - before the SPA middleware below, which answers every request it
+// reaches. Without this call WebApplication runs them at the very end of the pipeline, too late.
+app.UseEndpoints(_ => { });
+
+app.UseSpaImproved(spa =>
+{
+	// To learn more about options for serving an Angular SPA from ASP.NET Core,
+	// see https://go.microsoft.com/fwlink/?linkid=864501
+
+	spa.Options.SourcePath = "ClientApp";
+
+	// With "outputMode": "server" and RenderMode.Server, nothing is prerendered at build time, so the
+	// browser output has a plain template named index.csr.html and no index.html. Only used outside
+	// Development; there the dev server answers instead.
+	spa.Options.DefaultPage = "/index.csr.html";
+
+	spa.UseSpaPrerendering(options =>
+	{
+		// The stock application-builder server entry, an ES module with chunks next to it.
+		options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.server.mjs";
+		options.BootModuleBuilder = app.Environment.IsDevelopment() ? new AngularPrerendererBuilder("build:ssr:development") : null;
+		// Vite's dev-server endpoints (HMR client, pre-bundled deps, file access) are not pages.
+		options.ExcludeUrls = ["/@vite", "/@fs", "/@ng", "/@id"];
+
+		// A header set anywhere upstream now survives prerendering, so this no longer needs
+		// the OnPrepareResponse hook that used to exist purely to smuggle it past
+		// Response.Clear(). See DemoSpaPrerenderingService.OnSupplyData, which sets it the
+		// ordinary way.
+	});
+
+	if (app.Environment.IsDevelopment())
+	{
+		// The default regexes match Vite's "Local:" line. The development build configuration has no
+		// "server", so `ng serve` returns the plain template rather than rendering it itself.
+		spa.UseAngularCliServer(npmScript: "start");
+	}
+});
+
+app.Run();
