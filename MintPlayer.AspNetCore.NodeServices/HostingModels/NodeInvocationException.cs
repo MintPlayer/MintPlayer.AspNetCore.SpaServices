@@ -26,7 +26,7 @@ internal class NodeInvocationException : Exception
 	/// </summary>
 	/// <param name="message">A description of the exception.</param>
 	/// <param name="details">Additional information, such as a Node.js stack trace, representing the exception.</param>
-	public NodeInvocationException(string message, string details)
+	public NodeInvocationException(string message, string? details)
 		: base(message + Environment.NewLine + details)
 	{
 	}
@@ -38,7 +38,7 @@ internal class NodeInvocationException : Exception
 	/// <param name="details">Additional information, such as a Node.js stack trace, representing the exception.</param>
 	/// <param name="nodeInstanceUnavailable">Specifies a value for the <see cref="NodeInstanceUnavailable"/> flag.</param>
 	/// <param name="allowConnectionDraining">Specifies a value for the <see cref="AllowConnectionDraining"/> flag.</param>
-	public NodeInvocationException(string message, string details, bool nodeInstanceUnavailable, bool allowConnectionDraining)
+	public NodeInvocationException(string message, string? details, bool nodeInstanceUnavailable, bool allowConnectionDraining)
 		: this(message, details)
 	{
 		// Reject a meaningless combination of flags

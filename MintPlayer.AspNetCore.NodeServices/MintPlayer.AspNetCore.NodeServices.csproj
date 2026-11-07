@@ -42,6 +42,8 @@
 		<InternalsVisibleTo Include="MintPlayer.AspNetCore.SpaServices.Tests" />
 		<!-- StringAsTempFile, for the embedded prerenderer script. -->
 		<InternalsVisibleTo Include="MintPlayer.AspNetCore.SpaServices.Prerendering" />
+		<!-- ProcessTracker: the npm and Angular CLI processes join the same kill-on-close job as node. -->
+		<InternalsVisibleTo Include="MintPlayer.AspNetCore.SpaServices" />
 	</ItemGroup>
 
 	<!-- Include XML markups in the nupkg -->

@@ -28,8 +28,8 @@ internal sealed class StringAsTempFile : IDisposable
 		FileName = Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(Path.GetRandomFileName()) + ".cjs");
 		File.WriteAllText(FileName, content);
 
-		// Because .NET finalizers don't reliably run when the process is terminating, also
-		// add event handlers for other shutdown scenarios.
+		// Deleted on Dispose, or when the host stops for an instance that lives as long as the host (the
+		// prerenderer script). There is no finalizer: finalizers don't reliably run at process exit anyway.
 		_applicationLifetimeRegistration = applicationStoppingToken.Register(EnsureTempFileDeleted);
 	}
 
@@ -43,22 +43,10 @@ internal sealed class StringAsTempFile : IDisposable
 	/// </summary>
 	public void Dispose()
 	{
-		DisposeImpl(true);
-		GC.SuppressFinalize(this);
-	}
-
-	private void DisposeImpl(bool disposing)
-	{
 		if (!_disposedValue)
 		{
-			if (disposing)
-			{
-				// Dispose managed state
-				_applicationLifetimeRegistration.Dispose();
-			}
-
+			_applicationLifetimeRegistration.Dispose();
 			EnsureTempFileDeleted();
-
 			_disposedValue = true;
 		}
 	}
@@ -73,13 +61,5 @@ internal sealed class StringAsTempFile : IDisposable
 				_hasDeletedTempFile = true;
 			}
 		}
-	}
-
-	/// <summary>
-	/// Implements the finalization part of the IDisposable pattern by calling Dispose(false).
-	/// </summary>
-	~StringAsTempFile()
-	{
-		DisposeImpl(false);
 	}
 }

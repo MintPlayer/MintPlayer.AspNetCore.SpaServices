@@ -42,16 +42,8 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 		HttpMessageHandler? httpMessageHandler)
 	: base(
 			EmbeddedResourceReader.Read(typeof(HttpNodeInstance), "/Content/Node/entrypoint-http.cjs"),
-			options.ProjectPath,
-			options.WatchFileExtensions,
 			MakeCommandLineOptions(port),
-			options.ApplicationStoppingToken,
-			options.NodeInstanceOutputLogger,
-			options.EnvironmentVariables,
-			options.InvocationTimeoutMilliseconds,
-			options.LaunchWithDebugging,
-			options.DebuggingPort,
-			options.NodePath,
+			options,
 			startNodeProcess)
 	{
 		_client = httpMessageHandler == null ? new HttpClient() : new HttpClient(httpMessageHandler);
@@ -88,7 +80,7 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 			if (!response.IsSuccessStatusCode)
 			{
 				// Unfortunately there's no true way to cancel ReadAsStringAsync calls, hence AbandonIfCancelled
-				var responseBody = await response.Content.ReadAsStringAsync().OrThrowOnCancellation(cancellationToken);
+				var responseBody = await response.Content.ReadAsStringAsync().WaitAsync(cancellationToken);
 				throw CreateErrorResponseException(response, responseBody);
 			}
 
@@ -110,11 +102,11 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 							typeof(T).FullName);
 					}
 
-					var responseString = await response.Content.ReadAsStringAsync().OrThrowOnCancellation(cancellationToken);
+					var responseString = await response.Content.ReadAsStringAsync().WaitAsync(cancellationToken);
 					return (T)(object)responseString;
 
 				case "application/json":
-					var responseJson = await response.Content.ReadAsStringAsync().OrThrowOnCancellation(cancellationToken);
+					var responseJson = await response.Content.ReadAsStringAsync().WaitAsync(cancellationToken);
 					return NodeRpcJson.Deserialize<T>(responseJson)!;
 
 				case "application/octet-stream":
@@ -126,7 +118,7 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 							typeof(T).FullName + ". Instead you must use the generic type System.IO.Stream.");
 					}
 
-					var responseStream = await response.Content.ReadAsStreamAsync().OrThrowOnCancellation(cancellationToken);
+					var responseStream = await response.Content.ReadAsStreamAsync().WaitAsync(cancellationToken);
 					responseIsOwnedByCaller = true;
 					return (T)(object)responseStream;
 

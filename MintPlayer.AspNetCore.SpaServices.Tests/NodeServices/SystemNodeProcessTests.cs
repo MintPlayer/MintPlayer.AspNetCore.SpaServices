@@ -92,16 +92,8 @@ public class SystemNodeProcessTests
 	private sealed class ThirdPartyNodeInstance()
 		: OutOfProcessNodeInstance(
 			"module.exports = {};",
-			Path.GetTempPath(),
-			[],
 			string.Empty,
-			CancellationToken.None,
-			Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance,
-			new Dictionary<string, string>(),
-			1000,
-			false,
-			0,
-			StandInNodePath)
+			TestNodeOptions.Create(StandInNodePath))
 	{
 		protected override Task<T> InvokeExportAsync<T>(NodeInvocationInfo invocationInfo, CancellationToken cancellationToken)
 			=> throw new NotSupportedException();

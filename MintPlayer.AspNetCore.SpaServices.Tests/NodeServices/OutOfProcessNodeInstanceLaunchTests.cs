@@ -74,16 +74,8 @@ public class OutOfProcessNodeInstanceLaunchTests
 	private sealed class MissingNodeInstance(bool launchWithDebugging, Action<string> onEntryPoint)
 		: OutOfProcessNodeInstance(
 			"module.exports = {};",
-			Path.GetTempPath(),
-			[],
 			string.Empty,
-			CancellationToken.None,
-			NullLogger.Instance,
-			new Dictionary<string, string>(),
-			1000,
-			launchWithDebugging,
-			9229,
-			MissingNodePath())
+			TestNodeOptions.Create(MissingNodePath(), launchWithDebugging: launchWithDebugging, debuggingPort: 9229))
 	{
 		// A field initializer, not a constructor body: the base constructor calls the override below
 		// before this class's own constructor body would run.
@@ -96,76 +88,6 @@ public class OutOfProcessNodeInstanceLaunchTests
 			onEntryPoint(entryPointFilename);
 			return base.PrepareNodeProcessStartInfo(
 				entryPointFilename, projectPath, commandLineArguments, environmentVars, launchWithDebugging, debuggingPort, nodePath);
-		}
-
-		protected override Task<T> InvokeExportAsync<T>(NodeInvocationInfo invocationInfo, CancellationToken cancellationToken)
-			=> throw new NotSupportedException();
-	}
-}
-
-/// <summary>
-/// Finalizer paths. <c>GC.Collect</c> is process-global, so these run outside the parallel collections.
-/// </summary>
-[Collection(NodeServicesGlobalStateCollection.Name)]
-public class NodeServicesFinalizerTests
-{
-	[Fact]
-	public void The_finalizer_of_a_never_launched_instance_runs_without_a_process()
-	{
-		FinalizerProbe.Finalized = false;
-
-		AbandonAFailedInstance();
-		GC.Collect();
-		GC.WaitForPendingFinalizers();
-
-		Assert.True(FinalizerProbe.Finalized);
-	}
-
-	[Fact]
-	public void The_StringAsTempFile_finalizer_deletes_the_file()
-	{
-		var fileName = AbandonATempFile();
-		GC.Collect();
-		GC.WaitForPendingFinalizers();
-
-		Assert.False(File.Exists(fileName), "The finalizer did not delete the temp file.");
-	}
-
-	[MethodImpl(MethodImplOptions.NoInlining)]
-	private static void AbandonAFailedInstance()
-		=> Assert.Throws<InvalidOperationException>(() => new FinalizerProbe());
-
-	[MethodImpl(MethodImplOptions.NoInlining)]
-	private static string AbandonATempFile()
-	{
-		var file = new StringAsTempFile("abandoned", CancellationToken.None);
-		Assert.True(File.Exists(file.FileName));
-		return file.FileName;
-	}
-
-	private sealed class FinalizerProbe()
-		: OutOfProcessNodeInstance(
-			"module.exports = {};",
-			Path.GetTempPath(),
-			[],
-			string.Empty,
-			CancellationToken.None,
-			NullLogger.Instance,
-			new Dictionary<string, string>(),
-			1000,
-			false,
-			0,
-			OutOfProcessNodeInstanceLaunchTests.MissingNodePath())
-	{
-		public static volatile bool Finalized;
-
-		protected override void Dispose(bool disposing)
-		{
-			base.Dispose(disposing);
-			if (!disposing)
-			{
-				Finalized = true;
-			}
 		}
 
 		protected override Task<T> InvokeExportAsync<T>(NodeInvocationInfo invocationInfo, CancellationToken cancellationToken)

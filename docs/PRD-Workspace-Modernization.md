@@ -219,7 +219,8 @@ The **supported Angular range is 19–22**. 22.2 is the current scaffold. The sp
 | **D5** | `StringAsTempFile` becomes `internal sealed` and writes `.cjs`. The `NODE_PATH` handling stays. | S6: the scripts must live on disk for `require`. `NODE_PATH` is harmless for a CommonJS entry and still lets a CJS boot module find the app's `node_modules`. |
 | **D6** | The version comes from MintPlayer.Versioning (#93). The release notes call this a breaking release. | No hand-set version exists to bump. |
 | **G-AOT** | Partly met. The RPC serializer is System.Text.Json with the reflection resolver, with documented suppressions. | Invocation arguments and results are caller-chosen types, so there is no source-generated context to give. |
-| **CI** | One pinned Node (22), not a 20/22/24 matrix. | The coverage upload runs once per job. A matrix needs a separate test-only job. That is out of scope for this PR. |
+| **CI** | The build job pins Node 22 and uploads coverage. A separate `node-versions` job in `pull-request.yml` runs only `PrerendererNodeIntegrationTests` on Node 20 and 24, without coverage. The actions move to `checkout@v7`, `setup-dotnet@v6` and `setup-node@v7`. | The coverage upload must run once. Only the real-Node tests depend on the Node version. |
+| **M7** | `OutOfProcessNodeInstance` takes `(entryPointScript, commandLineArguments, NodeServicesOptions)` instead of eleven parameters. This reuses the existing options type instead of adding a new record. `Prerenderer` keeps a lock instead of `Lazy<>`. | Every parameter was already a `NodeServicesOptions` property. `Lazy<>` cannot re-extract the prerenderer script once its temp file has gone, and the integration tests showed that this happens. |
 
 ### Spike findings that change the user-facing setup
 
@@ -243,6 +244,47 @@ The **supported Angular range is 19–22**. 22.2 is the current scaffold. The sp
   request. This is documented under troubleshooting.
 - **Dependencies must stay aligned.** `@angular/ssr` 21.2 with `@angular/build` 21.1 fails at build time
   (`this.manifest.allowedHosts is not iterable`).
+
+## Node process lifecycle
+
+### Why a changed bundle means a new Node process
+
+Node can unload a CommonJS module, but not an ES module:
+
+- **CommonJS.** `delete require.cache[path]` evicts a module and the next `require` reads the file again.
+- **ES modules.** The ESM loader's cache cannot be reached from code and has no eviction API, up to and including Node 24. Once `import()` has loaded `dist/server/main.server.mjs`, the process returns that same module for as long as it lives.
+
+So in development, `ng build --watch` (the `AngularPrerendererBuilder`) rewrites `main.server.mjs` and its chunks, and the new bundle only takes effect in a new Node process. The library does this through its file watcher:
+
+1. The `FileSystemWatcher` of `OutOfProcessNodeInstance` sees a file with a watched extension change below `ProjectPath`. The default extensions include `.mjs` and `.cjs` since this release. The watcher sets a "needs restart" flag and stops watching. It does nothing else.
+2. The next invocation sees the flag and throws a `NodeInvocationException` that marks the instance unavailable.
+3. `NodeServicesImpl` replaces the instance. The new instance starts a new `node` through `Process.Start`. The old one keeps serving in-flight calls for the draining period (15 s), and is then disposed, which kills it and its child processes. A debugging instance is killed at once, because it holds the inspector port.
+
+The restart happens lazily, once per change, on the next render. It does not happen on every request. Node starts in about 100 ms.
+
+**Alternatives considered:**
+
+| Alternative | Verdict |
+|---|---|
+| Cache-busting import, `import(url + '?v=' + mtime)` | Rejected. Every rebuild loads another copy of the whole server bundle and the old copies are never freed, so memory grows with each save. Only the entry URL changes, so a chunk the entry imports statically under an unchanged name is served stale. |
+| Render in a `worker_thread` and terminate the worker on change | Possible later. Cheaper than a process, but it adds a second message channel inside Node. Only worth it if the restart cost shows up. |
+
+**In production** the same watcher runs, because watching depends on `WatchFileExtensions`, not on the environment. `dist` doesn't change, so nothing fires unless files are deployed over a running app. To switch it off, set `WatchFileExtensions = []`.
+
+### Making sure the old process ends
+
+Users of this library, and of Microsoft's original, have reported `node.exe` processes piling up. An audit found these causes. All of them are fixed in this release:
+
+| Cause | Effect | Fix |
+|---|---|---|
+| The NodeServices `node` process was not in the kill-on-close job object. Only the npm and Angular CLI processes (`ProcessTracker` in SpaServices) were. | When the debugger stopped or the .NET process was killed, `node` lived until its parent-PID poll noticed, about 1 s. If Windows had already reused the PID, it never noticed. | `ProcessTracker` moved to NodeServices. `SystemNodeProcess.Start` adds every `node` to the job, so Windows ends it together with .NET. |
+| `UseSpaPrerendering` created a private `INodeServices` that nothing disposed. | Its `node` and its file watcher outlived the host. A host stopped and started inside one process (integration tests, an in-place restart) left one `node` behind per start. | It is disposed on `ApplicationStopped`. A registered `INodeServices` is still disposed by the container. |
+| `NodeServicesImpl.Dispose` disposed only the current instance. | A replaced instance in its draining period ran for up to another 15 s after the host stopped. | `Dispose` also ends draining instances. A call after `Dispose` throws `ObjectDisposedException` instead of starting a new `node`. |
+| The constructor launched `node`, then started the watcher. If the watcher threw (for example, `ProjectPath` does not exist), the exception escaped. | A running `node` that nothing referenced and nothing would kill. | The watcher and stream setup run inside the launch `try`. On failure, the process tree is killed. |
+| A `Kill` that threw (the process exited between the check and the kill, or access was denied) escaped `Dispose`. | The process handle was never disposed. In the delayed path the exception was rethrown at the next caller. | Logged as a warning. The handle is always disposed. |
+| The watcher fired for every watched extension anywhere below the content root. That includes `ClientApp/.angular/cache`, where the Angular CLI's Vite cache writes `.mjs`, `.js` and `.json` while `ng serve` or `ng build --watch` runs, and `node_modules`, `bin` and `obj`. | Restarts that bought nothing. Each one started a new `node` and kept the old one draining for 15 s, so several were alive at once. | Changes below `node_modules`, `.angular`, `.git`, `.vs`, `bin` and `obj` (relative to `ProjectPath`) are ignored. |
+
+Two processes still exist side by side by design: the new instance and the draining old one, for at most 15 s after a change.
 
 ## Risks
 

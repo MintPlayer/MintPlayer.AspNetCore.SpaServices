@@ -10,6 +10,26 @@ BREAKING CHANGES
   or native-AOT must keep the types they exchange with Node.
 - StringAsTempFile is now internal. It was an implementation detail of how the entry script reaches
   Node.
+- OutOfProcessNodeInstance's constructor is now protected and takes (entryPointScript,
+  commandLineArguments, NodeServicesOptions) instead of eleven parameters. Every other value was
+  already a NodeServicesOptions property. The finalizer is gone: an undisposed instance's node ends
+  with the .NET process (job object on Windows, parent-PID poll elsewhere).
+- Nullable annotations: exportedFunctionName / exportNameOrNull and NodeInvocationException's
+  details are string?; NodeInvocationInfo.ExportedFunctionName is string?.
+- Calling INodeServices after it was disposed throws ObjectDisposedException instead of starting a
+  new node process.
+- Changes below node_modules, .angular, .git, .vs, bin and obj (relative to ProjectPath) no longer
+  restart Node. The Angular CLI's cache in .angular/cache rewrites .mjs/.js/.json files while
+  ng serve or ng build --watch runs, which caused needless restarts.
+
+FIXES
+- Node processes no longer outlive their host:
+  - On Windows, node joins the same kill-on-close job object as the npm and Angular CLI processes,
+    so it ends with .NET even when the debugger is stopped or the process is killed.
+  - Disposing INodeServices also ends instances still in their 15-second draining period.
+  - A constructor that failed after node had started (e.g. a ProjectPath that does not exist)
+    left that node running; it is now killed.
+  - A failing kill no longer escapes Dispose and leaves the process handle undisposed.
 
 FEATURES
 - .mjs and .cjs are now watched by default, alongside .js, .ts, .json and .html, so a rebuilt

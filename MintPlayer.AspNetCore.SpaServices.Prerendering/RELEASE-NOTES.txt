@@ -32,6 +32,13 @@ MIGRATION (Angular 19-22)
   "/index.csr.html", and ExcludeUrls ["/@vite", "/@fs", "/@ng", "/@id"] instead of "/sockjs-node".
 - The Prerendering README's "The Angular side" walks through all of it.
 
+FIXES
+- The INodeServices that UseSpaPrerendering creates for itself (when none is registered) is now
+  disposed when the host stops. It used to keep its node process and file watcher until the .NET
+  process exited, so a host stopped and started in one process left a node behind each time.
+- RenderToStringResult.Html and RedirectUrl are annotated string?, matching what a renderer may
+  return.
+
 v 10.8.0-preview1
 BREAKING CHANGES
 - Response headers set by middleware upstream of UseSpaPrerendering are no longer discarded.

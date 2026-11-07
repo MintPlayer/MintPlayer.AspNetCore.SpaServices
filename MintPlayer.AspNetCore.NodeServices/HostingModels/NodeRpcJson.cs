@@ -21,7 +21,13 @@ namespace MintPlayer.AspNetCore.NodeServices.HostingModels;
 /// </remarks>
 internal static class NodeRpcJson
 {
-	internal static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
+	internal static readonly JsonSerializerOptions Options = CreateOptions();
+
+	// A method rather than a field initializer, so the suppression has somewhere to go: otherwise a
+	// trimmed or native-AOT publish of a consuming app reports the resolver's constructor.
+	[UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Arguments and results are caller-chosen types; documented on the class.")]
+	[UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Arguments and results are caller-chosen types; documented on the class.")]
+	private static JsonSerializerOptions CreateOptions() => new(JsonSerializerDefaults.Web)
 	{
 		DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
 		TypeInfoResolver = new DefaultJsonTypeInfoResolver(),

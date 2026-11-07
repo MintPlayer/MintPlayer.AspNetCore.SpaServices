@@ -91,7 +91,7 @@ public class NodeServicesImplOverloadTests
 
 	private sealed class RecordingNodeInstance(Func<NodeInvocationInfo, Task<object>> invoke) : INodeInstance
 	{
-		public async Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string exportNameOrNull, params object[] args)
+		public async Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string? exportNameOrNull, params object[] args)
 		{
 			var result = await invoke(new NodeInvocationInfo
 			{

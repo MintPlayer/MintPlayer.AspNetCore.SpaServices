@@ -55,8 +55,9 @@ public class NodeServicesOptions
 		NodeInstanceOutputLogger = loggerFactory != null
 			? loggerFactory.CreateLogger(LogCategoryName)
 			: NullLogger.Instance;
-		// By default, we use this package's built-in out-of-process-via-HTTP hosting/transport
-		this.UseHttpHosting();
+		// By default, we use this package's built-in out-of-process-via-HTTP hosting/transport. Assigned here
+		// rather than through UseHttpHosting() so the compiler can see the property is never null.
+		NodeInstanceFactory = () => new HttpNodeInstance(this);
 	}
 
 	/// <summary>
@@ -82,12 +83,14 @@ public class NodeServicesOptions
 	public ILogger NodeInstanceOutputLogger { get; set; }
 
 	/// <summary>
-	/// If true, the Node.js instance will accept incoming V8 debugger connections (e.g., from node-inspector).
+	/// If true, Node.js is started with <c>--inspect</c> and accepts inspector connections (e.g., from Chrome
+	/// DevTools via <c>chrome://inspect</c>, or from Visual Studio Code).
 	/// </summary>
 	public bool LaunchWithDebugging { get; set; }
 
 	/// <summary>
-	/// If <see cref="LaunchWithDebugging"/> is true, the Node.js instance will listen for V8 debugger connections on this port.
+	/// If <see cref="LaunchWithDebugging"/> is true, the Node.js instance listens for inspector connections on this
+	/// port. Zero means Node's default (9229).
 	/// </summary>
 	public int DebuggingPort { get; set; }
 

@@ -18,17 +18,17 @@ jobs:
     
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       
     - name: Setup .NET Core
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 11.0.100-rc.1.26425.128
 
     # The Node integration tests spawn real node processes, and the build runs npm in the demo
     # ClientApps. Pinned so a runner-image change cannot alter the Node the tests run against.
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
         node-version: '22'
     

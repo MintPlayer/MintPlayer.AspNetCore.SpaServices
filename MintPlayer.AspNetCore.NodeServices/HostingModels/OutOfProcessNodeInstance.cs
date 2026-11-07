@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace MintPlayer.AspNetCore.NodeServices.HostingModels;
 
@@ -29,6 +30,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 	private bool _disposed;
 	private readonly StringAsTempFile _entryPointScript;
 	private FileSystemWatcher? _fileSystemWatcher;
+	private string? _watchRoot;
 	private int _invocationTimeoutMilliseconds;
 	private bool _launchWithDebugging;
 	private readonly INodeProcess _nodeProcess;
@@ -39,31 +41,17 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 	/// <summary>
 	/// Creates a new instance of <see cref="OutOfProcessNodeInstance"/>.
 	/// </summary>
-	/// <param name="entryPointScript">The path to the entry point script that the Node instance should load and execute.</param>
-	/// <param name="projectPath">The root path of the current project. This is used when resolving Node.js module paths relative to the project root.</param>
-	/// <param name="watchFileExtensions">The filename extensions that should be watched within the project root. The Node instance will automatically shut itself down if any matching file changes.</param>
-	/// <param name="commandLineArguments">Additional command-line arguments to be passed to the Node.js instance.</param>
-	/// <param name="applicationStoppingToken">A token that indicates when the host application is stopping.</param>
-	/// <param name="nodeOutputLogger">The <see cref="ILogger"/> to which the Node.js instance's stdout/stderr (and other log information) should be written.</param>
-	/// <param name="environmentVars">Environment variables to be set on the Node.js process.</param>
-	/// <param name="invocationTimeoutMilliseconds">The maximum duration, in milliseconds, to wait for RPC calls to complete.</param>
-	/// <param name="launchWithDebugging">If true, passes a flag to the Node.js process telling it to accept V8 debugger connections.</param>
-	/// <param name="debuggingPort">If debugging is enabled, the Node.js process should listen for V8 debugger connections on this port.</param>
-	public OutOfProcessNodeInstance(
-		string entryPointScript,
-		string projectPath,
-		string[] watchFileExtensions,
-		string commandLineArguments,
-		CancellationToken applicationStoppingToken,
-		ILogger nodeOutputLogger,
-		IDictionary<string, string> environmentVars,
-		int invocationTimeoutMilliseconds,
-		bool launchWithDebugging,
-		int debuggingPort,
-		string nodePath)
-		: this(entryPointScript, projectPath, watchFileExtensions, commandLineArguments, applicationStoppingToken,
-			nodeOutputLogger, environmentVars, invocationTimeoutMilliseconds, launchWithDebugging, debuggingPort, nodePath,
-			SystemNodeProcess.Start)
+	/// <param name="entryPointScript">The source of the entry point script that the Node instance should load and execute.</param>
+	/// <param name="commandLineArguments">Additional command-line arguments to be passed to the entry point script.</param>
+	/// <param name="options">
+	/// Where everything else comes from: <see cref="NodeServicesOptions.ProjectPath"/>,
+	/// <see cref="NodeServicesOptions.WatchFileExtensions"/>, <see cref="NodeServicesOptions.ApplicationStoppingToken"/>,
+	/// <see cref="NodeServicesOptions.NodeInstanceOutputLogger"/>, <see cref="NodeServicesOptions.EnvironmentVariables"/>,
+	/// <see cref="NodeServicesOptions.InvocationTimeoutMilliseconds"/>, <see cref="NodeServicesOptions.LaunchWithDebugging"/>,
+	/// <see cref="NodeServicesOptions.DebuggingPort"/> and <see cref="NodeServicesOptions.NodePath"/>.
+	/// </param>
+	protected OutOfProcessNodeInstance(string entryPointScript, string commandLineArguments, NodeServicesOptions options)
+		: this(entryPointScript, commandLineArguments, options, SystemNodeProcess.Start)
 	{
 	}
 
@@ -73,42 +61,55 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 	/// </summary>
 	internal OutOfProcessNodeInstance(
 		string entryPointScript,
-		string projectPath,
-		string[] watchFileExtensions,
 		string commandLineArguments,
-		CancellationToken applicationStoppingToken,
-		ILogger nodeOutputLogger,
-		IDictionary<string, string> environmentVars,
-		int invocationTimeoutMilliseconds,
-		bool launchWithDebugging,
-		int debuggingPort,
-		string nodePath,
+		NodeServicesOptions options,
 		Func<ProcessStartInfo, INodeProcess> startNodeProcess)
 	{
-		ArgumentNullException.ThrowIfNull(nodeOutputLogger);
+		ArgumentNullException.ThrowIfNull(options);
+		ArgumentNullException.ThrowIfNull(options.NodeInstanceOutputLogger);
 
-		OutputLogger = nodeOutputLogger;
-		_entryPointScript = new StringAsTempFile(entryPointScript, applicationStoppingToken);
-		_invocationTimeoutMilliseconds = invocationTimeoutMilliseconds;
-		_launchWithDebugging = launchWithDebugging;
+		OutputLogger = options.NodeInstanceOutputLogger;
+		_entryPointScript = new StringAsTempFile(entryPointScript, options.ApplicationStoppingToken);
+		_invocationTimeoutMilliseconds = options.InvocationTimeoutMilliseconds;
+		_launchWithDebugging = options.LaunchWithDebugging;
 
+		_watchFileExtensions = options.WatchFileExtensions;
+		INodeProcess? launched = null;
 		try
 		{
-			var startInfo = PrepareNodeProcessStartInfo(_entryPointScript.FileName, projectPath, commandLineArguments,
-				environmentVars, _launchWithDebugging, debuggingPort, nodePath);
-			_nodeProcess = LaunchNodeProcess(startInfo, startNodeProcess);
+			var startInfo = PrepareNodeProcessStartInfo(_entryPointScript.FileName, options.ProjectPath, commandLineArguments,
+				options.EnvironmentVariables, _launchWithDebugging, options.DebuggingPort, options.NodePath);
+			_nodeProcess = launched = LaunchNodeProcess(startInfo, startNodeProcess);
+			_fileSystemWatcher = BeginFileWatcher(options.ProjectPath);
+			ConnectToInputOutputStreams();
 		}
 		catch
 		{
 			// Nobody gets a reference to a half-constructed instance, so nobody can dispose it. Without this
-			// the temp file would stay on disk, and registered on the stopping token, until the host stops.
+			// the temp file would stay on disk, and registered on the stopping token, until the host stops -
+			// and a node that did start (say the watcher then threw on a missing ProjectPath) would run on
+			// with nothing ever talking to it or killing it.
+			EnsureFileSystemWatcherIsDisposed();
+			if (launched != null)
+			{
+				try
+				{
+					if (!launched.HasExited)
+					{
+						launched.Kill(entireProcessTree: true);
+					}
+				}
+				catch
+				{
+					// Best effort: the original exception is the one worth reporting.
+				}
+
+				launched.Dispose();
+			}
+
 			_entryPointScript.Dispose();
 			throw;
 		}
-
-		_watchFileExtensions = watchFileExtensions;
-		_fileSystemWatcher = BeginFileWatcher(projectPath);
-		ConnectToInputOutputStreams();
 	}
 
 	/// <summary>
@@ -121,7 +122,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 	/// <param name="args">Any sequence of JSON-serializable arguments to be passed to the Node.js function.</param>
 	/// <returns>A <see cref="Task{TResult}"/> representing the completion of the RPC call.</returns>
 	public async Task<T> InvokeExportAsync<T>(
-		CancellationToken cancellationToken, string moduleName, string exportNameOrNull, params object[] args)
+		CancellationToken cancellationToken, string moduleName, string? exportNameOrNull, params object[] args)
 	{
 		if (_nodeProcess.HasExited || _nodeProcessNeedsRestart)
 		{
@@ -166,7 +167,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 				// Wait until the connection is established. This will throw if the connection fails to initialize,
 				// or if cancellation is requested first. Note that we can't really cancel the "establishing connection"
 				// task because that's shared with all callers, but we can stop waiting for it if this call is cancelled.
-				await _connectionIsReadySource.Task.OrThrowOnCancellation(cancellationToken);
+				await _connectionIsReadySource.Task.WaitAsync(cancellationToken);
 				connectionDidSucceed = true;
 
 				return await InvokeExportAsync<T>(new NodeInvocationInfo
@@ -244,7 +245,8 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 	/// <param name="environmentVars">Environment variables to be set on the Node.js process.</param>
 	/// <param name="launchWithDebugging">If true, passes a flag to the Node.js process telling it to accept V8 Inspector connections.</param>
 	/// <param name="debuggingPort">If debugging is enabled, the Node.js process should listen for V8 Inspector connections on this port.</param>
-	/// <returns></returns>
+	/// <param name="nodePath">The Node.js executable to start.</param>
+	/// <returns>The start info, ready for the process launch.</returns>
 	protected virtual ProcessStartInfo PrepareNodeProcessStartInfo(
 		string entryPointFilename, string projectPath, string commandLineArguments,
 		IDictionary<string, string> environmentVars, bool launchWithDebugging, int debuggingPort, string nodePath)
@@ -340,7 +342,10 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 	/// <summary>
 	/// Disposes the instance.
 	/// </summary>
-	/// <param name="disposing">True if the object is disposing or false if it is finalizing.</param>
+	/// <param name="disposing">
+	/// True when called from <see cref="Dispose()"/>. There is no finalizer: an instance that is never disposed
+	/// leaves its Node process to exit on its own once this .NET process is gone (the entry script polls the parent PID).
+	/// </param>
 	protected virtual void Dispose(bool disposing)
 	{
 		if (!_disposed)
@@ -351,23 +356,31 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 				EnsureFileSystemWatcherIsDisposed();
 			}
 
-			// Make sure the Node process is finished
-			// TODO: Is there a more graceful way to end it? Or does this still let it perform any cleanup?
-			if (_nodeProcess != null)
+			// Make sure the Node process is finished. Set first, so a failing kill is not retried on every
+			// later Dispose call.
+			_disposed = true;
+			try
 			{
 				if (!_nodeProcess.HasExited)
 				{
 					// The whole tree: whatever node itself started would otherwise outlive it.
 					_nodeProcess.Kill(entireProcessTree: true);
 				}
-
+			}
+			catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+			{
+				// It exited between the check and the kill, or Windows refused (access denied while it was
+				// already terminating). Either way there is nothing left to do here; the job object still ends
+				// it with this process.
+				OutputLogger.LogWarning(ex, "Could not kill the Node process.");
+			}
+			finally
+			{
 				if (disposing)
 				{
 					_nodeProcess.Dispose();
 				}
 			}
-
-			_disposed = true;
 		}
 	}
 
@@ -402,12 +415,13 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		}
 	}
 
-	/// <summary>Internal so the stdio token-replacement contract with OverrideStdOutputs.ts can be tested directly.</summary>
-	internal static string UnencodeNewlines(string str)
+	/// <summary>Internal so the stdio token-replacement contract with entrypoint-http.cjs can be tested directly.</summary>
+	[return: NotNullIfNotNull(nameof(str))]
+	internal static string? UnencodeNewlines(string? str)
 	{
 		if (str != null)
 		{
-			// The token here needs to match the const in OverrideStdOutputs.ts.
+			// The token here needs to match the const in entrypoint-http.cjs.
 			// See the comment there for why we're doing this.
 			str = str.Replace("__ns_newline__", Environment.NewLine);
 		}
@@ -477,6 +491,7 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 			return null;
 		}
 
+		_watchRoot = rootDir;
 		var watcher = new FileSystemWatcher(rootDir)
 		{
 			IncludeSubdirectories = true,
@@ -506,7 +521,33 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		}
 	}
 
-	private bool IsFilenameBeingWatched(string fullPath) => IsFilenameBeingWatched(fullPath, _watchFileExtensions);
+	private bool IsFilenameBeingWatched(string fullPath)
+		=> IsFilenameBeingWatched(fullPath, _watchFileExtensions)
+			&& !IsInIgnoredDirectory(_watchRoot, fullPath);
+
+	// Folders that tools write to all the time and that never hold what node runs: the Angular CLI's cache
+	// (.angular/cache - Vite's prebundled deps are .mjs/.js/.json, rewritten whenever ng serve or ng build
+	// --watch runs), npm installs, MSBuild output and VCS metadata. Each write there used to cost a node restart.
+	private static readonly string[] IgnoredDirectoryNames = ["node_modules", ".angular", ".git", ".vs", "bin", "obj"];
+
+	/// <summary>
+	/// Whether <paramref name="fullPath"/> lies in one of <see cref="IgnoredDirectoryNames"/> below
+	/// <paramref name="rootDir"/>. Only the part below the root counts, so an application that itself lives under
+	/// a folder named <c>bin</c> is still watched. Internal so the rule can be tested without a watcher.
+	/// </summary>
+	internal static bool IsInIgnoredDirectory(string? rootDir, string fullPath)
+	{
+		var relative = string.IsNullOrEmpty(rootDir) ? fullPath : Path.GetRelativePath(rootDir, fullPath);
+		var directory = Path.GetDirectoryName(relative);
+		if (string.IsNullOrEmpty(directory))
+		{
+			return false;
+		}
+
+		return directory
+			.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries)
+			.Any(segment => IgnoredDirectoryNames.Contains(segment, StringComparer.OrdinalIgnoreCase));
+	}
 
 	/// <summary>Internal so the extension match can be tested without a FileSystemWatcher or a node process.</summary>
 	internal static bool IsFilenameBeingWatched(string fullPath, string[] watchFileExtensions)
@@ -532,13 +573,5 @@ public abstract class OutOfProcessNodeInstance : INodeInstance
 		// restart takes some time (e.g., due to connection draining), we could end up getting duplicate
 		// notifications.
 		EnsureFileSystemWatcherIsDisposed();
-	}
-
-	/// <summary>
-	/// Implements the finalization part of the IDisposable pattern by calling Dispose(false).
-	/// </summary>
-	~OutOfProcessNodeInstance()
-	{
-		Dispose(false);
 	}
 }

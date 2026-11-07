@@ -45,9 +45,9 @@ internal static class PrerenderingHarness
 
         public Task<T> InvokeAsync<T>(CancellationToken cancellationToken, string moduleName, params object[] args) => throw Boom();
 
-        public Task<T> InvokeExportAsync<T>(string moduleName, string exportedFunctionName, params object[] args) => throw Boom();
+        public Task<T> InvokeExportAsync<T>(string moduleName, string? exportedFunctionName, params object[] args) => throw Boom();
 
-        public Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string exportedFunctionName, params object[] args) => throw Boom();
+        public Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string? exportedFunctionName, params object[] args) => throw Boom();
 
         public void Dispose() { }
 
@@ -85,9 +85,9 @@ internal static class PrerenderingHarness
 
         public Task<T> InvokeAsync<T>(CancellationToken cancellationToken, string moduleName, params object[] args) => throw TokenlessOverload();
 
-        public Task<T> InvokeExportAsync<T>(string moduleName, string exportedFunctionName, params object[] args) => throw TokenlessOverload();
+        public Task<T> InvokeExportAsync<T>(string moduleName, string? exportedFunctionName, params object[] args) => throw TokenlessOverload();
 
-        public Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string exportedFunctionName, params object[] args)
+        public Task<T> InvokeExportAsync<T>(CancellationToken cancellationToken, string moduleName, string? exportedFunctionName, params object[] args)
         {
             WasInvoked = true;
             ReceivedToken = cancellationToken;
