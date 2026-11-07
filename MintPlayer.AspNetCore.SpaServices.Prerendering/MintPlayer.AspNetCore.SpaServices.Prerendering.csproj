@@ -48,11 +48,10 @@
 	<ItemGroup>
 		<None Include="README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
+	<!-- Hand-written, dependency-free CommonJS; embedded as-is, there is no JavaScript build step. -->
 	<ItemGroup>
-	  <None Remove="Content\Node\prerenderer.js" />
-	</ItemGroup>
-	<ItemGroup>
-	  <EmbeddedResource Include="Content\Node\prerenderer.js" />
+		<None Remove="Content\Node\prerenderer.cjs" />
+		<EmbeddedResource Include="Content\Node\prerenderer.cjs" />
 	</ItemGroup>
 
 	<ItemGroup>

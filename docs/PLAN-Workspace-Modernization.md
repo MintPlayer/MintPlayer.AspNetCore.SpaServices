@@ -28,7 +28,7 @@ This document and the PRD. **D1–D7 are settled** (2026-11-07). D1 was refined 
 (`export { renderApplication } from '@angular/platform-server'`) after reading a fresh Angular 22.2
 `ng new --ssr` scaffold at `C:\Repos\aa\my-app`, which is the reference app for the spikes.
 
-### M3 — Spikes
+### M3 — Spikes (as planned)
 
 | Spike | Question | Time box | Exit |
 |---|---|---|---|
@@ -40,6 +40,22 @@ This document and the PRD. **D1–D7 are settled** (2026-11-07). D1 was refined 
 | **S4** | Node in tests. Can xUnit start the real entry script against `.cjs`/`.mjs` fixtures on CI? Decide the fixture layout (`Tests/NodeServices/Fixtures/**`, copied to the output folder) and the Node version gate. | ½ day | test pattern |
 | **S5** | System.Text.Json migration. Inventory every Newtonsoft use, including the public surface (`Globals`, `SupplyData` payloads, user `customData` serialization). Run `dotnet publish -p:PublishAot=true` on a minimal consumer and capture the IL2026/IL3050 warnings before and after. | ½ day | list of API breaks for the release notes |
 | **S6** | Script extraction without `%TEMP%`/`NODE_PATH`. Write the embedded `.cjs` to the app's base directory or `obj/`, or pack them as content files. Check that bare-specifier resolution still works for CJS boot modules that `require` from the app's `node_modules`. | ½ day | chosen location |
+
+#### M3 results ✅ (2026-11-07)
+
+Run against a copy of the 22.2 reference app (the user's workspace was not touched) and against the
+migrated demo (Angular 21.2).
+
+| Spike | Result |
+|---|---|
+| **S1** | Superseded by S2a. The application-builder bundle was loaded directly through `import()`, so the webpack `server` target and the `createServerRenderer` wrapper were not needed. |
+| **S2a** | **Green on 22.2 and 21.2.** `main.server.mjs` exports `default, prerenderProviders, renderApplication, ɵdestroyAngularServerApp, ɵextractRoutesAndCreateRouteTree, ɵgetOrCreateAngularServerApp, ɵresetCompiledComponents`, so both additions pass through `export *`. `renderApplication(default, { document, url, platformProviders })` rendered the injected data: 37 ms on 22.2, and about 210 ms for the demo's `/person/1/ada-lovelace` with the message and the person from "OnSupplyData". 19.x and 20.x were not run. Their source has the same `renderApplication(bootstrap, options)` signature with a context, so they are expected to work, but this is unverified. |
+| **S2b** | **Dropped.** `AngularServerApp.handle` builds its own document from `index.server.html`. Under the default `RenderMode.Prerender` it serves the build-time page, so it ignores `originalHtml` and "SupplyData". |
+| **S7** | An absolute `url` is rejected with `NG05706` whatever its host, even localhost, when `allowedHosts` is empty. **A relative `url` works.** The host passes `requestPathAndQuery`. Also: an absolute `APP_BASE_HREF` (`origin + baseUrl`) throws `NG05703`, so `APP_BASE_HREF` must be relative too. |
+| **S3** | `Application bundle generation complete. [...]` is printed on **stdout**, once per (re)build, so the occurrence is 1. Vite prints `➜  Local:   http://localhost:N/` wrapped in ANSI codes, which `EventedStreamReader` strips. **`ng serve` SSR-renders** when the build has `server` + `outputMode`. Setting `ssr: false` in a configuration does not stop it, and `"server": ""` is rejected. So the SSR options go in an `ssr` build configuration (see the PRD). No debounce was needed. |
+| **S4** | xUnit can drive the real entry script: `NodeServicesFactory` over a temp fixture folder, with `WatchFileExtensions = []`. The fixtures are written by the test, under a path that contains a space. No fixture files are copied to the output folder. |
+| **S5** | Newtonsoft was used in `HttpNodeInstance` (RPC), `RenderToStringResult.Globals` (`JObject`), and as a bare package reference in SpaServices. All three are replaced (`NodeRpcJson`, `JsonObject`). The API breaks are in the release notes. AOT: the reflection resolver is used, with suppressions on two methods. A publish of a consumer with AOT was not run. |
+| **S6** | Kept the temp-file extraction (now `.cjs`, `internal sealed`) and `NODE_PATH`. See PRD revision D5. |
 
 ### M4 — W1: Embedded JS rewrite
 
@@ -132,3 +148,16 @@ This document and the PRD. **D1–D7 are settled** (2026-11-07). D1 was refined 
 - An STJ round-trip of `RenderToStringResult`.
 - An AOT-publish check of a minimal consumer.
 - Run the full suite once. The coverage gate (95/90) must hold.
+
+## Implementation status (2026-11-07)
+
+| Milestone | Status | Notes |
+|---|---|---|
+| M4 | ✅ | `entrypoint-http.cjs` and `prerenderer.cjs` are hand-written. The TypeScript, webpack, Yarn.MSBuild, package.json and lock file are gone. Legacy mode and `webpackConfig` are removed. Byte-equality test: `WorkspaceModernizationTests`. |
+| M5 | ✅ | Resolution order: flagged → `default` + `renderApplication` → plain renderer → error. The missing-`renderApplication` error quotes the line. `.mjs` and `.cjs` are watched. No npm helper package: the one-liner needs none. |
+| M6 | ✅ | `AngularPrerendererBuilder` defaults to the completion line, once (stdout). `AngularCliMiddleware` matches `Local:` and `open your browser on`. |
+| M7 | ◑ | STJ with the reflection resolver (not source-generated; see the PRD G-AOT revision). `Globals` is a `JsonObject`. `StringAsTempFile` is internal. **Not done:** the small cleanups (`Task.WaitAsync`, `Lazy<>`, finalizers, options record, nullable wording). They are left for later because they change no behaviour. |
+| M8 | ◑ | Prerendering demo migrated to `@angular/build`, `@angular/ssr`, an `ssr` configuration, `main.server.mjs`, `index.csr.html`, Vite `ExcludeUrls` and `PublishNodeModules=false`. The Xsrf demo's `outputPath` and casing are fixed. `PublishNodeModules` was added (default: `BuildServerSideRenderer`). **Not done:** moving the demos to `WebApplication.CreateBuilder`. That is cosmetic, and the demos still run on `Startup`. |
+| M9 | ◑ | `actions/setup-node` (Node 22) was added to all three workflows. There is no matrix and the action versions were not bumped (see the PRD CI revision). |
+| M10 | ✅ | Prerendering README ("The Angular side", "Boot module formats", workspace configuration, troubleshooting). The root, SpaServices, Abstractions and Routing READMEs are updated. RELEASE-NOTES for Prerendering, NodeServices and SpaServices. |
+| M11 | see the PR | `PrerendererNodeIntegrationTests` (real Node: ESM with a chunk and TLA, flagged CJS, the Angular path, missing `renderApplication`, a bad plain renderer, camelCase keys, a path with a space) and `WorkspaceModernizationTests`. The AOT publish check was not run. |

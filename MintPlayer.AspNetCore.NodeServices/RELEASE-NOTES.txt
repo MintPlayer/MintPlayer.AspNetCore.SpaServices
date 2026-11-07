@@ -1,4 +1,25 @@
-﻿v 10.4.1
+﻿v next
+BREAKING CHANGES
+- The Node entry script is hand-written CommonJS (entrypoint-http.cjs) instead of a webpack bundle
+  of TypeScript 3 sources. The package no longer ships or builds any npm toolchain: Yarn.MSBuild,
+  webpack and the package's own node_modules are gone. Modules are loaded with import(), so .mjs and
+  ES-module boot files work, and the `new Function` workaround is gone.
+- The RPC channel to Node uses System.Text.Json instead of Newtonsoft.Json, with camelCase property
+  names and dictionary keys as before. The package no longer depends on Newtonsoft.Json. Invocation
+  arguments and results are serialized with the reflection-based resolver: apps that publish trimmed
+  or native-AOT must keep the types they exchange with Node.
+- StringAsTempFile is now internal. It was an implementation detail of how the entry script reaches
+  Node.
+
+FEATURES
+- .mjs and .cjs are now watched by default, alongside .js, .ts, .json and .html, so a rebuilt
+  ES-module bundle restarts Node. ES modules cannot be evicted from Node's cache, so the restart
+  is what loads the new code.
+- PublishNodeModules (MSBuild, default: the value of BuildServerSideRenderer) controls whether
+  node_modules is copied into the publish output. The Angular application builder bundles server
+  dependencies into dist/server, so such apps can set it to false.
+
+v 10.4.1
 FIXES
 - EmbeddedResourceReader now names the resource and the assembly it could not find. A missing
   resource previously surfaced as ArgumentNullException (Parameter 'stream'), which identified

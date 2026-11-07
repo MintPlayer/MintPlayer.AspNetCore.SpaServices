@@ -14,7 +14,10 @@ public class NodeServicesOptions
 	internal const string TimeoutConfigPropertyName = nameof(InvocationTimeoutMilliseconds);
 	private const int DefaultInvocationTimeoutMilliseconds = 60 * 1000;
 	private const string LogCategoryName = "MintPlayer.AspNetCore.NodeServices";
-	private static readonly string[] DefaultWatchFileExtensions = { ".js", ".jsx", ".ts", ".tsx", ".json", ".html" };
+	// .mjs/.cjs: an ECMAScript-module boot bundle (Angular's application builder emits main.server.mjs plus
+	// chunk-*.mjs) stays in Node's module cache for the life of the process, so a restart on change is the only
+	// way a rebuilt bundle is ever picked up.
+	private static readonly string[] DefaultWatchFileExtensions = { ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx", ".json", ".html" };
 
 	/// <summary>
 	/// Creates a new instance of <see cref="NodeServicesOptions"/>.

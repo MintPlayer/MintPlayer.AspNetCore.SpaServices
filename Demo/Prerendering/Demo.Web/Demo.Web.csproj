@@ -12,6 +12,8 @@
 
 		<!-- Set this to true if you enable server-side prerendering -->
 		<BuildServerSideRenderer>true</BuildServerSideRenderer>
+		<!-- The application builder bundles the server's dependencies into dist/server. -->
+		<PublishNodeModules>false</PublishNodeModules>
 	</PropertyGroup>
 
 	<PropertyGroup>

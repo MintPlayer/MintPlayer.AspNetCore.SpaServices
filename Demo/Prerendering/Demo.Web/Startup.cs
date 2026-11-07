@@ -4,7 +4,6 @@ using MintPlayer.AspNetCore.SpaServices.Prerendering;
 using MintPlayer.AspNetCore.SpaServices.Routing;
 using MintPlayer.AspNetCore.SpaServices.Extensions;
 using WebMarkupMin.AspNetCoreLatest;
-using System.Text.RegularExpressions;
 
 namespace Demo.Web;
 
@@ -115,11 +114,18 @@ public class Startup
 
 			spa.Options.SourcePath = "ClientApp";
 
+			// With "outputMode": "server" and RenderMode.Server, nothing is prerendered at build time, so the
+			// browser output has a plain template named index.csr.html and no index.html. Only used outside
+			// Development; there the dev server answers instead.
+			spa.Options.DefaultPage = "/index.csr.html";
+
 			spa.UseSpaPrerendering(options =>
 			{
-				options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.js";
-				options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder("build:ssr:development", @"Build at\:", 1) : null;
-				options.ExcludeUrls = ["/sockjs-node"];
+				// The stock application-builder server entry, an ES module with chunks next to it.
+				options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.server.mjs";
+				options.BootModuleBuilder = env.IsDevelopment() ? new AngularPrerendererBuilder("build:ssr:development") : null;
+				// Vite's dev-server endpoints (HMR client, pre-bundled deps, file access) are not pages.
+				options.ExcludeUrls = ["/@vite", "/@fs", "/@ng", "/@id"];
 
 				// A header set anywhere upstream now survives prerendering, so this no longer needs
 				// the OnPrepareResponse hook that used to exist purely to smuggle it past
@@ -129,7 +135,9 @@ public class Startup
 
 			if (env.IsDevelopment())
 			{
-				spa.UseAngularCliServer(npmScript: "start", cliRegexes: [new Regex(@"Local\:\s+(?<openbrowser>https?\:\/\/(.+))")]);
+				// The default regexes match Vite's "Local:" line. The development build configuration has no
+				// "server", so `ng serve` returns the plain template rather than rendering it itself.
+				spa.UseAngularCliServer(npmScript: "start");
 			}
 		});
 	}

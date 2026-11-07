@@ -7,7 +7,7 @@ using Xunit;
 namespace MintPlayer.AspNetCore.SpaServices.Tests.NodeServices;
 
 /// <summary>
-/// The C# half of the contract with entrypoint-http.js: the "Listening on" stdout line, and how each
+/// The C# half of the contract with entrypoint-http.cjs: the "Listening on" stdout line, and how each
 /// HTTP response the entry point can write becomes a result or an exception.
 /// </summary>
 public class HttpNodeInstanceProtocolTests

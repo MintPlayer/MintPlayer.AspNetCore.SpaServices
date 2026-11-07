@@ -66,9 +66,11 @@ internal static class Prerenderer
 	{
 		lock (CreateNodeScriptLock)
 		{
-			if (NodeScript == null)
+			// Re-extract when the file is gone: the temp file is deleted when the host that created it stops,
+			// and something else (a %TEMP% cleaner, another host in the same process) may remove it earlier.
+			if (NodeScript == null || !File.Exists(NodeScript.FileName))
 			{
-				var script = EmbeddedResourceReader.Read(typeof(Prerenderer), "/Content/Node/prerenderer.js");
+				var script = EmbeddedResourceReader.Read(typeof(Prerenderer), "/Content/Node/prerenderer.cjs");
 				NodeScript = new StringAsTempFile(script, applicationStoppingToken); // Will be cleaned up on process exit
 			}
 		}

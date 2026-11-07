@@ -346,7 +346,7 @@ public class ServePrerenderResultTests
         var result = new RenderToStringResult
         {
             RedirectUrl = "/login",
-            Globals = Newtonsoft.Json.Linq.JObject.Parse("""{ "answer": 42 }"""),
+            Globals = (System.Text.Json.Nodes.JsonObject)System.Text.Json.Nodes.JsonNode.Parse("""{ "answer": 42 }"""),
         };
 
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -360,7 +360,7 @@ public class ServePrerenderResultTests
         var result = new RenderToStringResult
         {
             Html = "<html></html>",
-            Globals = Newtonsoft.Json.Linq.JObject.Parse("""{ "answer": 42 }"""),
+            Globals = (System.Text.Json.Nodes.JsonObject)System.Text.Json.Nodes.JsonNode.Parse("""{ "answer": 42 }"""),
         };
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(

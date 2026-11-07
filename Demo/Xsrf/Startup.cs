@@ -21,7 +21,9 @@ public class Startup
 		// In production, the Angular files will be served from this directory
 		services.AddSpaStaticFilesImproved(configuration =>
 		{
-			configuration.RootPath = "ClientApp/dist/client-app/browser";
+			// angular.json sets "outputPath": "dist"; the default, dist/<project name>, is "ClientApp", whose
+			// casing differed from what this said and broke on case-sensitive file systems.
+			configuration.RootPath = "ClientApp/dist/browser";
 		});
 	}
 

@@ -40,6 +40,8 @@
 	<!-- Lets the test project exercise internal types without widening them to public. -->
 	<ItemGroup>
 		<InternalsVisibleTo Include="MintPlayer.AspNetCore.SpaServices.Tests" />
+		<!-- StringAsTempFile, for the embedded prerenderer script. -->
+		<InternalsVisibleTo Include="MintPlayer.AspNetCore.SpaServices.Prerendering" />
 	</ItemGroup>
 
 	<!-- Include XML markups in the nupkg -->
@@ -51,8 +53,8 @@
 		<None Include="README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
+	<!-- Hand-written, dependency-free CommonJS; embedded as-is, there is no JavaScript build step. -->
 	<ItemGroup>
-		<None Remove="node_modules\**\*" />
 		<EmbeddedResource Include="Content\**\*" />
 	</ItemGroup>
 
@@ -72,24 +74,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-		<PackageReference Include="Yarn.MSBuild" Version="*" />
 		<PackageReference Include="MintPlayer.SourceGenerators" Version="10.22.0" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
 		<PackageReference Include="MintPlayer.SourceGenerators.Attributes" Version="10.20.1" GeneratePathProperty="true" />
 		<!-- FolderHasher for SPA build caching -->
 		<PackageReference Include="MintPlayer.FolderHasher.Targets" Version="$(FolderHasherTargetsVersion)" GeneratePathProperty="true" PrivateAssets="all" />
 	</ItemGroup>
-
-	<!-- Version of this SDK is set in global.json -->
-	<Sdk Name="Yarn.MSBuild" />
-
-	<Target Name="YarnInstall">
-		<Message Text="Running yarn install on $(MSBuildProjectFile)" Importance="High" />
-		<Yarn Command="install --mutex network --frozen-lockfile" />
-	</Target>
-
-	<Target Name="PrepublishScript" DependsOnTargets="YarnInstall" BeforeTargets="PrepareForPublish" Condition=" '$(IsCrossTargetingBuild)' != 'true' ">
-		<Exec Command="node node_modules/webpack/bin/webpack.js" />
-	</Target>
 
 </Project>

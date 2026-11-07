@@ -4,8 +4,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
+using System.Text.Json;
 
 namespace MintPlayer.AspNetCore.NodeServices.HostingModels;
 
@@ -22,12 +21,6 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 {
 	private static readonly Regex EndpointMessageRegex =
 		new Regex(@"^\[MintPlayer.AspNetCore.NodeServices.HttpNodeHost:Listening on {(.*?)} port (\d+)\]$");
-
-	private static readonly JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings
-	{
-		ContractResolver = new CamelCasePropertyNamesContractResolver(),
-		TypeNameHandling = TypeNameHandling.None
-	};
 
 	private readonly HttpClient _client;
 	private bool _disposed;
@@ -48,7 +41,7 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 		Func<ProcessStartInfo, INodeProcess> startNodeProcess,
 		HttpMessageHandler? httpMessageHandler)
 	: base(
-			EmbeddedResourceReader.Read(typeof(HttpNodeInstance), "/Content/Node/entrypoint-http.js"),
+			EmbeddedResourceReader.Read(typeof(HttpNodeInstance), "/Content/Node/entrypoint-http.cjs"),
 			options.ProjectPath,
 			options.WatchFileExtensions,
 			MakeCommandLineOptions(port),
@@ -73,7 +66,7 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 	protected override async Task<T> InvokeExportAsync<T>(
 		NodeInvocationInfo invocationInfo, CancellationToken cancellationToken)
 	{
-		var payloadJson = JsonConvert.SerializeObject(invocationInfo, jsonSerializerSettings);
+		var payloadJson = NodeRpcJson.Serialize(invocationInfo);
 		var payload = new StringContent(payloadJson, Encoding.UTF8, "application/json");
 		var response = await _client.PostAsync(_endpoint, payload, cancellationToken);
 
@@ -83,7 +76,7 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 	/// <summary>
 	/// Turns the Node entry point's HTTP response into the invocation result, or into the exception it describes.
 	/// <para>
-	/// Internal so the content-type contract with entrypoint-http.js can be tested without node. The response is
+	/// Internal so the content-type contract with entrypoint-http.cjs can be tested without node. The response is
 	/// disposed here, except when its body is handed to the caller as a <see cref="Stream"/>.
 	/// </para>
 	/// </summary>
@@ -122,7 +115,7 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 
 				case "application/json":
 					var responseJson = await response.Content.ReadAsStringAsync().OrThrowOnCancellation(cancellationToken);
-					return JsonConvert.DeserializeObject<T>(responseJson, jsonSerializerSettings)!;
+					return NodeRpcJson.Deserialize<T>(responseJson)!;
 
 				case "application/octet-stream":
 					// Streamed responses have to be received as System.IO.Stream instances
@@ -155,7 +148,7 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 		RpcJsonResponse? responseError = null;
 		try
 		{
-			responseError = JsonConvert.DeserializeObject<RpcJsonResponse>(responseBody, jsonSerializerSettings);
+			responseError = NodeRpcJson.Deserialize<RpcJsonResponse>(responseBody);
 		}
 		catch (JsonException)
 		{
@@ -175,7 +168,7 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 	/// <summary>
 	/// Reads the endpoint out of the entry point's "Listening on {address} port N" line, or returns null for any other line.
 	/// </summary>
-	/// <remarks>Internal so the stdout contract with entrypoint-http.js can be tested without node.</remarks>
+	/// <remarks>Internal so the stdout contract with entrypoint-http.cjs can be tested without node.</remarks>
 	internal static string? ParseEndpoint(string line)
 	{
 		var match = EndpointMessageRegex.Match(line);
@@ -228,11 +221,9 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 		}
 	}
 
-#pragma warning disable 649 // These properties are populated via JSON deserialization
 	private class RpcJsonResponse
 	{
-		public string ErrorMessage { get; set; }
-		public string ErrorDetails { get; set; }
+		public string? ErrorMessage { get; set; }
+		public string? ErrorDetails { get; set; }
 	}
-#pragma warning restore 649
 }

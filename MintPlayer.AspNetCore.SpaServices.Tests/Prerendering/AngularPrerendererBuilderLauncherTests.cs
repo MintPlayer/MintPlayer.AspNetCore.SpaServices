@@ -17,10 +17,12 @@ public class AngularPrerendererBuilderLauncherTests
     private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(10);
 
     [Fact]
-    public async Task Build_completes_after_two_Build_at_lines()
+    public async Task Build_completes_on_the_application_builder_completion_line()
     {
-        // The default builder waits for the second "Build at:" - the first is the browser bundle.
-        var launcher = new ScriptedLauncher("Build at: one\ncompiling\nBuild at: two\n", string.Empty) { ChildHasExited = false };
+        // The line Angular 22's `ng build` prints, verbatim, on stdout.
+        var launcher = new ScriptedLauncher(
+            "Initial chunk files | Names\nPrerendered 1 static route.\nApplication bundle generation complete. [12.130 seconds] - 2026-11-07T17:53:17.413Z\n",
+            string.Empty) { ChildHasExited = false };
         var builder = new AngularPrerendererBuilder("build:ssr") { ProcessLauncher = launcher };
 
         await builder.Build(CreateSpaBuilder()).WaitAsync(Deadline);
@@ -34,12 +36,12 @@ public class AngularPrerendererBuilderLauncherTests
     [Fact]
     public async Task Build_fails_with_output_when_script_exits_without_success()
     {
-        var launcher = new ScriptedLauncher("Build at: one\nerror TS2304: Cannot find name 'x'.\n", "npm ERR! code 1\n");
+        var launcher = new ScriptedLauncher("Building...\nerror TS2304: Cannot find name 'x'.\n", "npm ERR! code 1\n");
         var builder = new AngularPrerendererBuilder("build:ssr") { ProcessLauncher = launcher };
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => builder.Build(CreateSpaBuilder()).WaitAsync(Deadline));
 
-        // Only one "Build at:" of the two arrived before the script ended. The captured output is
+        // The completion line never arrived before the script ended. The captured output is
         // not asserted: a scripted child emits it all at once, before Build has attached its
         // output readers, so whether it is included is a race that a real build never loses.
         Assert.Contains("exited without indicating success", ex.Message);

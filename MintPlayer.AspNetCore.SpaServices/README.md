@@ -188,7 +188,7 @@ Up to Angular 16, `ng build` wrote `index.html` and the bundles straight into `C
 ```
 ClientApp/dist/
   browser/      <- index.html, main-*.js, styles-*.css   (what the browser downloads)
-  server/       <- main.js                               (the SSR bundle Node runs)
+  server/       <- main.server.mjs, chunks               (the SSR bundle Node runs)
 ```
 
 `RootPath` must point at the **browser** folder:
@@ -216,7 +216,7 @@ Your application is running in Production mode, so make sure it has been publish
 built your SPA manually. ...
 ```
 
-Development hides the mistake completely, because the dev-server proxy answers first and never touches `RootPath` — so this fails only after you deploy. If your SSR boot module is at `ClientApp/dist/server/main.js`, your `RootPath` is almost certainly `ClientApp/dist/browser`.
+Development hides the mistake completely, because the dev-server proxy answers first and never touches `RootPath` — so this fails only after you deploy. If your SSR boot module is at `ClientApp/dist/server/main.server.mjs`, your `RootPath` is almost certainly `ClientApp/dist/browser`.
 
 ## Angular CLI dev server: `UseAngularCliServer`
 

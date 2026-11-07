@@ -12,6 +12,13 @@ internal static class AngularCliMiddleware
 	private const string LogCategoryName = "MintPlayer.AspNetCore.SpaServices";
 	private static readonly TimeSpan RegexMatchTimeout = TimeSpan.FromSeconds(5); // This is a development-time only feature, so a very long timeout is fine
 
+	/// <summary>
+	/// What <c>ng serve</c> prints once it is listening: <c>Local:   http://localhost:4200/</c> from the
+	/// application builder's Vite dev server (Angular 17+), or <c>open your browser on http://...</c> from the
+	/// legacy webpack dev server.
+	/// </summary>
+	internal const string DefaultFinishedPattern = @"(?:open your browser on|Local:)\s+(?<openbrowser>https?://\S+)";
+
 	public static void Attach(Abstractions.ISpaBuilder spaBuilder, string? scriptName = null, Regex[]? cliRegexes = null)
 	{
 		var pkgManagerCommand = spaBuilder.Options.PackageManagerCommand;
@@ -93,7 +100,7 @@ internal static class AngularCliMiddleware
 			{
 				if ((finishedRegexes == null) || (finishedRegexes.Length == 0))
 				{
-					finishedRegexes = [new Regex("open your browser on (?<openbrowser>http\\S+)", RegexOptions.None, RegexMatchTimeout)];
+					finishedRegexes = [new Regex(DefaultFinishedPattern, RegexOptions.None, RegexMatchTimeout)];
 				}
 
 				foreach (var finishedRegex in finishedRegexes)

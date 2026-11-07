@@ -425,11 +425,11 @@ public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 
         spa.UseSpaPrerendering(options =>
         {
-            options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.js";
+            options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.server.mjs";
             options.BootModuleBuilder = env.IsDevelopment()
-                ? new AngularPrerendererBuilder("build:ssr:development", @"Build at\:", 1)
+                ? new AngularPrerendererBuilder("build:ssr:development")
                 : null;
-            options.ExcludeUrls = ["/sockjs-node"];
+            options.ExcludeUrls = ["/@vite", "/@fs", "/@ng", "/@id"];
         });
 
         if (env.IsDevelopment())
@@ -557,60 +557,39 @@ Two things worth copying from that shape:
 
 ## The Angular side: receiving the data
 
-Everything you put in the `data` dictionary arrives in your SSR entry point as `params.data`,
-serialized to JSON. `main.server.ts` turns those keys into Angular providers:
+Everything you put in the `data` dictionary arrives in your SSR entry point, serialized to JSON.
+`main.server.ts` exports a `prerenderProviders` function that turns those keys into Angular providers:
 
 ```typescript
-import 'reflect-metadata';
-import { renderApplication } from '@angular/platform-server';
-import { enableProdMode, StaticProvider } from '@angular/core';
-import { createServerRenderer } from 'aspnet-prerendering';
+import { BootstrapContext, bootstrapApplication } from '@angular/platform-browser';
 import { APP_BASE_HREF } from '@angular/common';
-import { bootstrapApplication } from '@angular/platform-browser';
+import { StaticProvider } from '@angular/core';
 import { App } from './app/app';
-import { config as serverConfig } from './app/app.config.server';
+import { config } from './app/app.config.server';
 import { MESSAGE_TOKEN, PERSON_TOKEN, PEOPLE_TOKEN } from './app/tokens';
 
-enableProdMode();
+const bootstrap = (context: BootstrapContext) => bootstrapApplication(App, config, context);
 
-export default createServerRenderer(params => {
-  const providers: StaticProvider[] = [
-    { provide: APP_BASE_HREF, useValue: params.origin + params.baseUrl.slice(0, -1) },
-    { provide: MESSAGE_TOKEN, useValue: params.data.message },
-  ];
+export default bootstrap;
+export { renderApplication } from '@angular/platform-server';
 
+export const prerenderProviders = (data: any, params: { baseUrl: string }): StaticProvider[] => [
+  // Relative: an absolute base href (origin + path) makes Angular reject the URL as changing origin (NG05703).
+  { provide: APP_BASE_HREF, useValue: params.baseUrl },
+  { provide: MESSAGE_TOKEN, useValue: data.message },
   // Only the matched route supplied these, so provide a null fallback for the others.
-  if ('people' in params.data) {
-    providers.push({ provide: PEOPLE_TOKEN, useValue: params.data.people });
-  } else {
-    providers.push({ provide: PEOPLE_TOKEN, useValue: null });
-  }
-  if ('person' in params.data) {
-    providers.push({ provide: PERSON_TOKEN, useValue: params.data.person });
-  } else {
-    providers.push({ provide: PERSON_TOKEN, useValue: null });
-  }
-
-  const options = {
-    document: params.data.originalHtml,
-    url: params.url,
-    platformProviders: providers
-  };
-
-  return renderApplication(
-    (context) => bootstrapApplication(App, serverConfig, context),
-    options
-  ).then(html => ({ html }));
-});
+  { provide: PEOPLE_TOKEN, useValue: data.people ?? null },
+  { provide: PERSON_TOKEN, useValue: data.person ?? null },
+];
 ```
 
 Notes on that file:
 
-- `params.data.originalHtml` is supplied by the prerendering middleware, not by you - it is the
-  `index.html` shell to render into. Do not overwrite that key from `OnSupplyData`.
+- `data.originalHtml` is supplied by the prerendering middleware, not by you - it is the
+  `index.html` shell the page is rendered into. Do not overwrite that key from `OnSupplyData`.
 - `params.url`, `params.origin` and `params.baseUrl` likewise come from the middleware.
+- The Prerendering README's "The Angular side" covers the rest of the contract.
 - Declare the tokens in one shared file so the server and the browser agree on them:
-
 ```typescript
 // app/tokens.ts
 import { InjectionToken } from '@angular/core';
@@ -838,7 +817,7 @@ a deferred 404 or 410. See [Redirect](#redirect).
 
 Usually the static-files root: Angular 17+ emits `dist/browser` and `dist/server`, so
 `RootPath` must point at `ClientApp/dist/browser` and `BootModulePath` at
-`ClientApp/dist/server/main.js`. Route matching itself is not affected by the environment -
+`ClientApp/dist/server/main.server.mjs`. Route matching itself is not affected by the environment -
 `GetCurrentRoute` reads the raw request target, so it keeps working after the SPA fallback has
 rewritten the path to `index.html`.
 

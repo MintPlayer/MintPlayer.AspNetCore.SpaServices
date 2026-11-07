@@ -70,14 +70,17 @@ public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     app.UseSpaImproved(spa =>
     {
         spa.Options.SourcePath = "ClientApp";
+        spa.Options.DefaultPage = "/index.csr.html";
 
+        // The stock Angular SSR server entry, plus one line in main.server.ts:
+        // export { renderApplication } from '@angular/platform-server';
         spa.UseSpaPrerendering(options =>
         {
-            options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.js";
+            options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.server.mjs";
             options.BootModuleBuilder = env.IsDevelopment()
                 ? new AngularPrerendererBuilder("build:ssr:development")
                 : null;
-            options.ExcludeUrls = ["/sockjs-node"];
+            options.ExcludeUrls = ["/@vite", "/@fs", "/@ng", "/@id"];
         });
 
         if (env.IsDevelopment())

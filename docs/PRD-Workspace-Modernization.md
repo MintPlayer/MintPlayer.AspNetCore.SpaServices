@@ -210,6 +210,40 @@ scaffold above.
 
 The **supported Angular range is 19–22**. 22.2 is the current scaffold. The spikes must include it.
 
+### Revisions after the spikes (2026-11-07)
+
+| ID | Revision | Why |
+|---|---|---|
+| **D1** | Confirmed as C1. `prerenderProviders` receives `(data, params)`. B is dropped. | S2a rendered injected data on 22.2 and on the demo (21.2). S2b: B ignores `originalHtml` and `SupplyData` under the default `RenderMode.Prerender`. |
+| **D4** | `AngularCliMiddleware` accepts both texts (`open your browser on` and Vite's `Local:`). `AngularPrerendererBuilder` defaults to `Application bundle generation complete\.` once and does **not** also accept `Build at:`. | The webpack script prints `Build at:` twice. Accepting it once by default would report the build done after the browser half. Legacy users pass it explicitly. |
+| **D5** | `StringAsTempFile` becomes `internal sealed` and writes `.cjs`. The `NODE_PATH` handling stays. | S6: the scripts must live on disk for `require`. `NODE_PATH` is harmless for a CommonJS entry and still lets a CJS boot module find the app's `node_modules`. |
+| **D6** | The version comes from MintPlayer.Versioning (#93). The release notes call this a breaking release. | No hand-set version exists to bump. |
+| **G-AOT** | Partly met. The RPC serializer is System.Text.Json with the reflection resolver, with documented suppressions. | Invocation arguments and results are caller-chosen types, so there is no source-generated context to give. |
+| **CI** | One pinned Node (22), not a 20/22/24 matrix. | The coverage upload runs once per job. A matrix needs a separate test-only job. That is out of scope for this PR. |
+
+### Spike findings that change the user-facing setup
+
+- **`ng serve` renders pages itself** when the build it serves has `server` and `outputMode`. Turning off
+  `ssr` in a configuration is not enough: the dev server forces SSR back on, and `"server": ""` is
+  rejected. The template that `UseAngularCliServer` captures would then already be a rendered page.
+  So `server`, `outputMode` and `ssr` go in an `ssr` build configuration, and the SSR scripts use
+  `--configuration development,ssr` and `production,ssr`. This is the only change to `angular.json`
+  beyond the scaffold.
+- **`RenderMode.Server` for `**`**. With the scaffold's `RenderMode.Prerender`, `browser/index.html` is a
+  prerendered page, which is a bad template. With `RenderMode.Server` the build writes
+  `browser/index.csr.html` and no `index.html`, so the host sets `SpaOptions.DefaultPage = "/index.csr.html"`.
+- **`url` must be relative** (S7). Angular 19.2+ rejects absolute URLs whose host is not in
+  `security.allowedHosts` (`NG05706`). **`APP_BASE_HREF` must be relative too.** The old sample's
+  `params.origin + params.baseUrl` makes Angular 21 throw `NG05703` ("changed origin").
+- **Platform providers lose to application providers.** The demo's `app.config.server.ts` provided
+  `MESSAGE_TOKEN` itself, so the .NET-supplied message never showed. This was already true before
+  this work.
+- **Angular render errors do not reject.** `NG04002`, `NG05703` and the like go to Angular's
+  `ErrorHandler`, and `renderApplication` then never settles. The render timeout (30 s) ends the
+  request. This is documented under troubleshooting.
+- **Dependencies must stay aligned.** `@angular/ssr` 21.2 with `@angular/build` 21.1 fails at build time
+  (`this.manifest.allowedHosts is not iterable`).
+
 ## Risks
 
 - **R1.** The `ɵ` exports Angular puts in `main.server.mjs` are private and could change in a minor

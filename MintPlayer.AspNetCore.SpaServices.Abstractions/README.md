@@ -231,7 +231,7 @@ app.UseSpaImproved(spa =>
     {
         spa.UseSpaPrerendering(options =>
         {
-            options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.js";
+            options.BootModulePath = $"{spa.Options.SourcePath}/dist/server/main.server.mjs";
             // Development only: leave BootModuleBuilder null in production.
             options.BootModuleBuilder = new ScriptPrerendererBuilder("build:ssr");
         });

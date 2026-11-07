@@ -38,7 +38,8 @@ public class NodeServicesUtilTests
     {
         var options = new NodeServicesOptions(EmptyServices());
 
-        Assert.Equal(new[] { ".js", ".jsx", ".ts", ".tsx", ".json", ".html" }, options.WatchFileExtensions);
+        // .mjs/.cjs: an ES-module bundle stays in Node's module cache, so only a restart picks up a rebuild.
+        Assert.Equal(new[] { ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx", ".json", ".html" }, options.WatchFileExtensions);
     }
 
     [Fact]
@@ -223,11 +224,12 @@ public class NodeServicesUtilTests
     }
 
     [Fact]
-    public void Temp_file_uses_a_js_extension_so_node_can_load_it_as_a_module()
+    public void Temp_file_uses_a_cjs_extension_so_node_loads_it_as_commonjs_whatever_the_package_type()
     {
         using var sut = new StringAsTempFile("// empty", CancellationToken.None);
 
-        Assert.Equal(".js", Path.GetExtension(sut.FileName));
+        // .cjs, not .js: a "type": "module" package.json above %TEMP% would otherwise make Node parse it as ESM.
+        Assert.Equal(".cjs", Path.GetExtension(sut.FileName));
     }
 
     [Fact]
@@ -393,9 +395,9 @@ public class NodeServicesUtilTests
     [Fact]
     public void Reads_an_embedded_resource_addressed_by_its_path()
     {
-        // The reader turns "/Content/Node/entrypoint-http.js" into the manifest name
-        // "<assembly>.Content.Node.entrypoint-http.js", so the leading slash is load-bearing.
-        var content = EmbeddedResourceReader.Read(typeof(NodeServicesOptions), "/Content/Node/entrypoint-http.js");
+        // The reader turns "/Content/Node/entrypoint-http.cjs" into the manifest name
+        // "<assembly>.Content.Node.entrypoint-http.cjs", so the leading slash is load-bearing.
+        var content = EmbeddedResourceReader.Read(typeof(NodeServicesOptions), "/Content/Node/entrypoint-http.cjs");
 
         Assert.False(string.IsNullOrWhiteSpace(content));
     }

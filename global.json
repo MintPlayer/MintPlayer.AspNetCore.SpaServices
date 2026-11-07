@@ -13,8 +13,5 @@
 				"$(MicrosoftNETCoreAppInternalPackageVersion)"
 			]
 		}
-	},
-	"msbuild-sdks": {
-		"Yarn.MSBuild": "1.15.2"
 	}
 }

@@ -3,6 +3,10 @@
 		<EnableSpaBuilder Condition=" '$(EnableSpaBuilder)' == '' ">true</EnableSpaBuilder>
 		<SpaRoot Condition=" '$(SpaRoot)' == '' ">ClientApp\</SpaRoot>
 		<BuildServerSideRenderer Condition=" '$(BuildServerSideRenderer)' == '' ">true</BuildServerSideRenderer>
+		<!-- Copies node_modules into the publish output next to the server bundle. The Angular application
+		     builder bundles server dependencies into dist/server, so such apps can set this to false; it stays
+		     true by default for bundles that still require() packages at runtime. -->
+		<PublishNodeModules Condition=" '$(PublishNodeModules)' == '' ">$(BuildServerSideRenderer)</PublishNodeModules>
 
 		<!-- SPA Build Caching Properties -->
 		<EnableSpaBuildCaching Condition=" '$(EnableSpaBuildCaching)' == '' ">true</EnableSpaBuildCaching>
