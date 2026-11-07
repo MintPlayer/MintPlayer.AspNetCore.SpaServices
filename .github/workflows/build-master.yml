@@ -2,7 +2,11 @@ name: build-master
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - 'master'
+      # Release lines: `versioning.lines` in coverage.yml makes packages release only from their line,
+      # release/<ecosystem>-<major>.x, so the lines version, pack and publish here too.
+      - 'release/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -80,15 +84,33 @@ jobs:
       id: versioning
       uses: MintPlayer/MintPlayer.Spark/apps/CodeCoverage/versioning-action@a0f9e20f3d7f91814d00c598c64b4a39cd1f1c45 # versioning-v1
 
+    # With release lines on, the default branch tags nothing: packing it would only re-push the last
+    # versions as duplicates, so it neither packs nor publishes when it released nothing.
+    - name: Decide whether this run publishes
+      id: publishes
+      env:
+        RELEASED: ${{ steps.versioning.outputs.released }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      run: |
+        if [ "$GITHUB_REF_NAME" = "$DEFAULT_BRANCH" ] && { [ -z "$RELEASED" ] || [ "$RELEASED" = "[]" ]; }; then
+          echo "The default branch released nothing (release lines on, or no change): no pack, no publish."
+          echo "value=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "value=true" >> "$GITHUB_OUTPUT"
+        fi
+
     # No --no-build: the versions are decided after the tests, so pack builds again to stamp them into the
     # assemblies (--no-build also skips restore, which leaves the nuspec's dependency versions stale).
     - name: Pack
+      if: steps.publishes.outputs.value == 'true'
       run: dotnet pack --configuration Release
-     
+
     - name: PushNuget
+      if: steps.publishes.outputs.value == 'true'
       run: dotnet nuget push **/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.PUBLISH_TO_NUGET_ORG }} --skip-duplicate
      
     - name: PushGithub
+      if: steps.publishes.outputs.value == 'true'
       # Explicit source: GitHub Packages is deliberately NOT a restore source on CI. A restore source answering
       # 403 for a package this repository's token may not read fails the whole restore (MintPlayer/MintPlayer.Dotnet.Tools#200).
       run: dotnet nuget push **/*.nupkg --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json --api-key ${{ github.token }} --no-symbols --skip-duplicate
