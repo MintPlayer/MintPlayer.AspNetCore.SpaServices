@@ -31,7 +31,7 @@ const serverConfig: ApplicationConfig = {
         }
       })
     ),
-    // MESSAGE_TOKEN is not provided here: an application-level provider would shadow the platform provider
+    // DATA_FROM_SERVER is not provided here: an application-level provider would shadow the platform provider
     // main.server.ts's prerenderProviders creates from the data ASP.NET Core supplied.
   ]
 };

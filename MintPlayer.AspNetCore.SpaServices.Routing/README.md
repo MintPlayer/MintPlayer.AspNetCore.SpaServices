@@ -558,15 +558,32 @@ Two things worth copying from that shape:
 ## The Angular side: receiving the data
 
 Everything you put in the `data` dictionary arrives in your SSR entry point, serialized to JSON.
-`main.server.ts` exports a `prerenderProviders` function that turns those keys into Angular providers:
+`main.server.ts` exports a `prerenderProviders` function that hands the whole object to Angular as
+**one** provider. Each page then takes the keys it needs:
 
 ```typescript
+// app/tokens.ts - shared by the server and the browser code
+import { InjectionToken } from '@angular/core';
+import { Person } from './entities/person';
+
+// The keys OnSupplyData sets. All optional: each route supplies only its own.
+export interface DataFromServer {
+  message?: string;
+  people?: Person[];
+  person?: Person;
+}
+
+export const DATA_FROM_SERVER = new InjectionToken<DataFromServer>('DATA_FROM_SERVER');
+```
+
+```typescript
+// main.server.ts
 import { BootstrapContext, bootstrapApplication } from '@angular/platform-browser';
 import { APP_BASE_HREF } from '@angular/common';
 import { StaticProvider } from '@angular/core';
 import { App } from './app/app';
 import { config } from './app/app.config.server';
-import { MESSAGE_TOKEN, PERSON_TOKEN, PEOPLE_TOKEN } from './app/tokens';
+import { DATA_FROM_SERVER } from './app/tokens';
 
 const bootstrap = (context: BootstrapContext) => bootstrapApplication(App, config, context);
 
@@ -574,14 +591,13 @@ export default bootstrap;
 export { renderApplication } from '@angular/platform-server';
 
 export const prerenderProviders = (data: any, params: { baseUrl: string }): StaticProvider[] => [
-  // Relative: an absolute base href (origin + path) makes Angular reject the URL as changing origin (NG05703).
+  { provide: DATA_FROM_SERVER, useValue: data },
+  // Only if your code injects APP_BASE_HREF. Relative: an absolute one makes Angular throw NG05703.
   { provide: APP_BASE_HREF, useValue: params.baseUrl },
-  { provide: MESSAGE_TOKEN, useValue: data.message },
-  // Only the matched route supplied these, so provide a null fallback for the others.
-  { provide: PEOPLE_TOKEN, useValue: data.people ?? null },
-  { provide: PERSON_TOKEN, useValue: data.person ?? null },
 ];
 ```
+
+Adding a key in `OnSupplyData` then needs no change here, only a field on `DataFromServer`.
 
 Notes on that file:
 
@@ -589,63 +605,20 @@ Notes on that file:
   `index.html` shell the page is rendered into. Do not overwrite that key from `OnSupplyData`.
 - `params.url`, `params.origin` and `params.baseUrl` likewise come from the middleware.
 - The Prerendering README's "The Angular side" covers the rest of the contract.
-- Declare the tokens in one shared file so the server and the browser agree on them:
-```typescript
-// app/tokens.ts
-import { InjectionToken } from '@angular/core';
-import { Person } from './entities/person';
 
-export const MESSAGE_TOKEN = new InjectionToken<string>('MESSAGE');
-export const PERSON_TOKEN = new InjectionToken<Person>('PERSON');
-export const PEOPLE_TOKEN = new InjectionToken<Person[]>('PEOPLE');
-```
-
-### Every key needs a browser-side answer too
+### Inject it optionally
 
 This is the other half of the contract, and it is easy to forget. `main.server.ts` runs only during
-prerendering. In the browser those providers do not exist, so a component that injects one of these
-tokens will fail on the client unless the browser build answers for it as well. There are two ways
-to do that, and the demo uses both.
-
-**Either provide a browser-side value.** In a modern standalone Angular app, `main.ts` just
-bootstraps, and the browser providers live in your browser config:
-
-```typescript
-// main.ts
-import { bootstrapApplication } from '@angular/platform-browser';
-import { config } from './app/app.config.browser';
-import { App } from './app/app';
-
-bootstrapApplication(App, config)
-  .catch((err) => console.error(err));
-```
-
-```typescript
-// app/app.config.browser.ts
-import { mergeApplicationConfig, ApplicationConfig } from '@angular/core';
-import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
-import { appConfig } from './app.config';
-import { MESSAGE_TOKEN } from './tokens';
-
-const browserConfig: ApplicationConfig = {
-  providers: [
-    provideClientHydration(withEventReplay()),
-    { provide: MESSAGE_TOKEN, useValue: 'Message from browser' }
-  ]
-};
-
-export const config = mergeApplicationConfig(appConfig, browserConfig);
-```
-
-**Or inject optionally and fall back to an HTTP call.** This is the right choice for page data,
-because the value genuinely does not exist on a client-side navigation - the user arrived at the
-page through the router, not through a server render:
+prerendering. In the browser `DATA_FROM_SERVER` does not exist, so inject it with
+`{ optional: true }` and fall back. For page data that means an HTTP call, because the value
+genuinely does not exist on a client-side navigation - the user arrived at the page through the
+router, not through a server render:
 
 ```typescript
 export class PersonListComponent {
   private readonly personService = inject(PersonService);
   private readonly platformId = inject(PLATFORM_ID);
-  private readonly peopleInj = inject(PEOPLE_TOKEN, { optional: true });
+  private readonly peopleInj = inject(DATA_FROM_SERVER, { optional: true })?.people ?? null;
 
   people = signal<Person[]>([]);
 

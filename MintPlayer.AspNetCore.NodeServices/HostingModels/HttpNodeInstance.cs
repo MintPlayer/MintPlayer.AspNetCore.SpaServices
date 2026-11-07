@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Diagnostics;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Text.Json;
@@ -58,8 +59,9 @@ internal class HttpNodeInstance : OutOfProcessNodeInstance
 	protected override async Task<T> InvokeExportAsync<T>(
 		NodeInvocationInfo invocationInfo, CancellationToken cancellationToken)
 	{
-		var payloadJson = NodeRpcJson.Serialize(invocationInfo);
-		var payload = new StringContent(payloadJson, Encoding.UTF8, "application/json");
+		// Buffered rather than streamed into the request, so it keeps its Content-Length.
+		var payload = new ByteArrayContent(await NodeRpcJson.SerializeAsync(invocationInfo, cancellationToken));
+		payload.Headers.ContentType = new MediaTypeHeaderValue("application/json") { CharSet = "utf-8" };
 		var response = await _client.PostAsync(_endpoint, payload, cancellationToken);
 
 		return await ReadResponseAsync<T>(response, cancellationToken);

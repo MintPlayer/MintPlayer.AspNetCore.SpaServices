@@ -5,7 +5,6 @@ import { provideClientHydration, withEventReplay } from '@angular/platform-brows
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 import { appConfig } from './app.config';
-import { MESSAGE_TOKEN } from './tokens';
 
 const getBaseUrl = () => {
   return document.getElementsByTagName('base')[0].href.slice(0, -1);
@@ -28,8 +27,7 @@ const browserConfig: ApplicationConfig = {
           ]
         }
       })
-    ),
-    { provide: MESSAGE_TOKEN, useValue: 'Message from browser' }
+    )
   ]
 };
 

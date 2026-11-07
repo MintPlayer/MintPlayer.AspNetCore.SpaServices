@@ -8,7 +8,7 @@ import { BsGridModule } from '@mintplayer/ng-bootstrap/grid';
 import { Person } from '../../../entities/person';
 import { PersonService } from '../../../services/person.service';
 import { SlugifyPipe } from '../../../pipes/slugify.pipe';
-import { PEOPLE_TOKEN } from '../../../tokens';
+import { DATA_FROM_SERVER } from '../../../tokens';
 
 @Component({
 	selector: 'app-person-list',
@@ -28,7 +28,7 @@ export class PersonListComponent {
 	private readonly personService = inject(PersonService);
 	private readonly titleService = inject(Title);
 	private readonly platformId = inject(PLATFORM_ID);
-	private readonly peopleInj = inject(PEOPLE_TOKEN, { optional: true });
+	private readonly peopleInj = inject(DATA_FROM_SERVER, { optional: true })?.people ?? null;
 
 	people = signal<Person[]>([]);
 

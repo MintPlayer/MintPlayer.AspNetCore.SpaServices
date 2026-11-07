@@ -533,38 +533,51 @@ The prerenderer then calls `renderApplication(bootstrap, { document, url, platfo
 
 ### Handing `OnSupplyData` to Angular: `prerenderProviders`
 
-Optional: without this export the page still renders, Angular just doesn't receive any server data. Everything your `OnSupplyData` added arrives in `data`. Export `prerenderProviders` to turn it into providers, so components inject the values instead of issuing an HTTP call the server has already made. The render itself makes no outbound requests: data flows in from ASP.NET Core.
+Optional: without this export the page still renders, Angular just doesn't receive any server data. Everything your `OnSupplyData` added arrives in `data`. Hand all of it to Angular as **one** provider, and let each page take what it needs. Then components inject the values instead of issuing an HTTP call the server has already made. The render itself makes no outbound requests: data flows in from ASP.NET Core.
 
-```typescript
-import { APP_BASE_HREF } from '@angular/common';
-import { StaticProvider } from '@angular/core';
-import { MESSAGE_TOKEN, PERSON_TOKEN, PEOPLE_TOKEN } from './app/tokens';
-
-export const prerenderProviders = (data: any, params: { baseUrl: string }): StaticProvider[] => [
-  // Relative: an absolute base href (origin + path) makes Angular reject the URL as changing origin (NG05703).
-  { provide: APP_BASE_HREF, useValue: params.baseUrl },
-  { provide: MESSAGE_TOKEN, useValue: data.message },
-  // Route-dependent values: provide null when absent.
-  { provide: PEOPLE_TOKEN, useValue: data.people ?? null },
-  { provide: PERSON_TOKEN, useValue: data.person ?? null },
-];
-```
-
-It receives `(data, params)`, where `params` has `location`, `origin`, `url`, `baseUrl`, `absoluteUrl` and `data`.
-
-These are *platform* providers. A provider for the same token in `app.config.server.ts` (or `app.config.ts`) is closer to the components and wins, so do not also provide the token there. Keep `APP_BASE_HREF` relative: an absolute base href such as `params.origin + ...` makes Angular reject the navigation as changing origin (`NG05703`).
-
-`MESSAGE_TOKEN`, `PERSON_TOKEN` and `PEOPLE_TOKEN` come from the demo; declare your own. They are ordinary Angular `InjectionToken`s, declared once and given a client-side fallback in your browser config:
+Declare one token for it, in a file both the server and the browser code import:
 
 ```typescript
 // ClientApp/src/app/tokens.ts
 import { InjectionToken } from '@angular/core';
 import { Person } from './entities/person';
 
-export const MESSAGE_TOKEN = new InjectionToken<string>('MESSAGE');
-export const PERSON_TOKEN = new InjectionToken<Person>('PERSON');
-export const PEOPLE_TOKEN = new InjectionToken<Person[]>('PEOPLE');
+// The keys your OnSupplyData sets. All optional: each route supplies only its own.
+export interface DataFromServer {
+  message?: string;
+  people?: Person[];
+  person?: Person;
+}
+
+export const DATA_FROM_SERVER = new InjectionToken<DataFromServer>('DATA_FROM_SERVER');
 ```
+
+Provide it from `main.server.ts`:
+
+```typescript
+import { APP_BASE_HREF } from '@angular/common';
+import { StaticProvider } from '@angular/core';
+import { DATA_FROM_SERVER } from './app/tokens';
+
+export const prerenderProviders = (data: any, params: { baseUrl: string }): StaticProvider[] => [
+  { provide: DATA_FROM_SERVER, useValue: data },
+  // Only if your code injects APP_BASE_HREF. Relative: an absolute one makes Angular throw NG05703.
+  { provide: APP_BASE_HREF, useValue: params.baseUrl },
+];
+```
+
+It receives `(data, params)`, where `params` has `location`, `origin`, `url`, `baseUrl`, `absoluteUrl` and `data`.
+
+Inject it **optionally**: it only exists during the server render. In the browser, and after a client-side navigation, it is absent, so fall back to an HTTP call:
+
+```typescript
+export class PersonShowComponent {
+  private readonly person = inject(DATA_FROM_SERVER, { optional: true })?.person ?? null;
+  // ...on the server use this.person; in the browser fetch it from your API.
+}
+```
+
+These are *platform* providers. A provider for the same token in `app.config.server.ts` (or `app.config.ts`) is closer to the components and wins, so do not also provide the token there. Keep `APP_BASE_HREF` relative: an absolute base href such as `params.origin + ...` makes Angular reject the navigation as changing origin (`NG05703`).
 
 ### Workspace configuration
 

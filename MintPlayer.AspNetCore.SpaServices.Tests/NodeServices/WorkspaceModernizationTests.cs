@@ -28,21 +28,41 @@ public class WorkspaceModernizationTests
     }
 
     [Fact]
-    public void Sends_property_names_and_dictionary_keys_camel_cased()
+    public async Task Sends_property_names_and_dictionary_keys_camel_cased()
     {
         // What Newtonsoft's CamelCasePropertyNamesContractResolver produced, which existing boot
         // modules read SupplyData keys by.
-        var json = NodeRpcJson.Serialize(new NodeInvocationInfo
+        var json = await NodeRpcJson.SerializeAsync(new NodeInvocationInfo
         {
             ModuleName = "m",
             ExportedFunctionName = "f",
             Args = [new Dictionary<string, object> { ["PersonId"] = 1 }],
-        });
+        }, CancellationToken.None);
 
         var root = JsonNode.Parse(json)!;
         Assert.Equal("m", (string?)root["moduleName"]);
         Assert.Equal("f", (string?)root["exportedFunctionName"]);
         Assert.Equal(1, (int?)root["args"]![0]!["personId"]);
+    }
+
+    [Fact]
+    public async Task Enumerates_an_async_sequence_such_as_an_entity_framework_query()
+    {
+        // An EF IQueryable is an IAsyncEnumerable, which the synchronous serializer refuses.
+        static async IAsyncEnumerable<int> People()
+        {
+            await Task.Yield();
+            yield return 1;
+            yield return 2;
+        }
+
+        var json = await NodeRpcJson.SerializeAsync(new NodeInvocationInfo
+        {
+            ModuleName = "m",
+            Args = [new Dictionary<string, object> { ["people"] = People() }],
+        }, CancellationToken.None);
+
+        Assert.Equal("[1,2]", JsonNode.Parse(json)!["args"]![0]!["people"]!.ToJsonString());
     }
 
     [Fact]

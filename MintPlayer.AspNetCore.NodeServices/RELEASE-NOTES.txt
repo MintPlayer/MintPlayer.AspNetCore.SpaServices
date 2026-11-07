@@ -30,6 +30,9 @@ FIXES
   - A constructor that failed after node had started (e.g. a ProjectPath that does not exist)
     left that node running; it is now killed.
   - A failing kill no longer escapes Dispose and leaves the process handle undisposed.
+- Invocation arguments are serialized asynchronously, so an IAsyncEnumerable - such as an Entity
+  Framework IQueryable handed to SupplyData as it is - is enumerated, as Newtonsoft did, instead of
+  failing with "can only be serialized using async serialization methods".
 - dotnet publish (and a Debug build without node_modules) failed with "The working directory
   "ClientApp\" does not exist" when installed from NuGet. The relative SpaRoot was passed to
   npm-install.proj, which resolved it against the package folder; it is now made absolute against

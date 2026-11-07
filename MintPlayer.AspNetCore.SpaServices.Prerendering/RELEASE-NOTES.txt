@@ -21,8 +21,11 @@ BREAKING CHANGES
   The package no longer depends on Newtonsoft.Json.
 
 MIGRATION (Angular 19-22)
-- main.server.ts: add the renderApplication re-export. Move your providers into prerenderProviders,
-  and keep APP_BASE_HREF relative (params.baseUrl): an absolute one makes Angular throw NG05703.
+- main.server.ts: add the renderApplication re-export. Hand the OnSupplyData values to Angular from
+  prerenderProviders, preferably as one token holding all of them:
+    { provide: DATA_FROM_SERVER, useValue: data }
+  injected optionally by each page. Keep APP_BASE_HREF relative (params.baseUrl): an absolute one
+  makes Angular throw NG05703.
 - app.routes.server.ts: renderMode RenderMode.Server for '**' (ng new --ssr generates RenderMode.Prerender).
   Do not provide prerenderProviders' tokens in app.config(.server).ts; application providers win over
   platform ones.

@@ -33,9 +33,23 @@ internal static class NodeRpcJson
 		TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
 	};
 
+	/// <summary>
+	/// Serializes the invocation to UTF-8 JSON.
+	/// </summary>
+	/// <remarks>
+	/// Asynchronous on purpose: only the async serializer enumerates an <see cref="IAsyncEnumerable{T}"/>, and an
+	/// Entity Framework query (<c>IQueryable</c>) is one. Handed to <c>SupplyData</c> as it is, the synchronous
+	/// serializer throws NotSupportedException ("can only be serialized using async serialization methods"),
+	/// where Newtonsoft used to enumerate it.
+	/// </remarks>
 	[UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Arguments are caller-supplied types; documented on the class.")]
 	[UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Arguments are caller-supplied types; documented on the class.")]
-	internal static string Serialize(NodeInvocationInfo invocationInfo) => JsonSerializer.Serialize(invocationInfo, Options);
+	internal static async Task<byte[]> SerializeAsync(NodeInvocationInfo invocationInfo, CancellationToken cancellationToken)
+	{
+		using var buffer = new MemoryStream();
+		await JsonSerializer.SerializeAsync(buffer, invocationInfo, Options, cancellationToken);
+		return buffer.ToArray();
+	}
 
 	[UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Results are caller-chosen types; documented on the class.")]
 	[UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Results are caller-chosen types; documented on the class.")]
