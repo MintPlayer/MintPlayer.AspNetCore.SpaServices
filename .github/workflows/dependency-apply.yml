@@ -1,0 +1,76 @@
+name: dependency-apply
+
+# MintPlayer CodeCoverage dependency updates: the APPLY phase (docs/code-coverage/dependency-updates-PRD.md
+# §13.3-13.4, R2, R14). The bot pushes `mintplayer/dependencies-work` = expected_sha + ONE commit holding
+# `.mintplayer/dependency-plan.json`, and dispatches this workflow on that ref. The action applies the plan
+# group by group (text edit -> pin -> relock with scripts off -> verify), resets a group the resolver
+# refuses, checks the whole tree, and uploads `result.json` + `dependency.patch` (a `git diff --binary`
+# against expected_sha). It NEVER builds (D-S14a) and never commits or pushes: the bot validates the patch
+# and its git writer pushes it.
+#
+# SECURITY (T5): `contents: read`, no `id-token`, `persist-credentials: false`, no secrets by default. The
+# job installs FRESH package versions, so treat it as untrusted.
+#
+# Feed secrets (D-S14b) may be added ONLY for the code-defined safe list, whose lockfile regeneration was
+# shown not to run package code: npm, pnpm, yarn, NuGet (restore only), Composer, Cargo, Go and Maven.
+# Pass them as env on the action step and set `feed-secrets: 'true'` (uv then resolves with --no-build):
+#   env:
+#     NPM_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
+#     NUGET_AUTH_TOKEN: ${{ secrets.NUGET_READ_TOKEN }}
+# NEVER pass feed secrets when the repository uses Gradle: every Gradle run evaluates build.gradle(.kts)
+# and its plugins (S13/S14). Never pass a token that can write.
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: The commit the plan was made against; the dispatched ref must be expected_sha + the plan commit.
+        required: true
+      run_id:
+        description: The bot's id for this apply (artifact name and run name).
+        required: true
+
+run-name: 'dependency apply (${{ inputs.run_id }})'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The dispatched plan ref as of the dispatch; the action checks HEAD^ == expected_sha (R14).
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+
+      # Toolchains the repository's lockfiles need. Remove what this repository does not use.
+      - uses: actions/setup-dotnet@v6
+        if: hashFiles('global.json') != ''
+        with:
+          global-json-file: global.json
+      - name: Enable corepack (pnpm / yarn berry)
+        if: hashFiles('**/pnpm-lock.yaml', '**/yarn.lock') != ''
+        run: corepack enable
+
+      - id: apply
+        uses: MintPlayer/MintPlayer.Spark/apps/CodeCoverage/dependency-action@8833d092d77bf1f5c66f9351ad6d27e7079a89f3 # dependency-update-v1
+        with:
+          mode: apply
+          expected-sha: ${{ inputs.expected_sha }}
+          feed-secrets: 'false'
+
+      - uses: actions/upload-artifact@v7
+        if: success()
+        with:
+          name: dependency-apply-${{ inputs.run_id }}
+          path: ${{ steps.apply.outputs.output-dir }}
+          if-no-files-found: error
+          retention-days: 3

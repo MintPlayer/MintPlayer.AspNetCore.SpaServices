@@ -1,3 +1,21 @@
+# MintPlayer dependency updates (added by the onboarding pull request). Every line is a default: uncomment to change it.
+# dependencies:
+#   enabled: true
+#   schedule: { frequency: weekly, weekday: monday, hour: 6 }   # in the account's time zone
+#   cooldown: 3d                     # third-party releases wait this long; may only lengthen the account's
+#   autoMerge:                       # the largest update merged through the merge queue without an approval
+#     default: minor
+#     "@angular/*": never            # never: every update waits for `approve <group>`
+#     maxCoverageDrop: 0.5           # percentage points
+#   rules:
+#     - match: ["some-package"]
+#       ignore: true
+#   migrate:                         # approved majors run a migration workflow after the apply
+#     - match: "@angular/core"
+#       onMajor: angular-migrate.yml
+#     - match: "nx"
+#       onMajor: nx-migrate.yml
+
 # Coverage gate policy for coverage.mintplayer.com.
 #
 # Overrides the repository's "Coverage gate" settings panel per field. Read from the BASE ref of a
@@ -39,9 +57,16 @@ gate:
   # "neutral" - which is exactly why coverage/project and coverage/patch read "skipping" today.
   blocking: true
 
+# The merge queue (added by the onboarding pull request): dependency pull requests within your thresholds merge through
+# it, and your own pull requests can use it too (label `merge-queue`, or comment `/queue`).
+mergeQueue:
+  enabled: true
+  branches: [master, supported-lines]
+
 # MintPlayer package versioning (added by the onboarding pull request). The publish workflow tags every release
 # `<package id>/v<version>`; the commented lines are the defaults.
 versioning:
+  lines: {}                          # release lines, release/{ecosystem}-{major}.x: packages release only from them
   mode: server                       # server | local: local runs the engine on the runner, without the app
 #   releaseBranches: ["release/*.x"]
 #   ignore: ["**/*.md"]              # changed files that never release a package
