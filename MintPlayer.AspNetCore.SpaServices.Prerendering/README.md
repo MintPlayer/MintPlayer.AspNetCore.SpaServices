@@ -49,7 +49,7 @@ The packages look for the SPA in `ClientApp` by default; see `SpaRoot` under [MS
 Two changes to `projects.ClientApp.architect.build`:
 
 - Add `"outputPath": "dist"`. Without it Angular writes to `dist/ClientApp/browser` and `dist/ClientApp/server`, but every path in this guide is `dist/browser` and `dist/server`.
-- **Move** `server`, `outputMode` and `ssr` out of `options` into a new configuration named `ssr`. `ng new --ssr` puts them in `options`. While they are there, `ng serve` renders every page itself, so the page this package captures as its template in development is already rendered.
+- **Move** `server`, `outputMode` and `ssr` out of `options` into a new configuration named `ssr`. `ng new --ssr` puts them in `options`. Leave the other options there, such as `security`. While they are there, `ng serve` renders every page itself, so the page this package captures as its template in development is already rendered.
 
 Before (as generated):
 

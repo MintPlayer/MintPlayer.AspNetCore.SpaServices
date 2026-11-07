@@ -30,6 +30,10 @@ FIXES
   - A constructor that failed after node had started (e.g. a ProjectPath that does not exist)
     left that node running; it is now killed.
   - A failing kill no longer escapes Dispose and leaves the process handle undisposed.
+- dotnet publish (and a Debug build without node_modules) failed with "The working directory
+  "ClientApp\" does not exist" when installed from NuGet. The relative SpaRoot was passed to
+  npm-install.proj, which resolved it against the package folder; it is now made absolute against
+  the consuming project first.
 
 FEATURES
 - .mjs and .cjs are now watched by default, alongside .js, .ts, .json and .html, so a rebuilt
