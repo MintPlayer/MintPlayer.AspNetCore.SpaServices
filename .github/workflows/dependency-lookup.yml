@@ -24,6 +24,9 @@ on:
       run_id:
         description: The bot's id for this lookup (artifact name and run name).
         required: true
+      platforms:
+        description: The bot's platform channel table (JSON). SDK moves are offered from it; the action fetches no feed itself.
+        required: true
 
 run-name: 'dependency lookup (${{ inputs.run_id }})'
 
@@ -45,10 +48,12 @@ jobs:
           persist-credentials: false
 
       - id: lookup
-        uses: MintPlayer/MintPlayer.Spark/apps/CodeCoverage/dependency-action@8833d092d77bf1f5c66f9351ad6d27e7079a89f3 # dependency-update-v1
+        uses: MintPlayer/MintPlayer.Spark/apps/CodeCoverage/dependency-action@dce3c6725470c8c7cc4129efe86c9e9138c47354 # dependency-update-v1
         with:
           mode: lookup
           expected-sha: ${{ inputs.expected_sha }}
+          # The channel table (#606 D9): passed as an action input, never through a shell.
+          platforms: ${{ inputs.platforms }}
           # Read-only: Renovate's GitHub tag/release lookups and the action.yml interface diffs (R15).
           github-token: ${{ github.token }}
           # host-rules: ${{ secrets.RENOVATE_HOST_RULES }}
