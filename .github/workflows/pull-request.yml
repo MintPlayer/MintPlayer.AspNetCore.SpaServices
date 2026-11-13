@@ -20,7 +20,7 @@ jobs:
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: 11.0.100-rc.1.26425.128
+        global-json-file: global.json
 
     # The Node integration tests spawn real node processes, and the build runs npm in the demo
     # ClientApps. Pinned so a runner-image change cannot alter the Node the tests run against.
@@ -94,7 +94,7 @@ jobs:
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v6
       with:
-        dotnet-version: 11.0.100-rc.1.26425.128
+        global-json-file: global.json
 
     - name: Setup Node.js
       uses: actions/setup-node@v7
