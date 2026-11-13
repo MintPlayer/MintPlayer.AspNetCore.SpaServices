@@ -105,6 +105,28 @@ jobs:
       if: steps.publishes.outputs.value == 'true'
       run: dotnet pack --configuration Release
 
+    - name: Check the packages carry the released versions
+      if: steps.publishes.outputs.value == 'true'
+      id: packed-versions
+      shell: bash
+      env:
+        VERSIONS: ${{ steps.versioning.outputs.versions }}
+        DIST_TAGS: ${{ steps.versioning.outputs.dist-tags }}
+      run: |
+        # --skip-duplicate turns a pack at another version into "already exists" and a green run that published
+        # nothing (#638): every released NuGet package must have been packed at the version it was released as.
+        versions="${VERSIONS:-}"; [ -n "$versions" ] || versions='{}'
+        npm="${DIST_TAGS:-}"; [ -n "$npm" ] || npm='{}'
+        status=0
+        while IFS=$'\t' read -r id version; do
+          version="${version%$'\r'}"; [ -n "$id" ] || continue
+          if [ -z "$(find . -iname "$id.$version.nupkg" -not -path '*/node_modules/*' -print -quit)" ]; then
+            echo "::error::$id was released as $version, but no $id.$version.nupkg was packed."
+            status=1
+          fi
+        done < <(jq -r --argjson npm "$npm" 'to_entries[] | select(.key as $k | $npm | has($k) | not) | "\(.key)\t\(.value)"' <<< "$versions")
+        exit $status
+
     # Trusted publishing: the job's GitHub OIDC token (id-token: write) is exchanged for a short-lived
     # nuget.org API key. The policy lives on nuget.org (owner MintPlayer, workflow build-master.yml,
     # packages MintPlayer.AspNetCore.SpaServices*, MintPlayer.AspNetCore.NodeServices); a package outside
