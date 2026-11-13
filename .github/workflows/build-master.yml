@@ -82,7 +82,7 @@ jobs:
 
     - name: Version the packages
       id: versioning
-      uses: MintPlayer/MintPlayer.Spark/apps/CodeCoverage/versioning-action@a0f9e20f3d7f91814d00c598c64b4a39cd1f1c45 # versioning-v1
+      uses: MintPlayer/MintPlayer.Spark/apps/CodeCoverage/versioning-action@versioning-v1
 
     # With release lines on, the default branch tags nothing: packing it would only re-push the last
     # versions as duplicates, so it neither packs nor publishes when it released nothing.
