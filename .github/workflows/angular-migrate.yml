@@ -44,7 +44,7 @@ jobs:
           persist-credentials: false
 
       - id: migrate
-        uses: MintPlayer/MintPlayer.Spark/apps/CodeCoverage/dependency-action@b2280f945081e5e0a5a38f98747351268e8bf4fe # dependency-update-v1
+        uses: MintPlayer/MintPlayer.Spark/apps/CodeCoverage/dependency-action@48e024c12de346264358ee8d1719157f44de346d # dependency-update-v1
         with:
           mode: migrate
           migrate-tool: angular
